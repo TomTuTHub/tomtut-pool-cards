@@ -1,21 +1,29 @@
 import { html, css, nothing } from "lit";
+import { hasHaElement } from "./ha-elements.js";
 
 /*
- * Baukasten fuer die visuellen Editoren.
+ * Baukasten für die visuellen Editoren.
  *
- * Eine Fields-Instanz haengt an genau einem Config-Objekt (Card, Hero oder
- * einem Slot) und meldet jede Aenderung ueber `update(patch)` zurueck. Dadurch
+ * Eine Fields-Instanz hängt an genau einem Config-Objekt (Card, Hero oder
+ * einem Slot) und meldet jede Änderung über `update(patch)` zurück. Dadurch
  * benutzen Dashboard-Editor und Alias-Editor exakt dieselben Eingabefelder.
+ *
+ * Ein Patch-Wert `undefined` heißt: Schlüssel aus der Config entfernen. So
+ * bleibt die YAML sauber, wenn ein Element abgewählt wird.
  */
+export const ENTITY_PLACEHOLDER = "Entity auswählen …";
+
 export class Fields {
-  constructor({ hass, config, defaults = {}, update, idPrefix = "f" }) {
+  constructor({ hass, config, defaults = {}, update, idPrefix = "f", stash = null }) {
     this.hass = hass;
     this.config = config || {};
     this.defaults = defaults;
     this.update = update;
     this.idPrefix = idPrefix;
+    this.stash = stash;
   }
 
+  /* Effektiver Wert: eigener Eintrag, sonst Default des Slot-Typs */
   val(key) {
     const v = this.config?.[key];
     return v === undefined || v === null || v === "" ? this.defaults[key] : v;
@@ -26,11 +34,54 @@ export class Fields {
     return v === undefined || v === null ? "" : v;
   }
 
-  _entityOptions(domains) {
-    const states = this.hass?.states ?? {};
-    return Object.keys(states)
-      .filter((id) => !domains.length || domains.some((d) => id.startsWith(d + ".")))
-      .sort();
+  /* An/aus eines Elements — Default kommt aus den Slot-Defaults, sonst true */
+  shown(key, def = true) {
+    const v = this.config?.[key];
+    return v === undefined || v === null ? def : v !== false;
+  }
+
+  /*
+   * Element-Schalter der Gruppe "Elemente anzeigen".
+   *
+   * Abwählen versteckt nicht nur die Felder, es räumt auch die zugehörigen
+   * Schlüssel aus der Config (owned). Damit die Auswahl beim Wiedereinschalten
+   * nicht verloren ist, merkt sich der Editor sie so lange im Stash.
+   */
+  element(label, key, owned = [], def = true) {
+    const on = this.shown(key, def);
+    return html`
+      <div class="row">
+        <span class="row-label">${label}</span>
+        <input
+          type="checkbox"
+          data-key="${key}"
+          ?checked="${on}"
+          @change="${(e) => this._toggleElement(key, owned, def, e.target.checked)}"
+        />
+      </div>
+    `;
+  }
+
+  _toggleElement(key, owned, def, checked) {
+    const patch = {};
+    const box = this.stash;
+    if (checked) {
+      patch[key] = def === true ? undefined : true;
+      const saved = box?.[`${this.idPrefix}:${key}`];
+      if (saved) {
+        Object.assign(patch, saved);
+        delete box[`${this.idPrefix}:${key}`];
+      }
+    } else {
+      patch[key] = false;
+      const saved = {};
+      for (const k of owned) {
+        if (this.config?.[k] !== undefined) saved[k] = this.config[k];
+        patch[k] = undefined;
+      }
+      if (box && Object.keys(saved).length) box[`${this.idPrefix}:${key}`] = saved;
+    }
+    this.update(patch);
   }
 
   text(label, key, hint = "", placeholder = "") {
@@ -39,6 +90,7 @@ export class Fields {
         >${label}
         <input
           type="text"
+          data-key="${key}"
           .value="${String(this.raw(key))}"
           placeholder="${placeholder}"
           @input="${(e) => this.update({ [key]: e.target.value })}"
@@ -48,43 +100,74 @@ export class Fields {
     `;
   }
 
+  _entityOptions(domains) {
+    const states = this.hass?.states ?? {};
+    return Object.keys(states)
+      .filter((id) => !domains.length || domains.some((d) => id.startsWith(d + ".")))
+      .sort();
+  }
+
+  /*
+   * Entity-Feld. Im laufenden Home Assistant ist das der echte
+   * ha-entity-picker (Suche, Namen, Icons) mit Domain-Filter je Feld;
+   * ohne Frontend bleibt ein Textfeld mit Vorschlagsliste. In beiden Fällen
+   * ist das Feld leer, wenn nichts gewählt wurde — kein Beispielwert.
+   */
   entity(label, key, hint = "", ...domains) {
-    const listId = `${this.idPrefix}-${key}`;
-    return html`
-      <label
-        >${label}
-        <input
-          type="text"
-          list="${listId}"
-          data-key="${key}"
-          .value="${String(this.raw(key))}"
-          placeholder="${(domains[0] || "sensor") + ".beispiel"}"
-          @input="${(e) => this.update({ [key]: e.target.value })}"
-          @change="${(e) => this.update({ [key]: e.target.value })}"
-        />
-        <datalist id="${listId}">
-          ${this._entityOptions(domains).map((id) => html`<option value="${id}"></option>`)}
-        </datalist>
-        ${hint ? html`<small>${hint}</small>` : nothing}
-      </label>
-    `;
+    return this._entityInput({
+      label,
+      hint,
+      domains,
+      value: String(this.raw(key)),
+      dataKey: key,
+      listId: `${this.idPrefix}-${key}`,
+      onChange: (v) => this.update({ [key]: v || undefined }),
+    });
   }
 
   /* Entity an Position `index` einer Liste (z.B. stage_entities) */
   entityAt(label, key, index, hint = "", ...domains) {
-    const listId = `${this.idPrefix}-${key}-${index}`;
     const list = Array.isArray(this.config?.[key]) ? this.config[key] : [];
+    return this._entityInput({
+      label,
+      hint,
+      domains,
+      value: String(list[index] ?? ""),
+      dataKey: `${key}.${index}`,
+      listId: `${this.idPrefix}-${key}-${index}`,
+      onChange: (v) => this._updateList(key, index, v),
+    });
+  }
+
+  _entityInput({ label, hint, domains, value, dataKey, listId, onChange }) {
+    if (hasHaElement("ha-entity-picker")) {
+      return html`
+        <ha-entity-picker
+          .hass="${this.hass}"
+          .value="${value}"
+          .label="${label}"
+          .helper="${hint}"
+          .includeDomains="${domains.length ? domains : undefined}"
+          data-key="${dataKey}"
+          allow-custom-entity
+          @value-changed="${(e) => {
+            e.stopPropagation();
+            onChange(e.detail?.value ?? "");
+          }}"
+        ></ha-entity-picker>
+      `;
+    }
     return html`
       <label
         >${label}
         <input
           type="text"
           list="${listId}"
-          data-key="${key}.${index}"
-          .value="${String(list[index] ?? "")}"
-          placeholder="${(domains[0] || "switch") + ".beispiel"}"
-          @input="${(e) => this._updateList(key, index, e.target.value)}"
-          @change="${(e) => this._updateList(key, index, e.target.value)}"
+          data-key="${dataKey}"
+          .value="${value}"
+          placeholder="${ENTITY_PLACEHOLDER}"
+          @input="${(e) => onChange(e.target.value)}"
+          @change="${(e) => onChange(e.target.value)}"
         />
         <datalist id="${listId}">
           ${this._entityOptions(domains).map((id) => html`<option value="${id}"></option>`)}
@@ -99,7 +182,27 @@ export class Fields {
     while (list.length <= index) list.push("");
     list[index] = value;
     while (list.length && !list[list.length - 1]) list.pop();
-    this.update({ [key]: list });
+    this.update({ [key]: list.length ? list : undefined });
+  }
+
+  /* Icon-Feld: echter ha-icon-picker mit Vorschau, sonst Textfeld */
+  icon(label, key, hint = "") {
+    if (hasHaElement("ha-icon-picker")) {
+      return html`
+        <ha-icon-picker
+          .hass="${this.hass}"
+          .value="${String(this.raw(key))}"
+          .label="${label}"
+          .helper="${hint}"
+          data-key="${key}"
+          @value-changed="${(e) => {
+            e.stopPropagation();
+            this.update({ [key]: e.detail?.value || undefined });
+          }}"
+        ></ha-icon-picker>
+      `;
+    }
+    return this.text(label, key, hint, "mdi:lightbulb");
   }
 
   select(label, key, options, def) {
@@ -117,8 +220,14 @@ export class Fields {
     `;
   }
 
+  /*
+   * Schieberegler. Wichtig: er startet immer auf dem effektiven Wert
+   * (Config, sonst Default des Slot-Typs) — sonst stehen alle Regler links,
+   * obwohl das Overlay längst richtig sitzt.
+   */
   slider(label, key, min, max, unit = "%", step = 1) {
-    const v = this.val(key) ?? min;
+    const raw = this.val(key);
+    const v = raw === undefined || raw === null || raw === "" ? min : raw;
     return html`
       <div class="row">
         <span class="row-label">${label}</span>
@@ -150,24 +259,23 @@ export class Fields {
       </div>
     `;
   }
-
-  colorSelect(label, key) {
-    return this.select(
-      label,
-      key,
-      [
-        ["white", "Weiß"],
-        ["black", "Schwarz"],
-      ],
-      this.val(key) ?? "white"
-    );
-  }
 }
 
 export const section = (title, content, open = false) => html`
   <details class="section" ?open="${open}">
     <summary>${title}</summary>
     <div class="section-body">${content}</div>
+  </details>
+`;
+
+/* Die Gruppe "Elemente anzeigen" steht in jedem Slot ganz oben und offen. */
+export const elementsGroup = (content) => html`
+  <details class="section elements" open>
+    <summary>Elemente anzeigen</summary>
+    <div class="section-body">
+      ${content}
+      <small>Nur angehakte Elemente haben Felder — und landen in der Konfiguration.</small>
+    </div>
   </details>
 `;
 
@@ -194,6 +302,11 @@ export const editorStyles = css`
     font-family: inherit;
     background: var(--card-background-color, #fff);
     color: var(--primary-text-color, #111);
+  }
+  ha-entity-picker,
+  ha-icon-picker {
+    display: block;
+    width: 100%;
   }
   small {
     color: var(--secondary-text-color, #888);
@@ -233,6 +346,13 @@ export const editorStyles = css`
     flex-direction: column;
     gap: 10px;
     padding: 12px 14px;
+  }
+  .section.elements {
+    border-color: var(--primary-color, #03a9f4);
+  }
+  .section.elements > summary {
+    color: var(--primary-color, #03a9f4);
+    background: rgba(3, 169, 244, 0.08);
   }
   .section.advanced {
     border-color: var(--warning-color, #ff9800);

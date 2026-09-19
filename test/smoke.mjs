@@ -47,7 +47,7 @@ const check = (name, fn) => {
   }
 };
 
-await import("../dist/tomtut-pool-cards.js");
+const pkg = await import("../dist/tomtut-pool-cards.js");
 
 const Dashboard = customElements.get("tomtut-pool-dashboard");
 const Alias = customElements.get("tomtut-pool-heatpump-card");
@@ -86,7 +86,7 @@ check("beide Cards in window.customCards", () => {
 /* ------------------------------------------------------------------ */
 
 check("setConfig ohne Objekt wirft", () =>
-  assert.throws(() => new Dashboard().setConfig(null), /Ungueltige Konfiguration/)
+  assert.throws(() => new Dashboard().setConfig(null), /Ungültige Konfiguration/)
 );
 check("setConfig mit falschem slots-Typ wirft", () =>
   assert.throws(() => new Dashboard().setConfig({ slots: "nope" }), /slots/)
@@ -245,8 +245,8 @@ check("Hero zeigt pH und RX", () => {
 });
 check("Hero-Anker kommen aus der Formen-Tabelle", () => {
   const style = hero.shadowRoot.querySelector(".thermo").getAttribute("style");
-  assert.match(style, /top:27\.9%/);
-  assert.match(style, /left:31\.7%/);
+  assert.match(style, /top:31\.6%/);
+  assert.match(style, /left:12\.7%/);
 });
 check("Bodenablauf wird (noch) nicht gerendert", () =>
   assert.equal(hero.shadowRoot.querySelector(".drain"), null)
@@ -362,7 +362,7 @@ check("Waermepumpe: Luefter dreht bei 820 W", () =>
 check("Waermepumpe: Luefter auf das neue Artwork kalibriert", () => {
   const style = hp.shadowRoot.querySelector(".fan-overlay").getAttribute("style");
   assert.match(style, /left:26%/);
-  assert.match(style, /top:50%/);
+  assert.match(style, /top:49\.5%/);
   assert.match(style, /width:42%/);
   assert.match(style, /--fan-ratio:1\.14/);
 });
@@ -729,7 +729,7 @@ check("Editor hat drei Schritte", () => {
   );
   assert.equal(heads.length, 3);
   assert.match(heads[0], /Becken/);
-  assert.match(heads[1], /Geraete/);
+  assert.match(heads[1], /Geräte/);
   assert.match(heads[2], /Optik/);
 });
 check("Editor zeigt je Slot eine Karte", () =>
@@ -791,9 +791,11 @@ await hpEditor.updateComplete;
 check("Alias-Editor rendert die alten Felder", () =>
   assert.ok(hpEditor.shadowRoot.querySelector('input[data-key="switch_entity"]'))
 );
-check("Alias-Editor hat erweiterte Einstellungen", () =>
-  assert.ok(hpEditor.shadowRoot.querySelector(".section.advanced"))
-);
+check("Alias-Editor fuehrt mit 'Elemente anzeigen' an", () => {
+  const first = hpEditor.shadowRoot.querySelector(".section");
+  assert.ok(first.classList.contains("elements"));
+  assert.match(first.textContent, /Elemente anzeigen/);
+});
 let hpFired = null;
 hpEditor.addEventListener("config-changed", (e) => (hpFired = e.detail.config));
 const labelInput = Array.from(hpEditor.shadowRoot.querySelectorAll('input[type="text"]')).find(
@@ -802,6 +804,304 @@ const labelInput = Array.from(hpEditor.shadowRoot.querySelectorAll('input[type="
 labelInput.value = "Neue WP";
 labelInput.dispatchEvent(new dom.window.Event("input"));
 check("Alias-Editor feuert config-changed", () => assert.equal(hpFired.label_text, "Neue WP"));
+
+/* ================================================================== */
+/* Iteration 2 — Thomas' Korrekturen                                   */
+/* ================================================================== */
+
+const cssOf = (tag) =>
+  customElements
+    .get(tag)
+    .styles.map((x) => x.cssText)
+    .join("\n");
+
+/* ---- frisch angelegter Slot rendert sofort ---- */
+
+const freshCard = await mount(Dashboard, {
+  hero: { enabled: false },
+  slots: [{ type: "pump" }, { type: "heatpump" }],
+});
+const freshPump = freshCard.shadowRoot.querySelector("tomtut-pool-slot-pump");
+const freshHp = freshCard.shadowRoot.querySelector("tomtut-pool-slot-heatpump");
+await freshPump.updateComplete;
+await freshHp.updateComplete;
+
+check("frischer Pump-Slot rendert sofort (ohne hass, ohne Entity)", () => {
+  assert.equal(
+    freshPump.shadowRoot.querySelector("img").getAttribute("src"),
+    "/local/community/tomtut-pool-cards/poolpumpe_transparent.png"
+  );
+  assert.ok(freshPump.shadowRoot.querySelector(".fan-overlay"), "Laufrad fehlt");
+  assert.match(freshPump.shadowRoot.textContent, /mindestens eine Stufen-Entity/);
+});
+check("frischer Waermepumpen-Slot rendert sofort", () => {
+  assert.equal(
+    freshHp.shadowRoot.querySelector("img").getAttribute("src"),
+    "/local/community/tomtut-pool-cards/waermepumpe_transparent.png"
+  );
+  assert.match(freshHp.shadowRoot.textContent, /mindestens eine Entity/);
+});
+check("frischer Slot schreibt nichts in die Config", () =>
+  assert.deepEqual(freshCard._config.slots[0], { type: "pump" })
+);
+
+/* ---- Laufrad bleibt rund ---- */
+
+const roundPump = await mountPump();
+check("Laufrad ist eine starre 1:1-Box", () => {
+  const fan = roundPump.shadowRoot.querySelector(".fan-overlay");
+  assert.ok(fan.classList.contains("round"));
+  assert.match(fan.getAttribute("style"), /--fan-ratio:1;/);
+  assert.equal(fan.querySelector("svg").getAttribute("preserveAspectRatio"), "xMidYMid meet");
+});
+check("Laufrad dreht um die Mitte der viewBox", () => {
+  const css = cssOf("tomtut-pool-slot-pump");
+  assert.match(css, /transform-box:\s*view-box/);
+  assert.match(css, /transform-origin:\s*50% 50%/);
+});
+check("Luefter der Waermepumpe darf weiter elliptisch sein", () =>
+  assert.equal(
+    hp.shadowRoot.querySelector(".fan-overlay svg").getAttribute("preserveAspectRatio"),
+    "none"
+  )
+);
+
+/* ---- Tempo-Skala 1..10 ---- */
+
+check("Tempo 1..10 wird auf Umlaufzeiten abgebildet", () => {
+  assert.equal(pkg.fanDuration(1), 4);
+  assert.equal(pkg.fanDuration(10), 0.5);
+  assert.ok(pkg.fanDuration(3) > pkg.fanDuration(5));
+  assert.ok(pkg.fanDuration(5) > pkg.fanDuration(8));
+  assert.equal(pkg.fanDuration(42), 0.5, "ausserhalb der Skala wird geklemmt");
+  assert.equal(pkg.fanDuration(undefined), 4);
+});
+check("Tempo-Defaults sind 3/5/8, Ruhewatt 30", () => {
+  assert.equal(pkg.PUMP_DEFAULTS.fan_speed_1, 3);
+  assert.equal(pkg.PUMP_DEFAULTS.fan_speed_2, 5);
+  assert.equal(pkg.PUMP_DEFAULTS.fan_speed_3, 8);
+  assert.equal(pkg.PUMP_DEFAULTS.idle_watt, 30);
+});
+check("Laufrad-Tempo folgt der aktiven Stufe (N2 -> Tempo 5)", () =>
+  assert.match(
+    roundPump.shadowRoot.querySelector(".fan-overlay").getAttribute("style"),
+    new RegExp(`--fan-dur:${pkg.fanDuration(5)}s`)
+  )
+);
+
+/* ---- Fuellung steuert den ganzen Kasten ---- */
+
+const darkCard = await mount(
+  Dashboard,
+  { hero: { enabled: false }, frame: { enabled: true, fill: "schwarz" }, slots: [PUMP_CONFIG] },
+  makeHass()
+);
+const darkPump = darkCard.shadowRoot.querySelector("tomtut-pool-slot-pump");
+await darkPump.updateComplete;
+check("Fuellung schwarz setzt Schriftfarbe und Kastenfarbe", () => {
+  const css = cssOf("tomtut-pool-slot-pump");
+  assert.match(css, /\.slot\.fill-schwarz\s*\{[^}]*--tt-fg:\s*#ffffff/);
+  assert.match(css, /\.slot\.fill-schwarz\s*\{[^}]*--tt-bg:\s*#1e1e1e/);
+  assert.match(css, /\.slot\.fill-schwarz\s*\{[^}]*--tt-box-bg:/);
+  assert.ok(darkPump.shadowRoot.querySelector(".slot.fill-schwarz"));
+});
+check("kein Element faerbt sich mehr selbst", () => {
+  const css = cssOf("tomtut-pool-slot-pump") + cssOf("tomtut-pool-slot-heatpump");
+  assert.ok(!/--val-color/.test(css), "--val-color lebt noch");
+  const box = darkPump.shadowRoot.querySelector(".value-box").getAttribute("style");
+  assert.ok(!/color/.test(box), "Wertebox faerbt sich inline");
+});
+check("Laufrad-Farbe folgt der Fuellung", () =>
+  assert.match(cssOf("tomtut-pool-slot-pump"), /color:\s*var\(--tt-fan-color,\s*var\(--tt-fg\)\)/)
+);
+
+/* ---- image_variant / image_url sind weg ---- */
+
+check("nur noch transparente Geraetebilder", () =>
+  assert.deepEqual(pkg.DEVICE_IMAGES, {
+    heatpump: "waermepumpe_transparent.png",
+    pump: "poolpumpe_transparent.png",
+  })
+);
+
+const legacyCard = await mount(
+  Dashboard,
+  {
+    version: 1,
+    hero: { enabled: false, box_color: "schwarz" },
+    slots: [
+      {
+        type: "pump",
+        image_variant: "schwarz",
+        image_url: "/local/alt.png",
+        fan_dur_1: 3,
+        fan_ratio: 2,
+        fan_color: "white",
+        power_color: "black",
+        main_entity: "input_boolean.poolpumpe_schalter",
+      },
+    ],
+  },
+  makeHass()
+);
+const legacyPump = legacyCard.shadowRoot.querySelector("tomtut-pool-slot-pump");
+await legacyPump.updateComplete;
+check("alte Schluessel werden ignoriert, nicht abgelehnt", () => {
+  assert.equal(
+    legacyPump.shadowRoot.querySelector("img").getAttribute("src"),
+    "/local/community/tomtut-pool-cards/poolpumpe_transparent.png"
+  );
+  assert.match(legacyPump.shadowRoot.querySelector(".fan-overlay").getAttribute("style"), /--fan-ratio:1;/);
+  assert.ok(legacyPump.shadowRoot.querySelector(".power-badge"));
+});
+
+/* ---- Zahlenformat der Overlays ---- */
+
+const oddPump = await mountPump(
+  PUMP_CONFIG,
+  makeHass({
+    "sensor.poolpumpe_power": {
+      state: "2026-09-19T12:00:00+00:00",
+      attributes: { unit_of_measurement: "W" },
+      last_changed: iso(10),
+    },
+    "sensor.poolpumpe_druckseite_temperature": {
+      state: "unavailable",
+      attributes: { unit_of_measurement: "°C" },
+      last_changed: iso(10),
+    },
+  })
+);
+check("nicht-numerische States werden zu —", () => {
+  const txt = oddPump.shadowRoot.textContent;
+  assert.ok(!/2026/.test(txt), "Zeitstempel als Zahl gelesen");
+  assert.ok(!/unavailable/.test(txt));
+  assert.ok((txt.match(/—/g) || []).length >= 2);
+});
+
+const roundedPump = await mountPump(
+  PUMP_CONFIG,
+  makeHass({
+    "sensor.poolpumpe_power": {
+      state: "737.62",
+      attributes: { unit_of_measurement: "W" },
+      last_changed: iso(10),
+    },
+    "sensor.poolpumpe_druckseite_temperature": {
+      state: "27.46",
+      attributes: { unit_of_measurement: "°C" },
+      last_changed: iso(10),
+    },
+  })
+);
+check("Watt ganzzahlig, Temperatur mit einer Nachkommastelle", () => {
+  const txt = roundedPump.shadowRoot.textContent;
+  assert.match(txt, /738/);
+  assert.ok(!/737,6/.test(txt));
+  assert.match(txt, /27,5 °C/);
+});
+check("kW wird zu Watt, ganze Zahlen ohne Komma", () => {
+  assert.equal(pkg.toWatt({ state: "1.2", attributes: { unit_of_measurement: "kW" } }), 1200);
+  assert.equal(pkg.numText({ state: "712", attributes: { unit_of_measurement: "mV" } }), "712 mV");
+  assert.equal(pkg.numText({ state: "nicht da" }), "—");
+  assert.equal(pkg.numOf("2026-09-19T12:00:00"), null);
+});
+
+/* ---- Editor: erst waehlen, dann Felder ---- */
+
+const ed2 = new Editor();
+ed2.setConfig({
+  hero: { enabled: true, shape: "freiform" },
+  slots: [
+    { type: "pump", temp_entity: "sensor.poolpumpe_druckseite_temperature", temp_top: 12 },
+    { type: "pump", fan_top: 12.5 },
+  ],
+});
+ed2.hass = makeHass();
+document.body.appendChild(ed2);
+await ed2.updateComplete;
+let ed2Fired = null;
+ed2.addEventListener("config-changed", (e) => (ed2Fired = e.detail.config));
+
+check("Editor: 'Elemente anzeigen' steht in jedem Slot ganz oben", () => {
+  const cards = ed2.shadowRoot.querySelectorAll(".slot-card");
+  for (const card of cards) {
+    const first = card.querySelector(".section");
+    assert.ok(first.classList.contains("elements"), "erste Gruppe ist nicht 'Elemente anzeigen'");
+  }
+});
+check("Editor: Regler starten auf dem effektiven Wert", () => {
+  const fanTops = ed2.shadowRoot.querySelectorAll('input[data-key="fan_top"]');
+  assert.equal(fanTops[0].value, String(pkg.PUMP_DEFAULTS.fan_top), "Default nicht uebernommen");
+  assert.equal(fanTops[1].value, "12.5", "Config-Wert nicht uebernommen");
+  const thermoTop = ed2.shadowRoot.querySelector('input[data-key="thermo_top"]');
+  assert.equal(thermoTop.value, String(pkg.SHAPES.freiform.thermo.top));
+  const thermoLeft = ed2.shadowRoot.querySelector('input[data-key="thermo_left"]');
+  assert.equal(thermoLeft.value, String(pkg.SHAPES.freiform.thermo.left));
+});
+check("Editor: Tempo-Regler laufen von 1 bis 10 ohne Einheit", () => {
+  const t1 = ed2.shadowRoot.querySelector('input[data-key="fan_speed_1"]');
+  assert.equal(t1.getAttribute("min"), "1");
+  assert.equal(t1.getAttribute("max"), "10");
+  assert.equal(t1.value, "3");
+  assert.match(ed2.shadowRoot.textContent, /Tempo N1/);
+  assert.match(ed2.shadowRoot.textContent, /Tempo N3/);
+});
+check("Editor: 'Wann steht die Pumpe?' mit Ruhewatt", () => {
+  assert.match(ed2.shadowRoot.textContent, /Wann steht die Pumpe\?/);
+  assert.match(ed2.shadowRoot.textContent, /Ruhewatt/);
+  assert.match(ed2.shadowRoot.textContent, /gilt die Pumpe als stehend/);
+  assert.equal(ed2.shadowRoot.querySelector('input[data-key="idle_watt"]').value, "30");
+});
+check("Editor: kein image_url / image_variant mehr", () => {
+  assert.equal(ed2.shadowRoot.querySelector('[data-key="image_url"]'), null);
+  assert.equal(ed2.shadowRoot.querySelector('[data-key="image_variant"]'), null);
+  assert.ok(!/Bildvariante/.test(ed2.shadowRoot.textContent));
+  assert.ok(!/Eigenes Bild/.test(ed2.shadowRoot.textContent));
+});
+check("Editor: Entity-Felder sind leer und haben nur einen Platzhalter", () => {
+  const inp = ed2.shadowRoot.querySelector('input[data-key="stage_entities.0"]');
+  assert.equal(inp.value, "");
+  assert.match(inp.getAttribute("placeholder"), /auswählen/);
+  assert.ok(!/\.beispiel/.test(ed2.shadowRoot.innerHTML), "Beispielwert lebt noch");
+});
+check("Editor: echte Umlaute in den Beschriftungen", () => {
+  const txt = ed2.shadowRoot.textContent;
+  for (const wort of ["Wärmepumpe", "Überschrift", "Füllung", "hinzufügen", "Geräte", "Größe"]) {
+    assert.match(txt, new RegExp(wort));
+  }
+  for (const murks of ["Waerme", "Ueberschrift", "Fuellung", "hinzufuegen", "Geraete", "Groesse"]) {
+    assert.ok(!txt.includes(murks), `"${murks}" steht noch im Editor`);
+  }
+  assert.equal(pkg.SLOT_TYPES.custom.label, "Freifeld (benutzerdefiniert)");
+});
+
+const tempBox = ed2.shadowRoot.querySelector('input[data-key="show_temp"]');
+tempBox.checked = false;
+tempBox.dispatchEvent(new dom.window.Event("change"));
+await ed2.updateComplete;
+check("Editor: Element abwaehlen raeumt seine Schluessel aus der Config", () => {
+  assert.equal(ed2Fired.slots[0].show_temp, false);
+  assert.ok(!("temp_entity" in ed2Fired.slots[0]), "temp_entity steht noch drin");
+  assert.ok(!("temp_top" in ed2Fired.slots[0]), "temp_top steht noch drin");
+  const erster = ed2.shadowRoot.querySelectorAll(".slot-card")[0];
+  assert.equal(erster.querySelector('input[data-key="temp_entity"]'), null);
+});
+
+const tempBox2 = ed2.shadowRoot.querySelector('input[data-key="show_temp"]');
+tempBox2.checked = true;
+tempBox2.dispatchEvent(new dom.window.Event("change"));
+await ed2.updateComplete;
+check("Editor: wieder anwaehlen bringt die Felder zurueck", () => {
+  assert.equal(ed2Fired.slots[0].temp_entity, "sensor.poolpumpe_druckseite_temperature");
+  assert.equal(ed2Fired.slots[0].temp_top, 12);
+  assert.ok(!("show_temp" in ed2Fired.slots[0]), "show_temp bleibt unnoetig in der Config");
+  const erster = ed2.shadowRoot.querySelectorAll(".slot-card")[0];
+  assert.ok(erster.querySelector('input[data-key="temp_entity"]'));
+});
+check("Editor: Patch mit undefined entfernt den Schluessel", () =>
+  assert.deepEqual(pkg.applyPatch({ a: 1, b: 2 }, { b: undefined, c: 3 }), { a: 1, c: 3 })
+);
 
 /* ------------------------------------------------------------------ */
 

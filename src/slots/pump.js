@@ -2,53 +2,66 @@ import { html, css, nothing } from "lit";
 import { SlotBase } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { deviceImage } from "../shared/assets.js";
-import { isOn, seit, stateText } from "../shared/util.js";
+import { isOn, seit, numText } from "../shared/util.js";
 
 /*
  * Slot "pump" — Poolpumpe mit 1–3 Stufen (N1..N3) und optionalem STOP.
  *
  * Zwei Schaltmodelle:
  *   momentary (Default) — Impulstaster (z.B. Shelly 1 Mini Gen3), die selbst
- *     auf "off" zurueckfallen. Aktiv ist die Entity mit dem juengsten
- *     last_changed; ist STOP die juengste, gilt die Pumpe als gestoppt.
+ *     auf "off" zurückfallen. Aktiv ist die Entity mit dem jüngsten
+ *     last_changed; ist STOP die jüngste, gilt die Pumpe als gestoppt.
  *     Ein Klick ruft immer turn_on (niemals toggle).
  *   latching — je Stufe ein Dauerrelais. Aktiv ist die Entity mit state "on".
  *     Beim Umschalten werden erst alle anderen Stufen ausgeschaltet, dann die
- *     gewaehlte eingeschaltet (Motorschutz). STOP schaltet alle Stufen aus.
+ *     gewählte eingeschaltet (Motorschutz). STOP schaltet alle Stufen aus.
  *
- * Positions-Defaults sind auf das mitgelieferte Platzhalter-Artwork
- * (poolpumpe_*.png) vermessen und im Editor frei verschiebbar.
+ * Die Positions-Defaults stammen aus Thomas' Testansicht (2026-09-19) und
+ * sind im Editor frei verschiebbar.
  */
 export const PUMP_DEFAULTS = {
-  /* Laufrad */
-  fan_top: 55,
-  fan_left: 60,
-  fan_size: 18,
-  fan_ratio: 2,
-  fan_color: "black",
+  /* Laufrad — immer rund, nur Ort, Größe und Tempo sind einstellbar */
+  fan_top: 48.5,
+  fan_left: 35,
+  fan_size: 29.5,
   fan_inactive: "gray",
-  /* Umlaufzeiten je Stufe in Sekunden (klein = schnell) */
-  fan_dur_1: 3,
-  fan_dur_2: 1.5,
-  fan_dur_3: 0.7,
+  /* Tempo je Stufe auf der Skala 1 (langsam) bis 10 (schnell) */
+  fan_speed_1: 3,
+  fan_speed_2: 5,
+  fan_speed_3: 8,
   /* Powerbutton (main_entity) */
-  power_btn_top: 45,
-  power_btn_left: 47,
-  power_btn_scale: 100,
+  power_btn_top: 47,
+  power_btn_left: 51,
+  power_btn_scale: 126,
   /* Watt-Box */
-  power_bottom: 6,
-  power_left: 30,
-  power_scale: 95,
+  power_bottom: 9,
+  power_left: 24,
+  power_scale: 98,
   power_box: true,
-  power_color: "white",
   power_label: true,
-  power_decimals: 0,
   /* Thermometer */
-  temp_top: 16,
-  temp_left: 86,
-  temp_scale: 85,
-  /* Schwelle, ab der die Pumpe als "laeuft physisch" gilt */
-  idle_watt: 5,
+  temp_top: 9,
+  temp_left: 27,
+  temp_scale: 119,
+  /* Unter dieser Leistung gilt die Pumpe als stehend */
+  idle_watt: 30,
+};
+
+export const FAN_SPEED_MIN = 1;
+export const FAN_SPEED_MAX = 10;
+
+/*
+ * Tempo-Skala -> Umlaufzeit.
+ *
+ * Der Nutzer stellt 1..10 ein (links langsam, rechts schnell), die Animation
+ * braucht eine Umlaufzeit in Sekunden. Abgebildet wird geometrisch, damit die
+ * Schritte über den ganzen Weg gleich stark wirken:
+ *   1 -> 4,0 s · 3 -> 2,3 s · 5 -> 1,4 s · 8 -> 0,7 s · 10 -> 0,5 s
+ */
+export const fanDuration = (speed) => {
+  const s = Math.min(FAN_SPEED_MAX, Math.max(FAN_SPEED_MIN, Number(speed) || FAN_SPEED_MIN));
+  const dur = 4 * Math.pow(0.5 / 4, (s - FAN_SPEED_MIN) / (FAN_SPEED_MAX - FAN_SPEED_MIN));
+  return Math.round(dur * 100) / 100;
 };
 
 export const pumpHasEntity = (c = {}) =>
@@ -72,13 +85,13 @@ export class TomtutPoolSlotPump extends SlotBase {
     return PUMP_DEFAULTS;
   }
 
-  /* "seit …" muss mitlaufen, auch wenn sich in HA nichts aendert */
+  /* "seit …" muss mitlaufen, auch wenn sich in HA nichts ändert */
   connectedCallback() {
     super.connectedCallback();
     this._timer = setInterval(() => {
       this._tick = Date.now();
     }, 30000);
-    /* Im Browser ist das eine Zahl; unter Node (Tests) haelt der Timer sonst
+    /* Im Browser ist das eine Zahl; unter Node (Tests) hielte der Timer sonst
        den Prozess am Leben. */
     if (this._timer && typeof this._timer.unref === "function") this._timer.unref();
   }
@@ -94,8 +107,8 @@ export class TomtutPoolSlotPump extends SlotBase {
   }
 
   get powerConfirmText() {
-    return `Die Poolpumpe wird hart vom Netz getrennt. Laeuft sie gerade, sollte sie erst
-      ueber STOP bzw. die Stufensteuerung heruntergefahren werden — sonst kann die Anlage
+    return `Die Poolpumpe wird hart vom Netz getrennt. Läuft sie gerade, sollte sie erst
+      über STOP bzw. die Stufensteuerung heruntergefahren werden — sonst kann die Anlage
       Schaden nehmen (Druckschlag, trockenlaufende Gleitringdichtung).`;
   }
 
@@ -140,7 +153,7 @@ export class TomtutPoolSlotPump extends SlotBase {
       return { active: best.i, stopped: false, since: best.since };
     }
 
-    /* momentary: juengstes last_changed gewinnt */
+    /* momentary: jüngstes last_changed gewinnt */
     const candidates = this.stages.map((id, i) => ({ id, i }));
     if (this.stopEntity) candidates.push({ id: this.stopEntity, i: -1 });
     let best = null;
@@ -209,41 +222,36 @@ export class TomtutPoolSlotPump extends SlotBase {
     return !!this.stopEntity || this.mode === "latching";
   }
 
+  /*
+   * Rendern ist bewusst bedingungslos: ein frisch angelegter Slot zeigt sofort
+   * Bild, Laufrad und Hinweistext — auch ohne hass und ohne eine einzige
+   * Entity. Vorher blieb der Kasten leer, bis man ein Feld angeklickt hatte.
+   */
   render() {
     const c = this.config || {};
-    if (!this.hass) return this.renderSlot(nothing);
-    if (!pumpHasEntity(c)) {
-      return this.renderSlot(
-        html`<p class="slot-hint">
-          Poolpumpe: bitte mindestens eine Stufen-Entity oder den Hauptschalter waehlen.
-        </p>`
-      );
-    }
-
+    const configured = pumpHasEntity(c);
     const st = this.state;
-    const running = this.running;
-    const durKey = ["fan_dur_1", "fan_dur_2", "fan_dur_3"][st.active ?? 0] || "fan_dur_1";
-    const tempEnt = this._ent(c.temp_entity);
+    const speedKey = ["fan_speed_1", "fan_speed_2", "fan_speed_3"][st.active ?? 0] || "fan_speed_1";
     const showPower = c.show_power !== false && !!c.power_entity;
     const showTemp = c.show_temp !== false && !!c.temp_entity;
     const showBtn = c.show_power_button !== false && !!c.main_entity;
+    const showStages = c.show_stages !== false && (this.stages.length > 0 || this._showStop);
 
     return this.renderSlot(html`
       ${c.label ? html`<h3 class="slot-title">${c.label}</h3>` : nothing}
       <div class="pump">
         <div class="img-wrap">
-          <img src="${deviceImage("pump", c)}" alt="Poolpumpe" />
+          <img src="${deviceImage("pump")}" alt="Poolpumpe" />
           ${c.show_fan === false
             ? nothing
             : this.renderFan({
-                active: running,
+                active: configured && this.running,
                 top: this._v("fan_top"),
                 left: this._v("fan_left"),
                 size: this._v("fan_size"),
-                ratio: this._v("fan_ratio"),
-                dur: Number(this._v(durKey)) || 1.5,
-                color: this._v("fan_color"),
+                dur: fanDuration(this._v(speedKey)),
                 inactive: this._v("fan_inactive"),
+                round: true,
               })}
           ${showBtn
             ? this.renderPowerButton({
@@ -255,19 +263,18 @@ export class TomtutPoolSlotPump extends SlotBase {
             : nothing}
           ${showPower
             ? this.renderValueBox({
-                value: this.wattText(c.power_entity, Number(this._v("power_decimals")) || 0),
+                value: this.wattText(c.power_entity),
                 unit: this._v("power_label") === false ? "" : "Watt",
                 bottom: this._v("power_bottom"),
                 left: this._v("power_left"),
                 scale: this._v("power_scale"),
                 box: this._v("power_box"),
-                color: this._v("power_color"),
                 entity: c.power_entity,
               })
             : nothing}
           ${showTemp
             ? this.renderThermo({
-                value: stateText(tempEnt),
+                value: numText(this._ent(c.temp_entity)),
                 top: this._v("temp_top"),
                 left: this._v("temp_left"),
                 scale: this._v("temp_scale"),
@@ -277,37 +284,46 @@ export class TomtutPoolSlotPump extends SlotBase {
           ${this.renderConfirm("Poolpumpe stromlos schalten?")}
         </div>
 
-        <div class="stages ${this.blockedByMain ? "disabled" : ""}">
-          ${this.stages.map(
-            (id, i) => html`
-              <button
-                class="stage-btn ${st.active === i && !st.stopped ? "active" : ""}"
-                @click="${() => this._clickStage(i)}"
-                title="${this.stageLabels[i]}"
-              >
-                <span class="stage-name">${this.stageLabels[i]}</span>
-                ${st.active === i && !st.stopped && st.since
-                  ? html`<span class="stage-since">${seit(st.since)}</span>`
+        ${showStages
+          ? html`
+              <div class="stages ${this.blockedByMain ? "disabled" : ""}">
+                ${this.stages.map(
+                  (id, i) => html`
+                    <button
+                      class="stage-btn ${st.active === i && !st.stopped ? "active" : ""}"
+                      @click="${() => this._clickStage(i)}"
+                      title="${this.stageLabels[i]}"
+                    >
+                      <span class="stage-name">${this.stageLabels[i]}</span>
+                      ${st.active === i && !st.stopped && st.since
+                        ? html`<span class="stage-since">${seit(st.since)}</span>`
+                        : nothing}
+                    </button>
+                  `
+                )}
+                ${this._showStop
+                  ? html`
+                      <button
+                        class="stage-btn stop ${st.stopped ? "active" : ""}"
+                        @click="${() => this._clickStop()}"
+                        title="Pumpe stoppen"
+                      >
+                        <span class="stage-name">STOP</span>
+                        ${st.stopped && st.since
+                          ? html`<span class="stage-since">${seit(st.since)}</span>`
+                          : nothing}
+                      </button>
+                    `
                   : nothing}
-              </button>
+              </div>
             `
-          )}
-          ${this._showStop
-            ? html`
-                <button
-                  class="stage-btn stop ${st.stopped ? "active" : ""}"
-                  @click="${() => this._clickStop()}"
-                  title="Pumpe stoppen"
-                >
-                  <span class="stage-name">STOP</span>
-                  ${st.stopped && st.since
-                    ? html`<span class="stage-since">${seit(st.since)}</span>`
-                    : nothing}
-                </button>
-              `
-            : nothing}
-        </div>
+          : nothing}
       </div>
+      ${configured
+        ? nothing
+        : html`<p class="slot-hint">
+            Poolpumpe: bitte mindestens eine Stufen-Entity oder den Hauptschalter wählen.
+          </p>`}
     `);
   }
 

@@ -10,13 +10,15 @@ import { SLOT_TYPES, DEFAULT_SHAPE } from "./shared/assets.js";
  * custom:tomtut-pool-dashboard — die EINE Card der Sammlung.
  *
  * Aufbau: Hero (Becken) + beliebig viele Slots. Die Card darf mehrfach im
- * Dashboard liegen (einmal "alles", einmal "nur Waermepumpe" …). Was der
- * Nutzer nicht hat, waehlt er einfach ab.
+ * Dashboard liegen (einmal "alles", einmal "nur Wärmepumpe" …). Was der
+ * Nutzer nicht hat, wählt er einfach ab.
  *
- * Update-Sicherheit: die Config traegt `version: 1`. Neue Optionen sind immer
- * optional mit Default, bestehende Schluessel werden nie umbenannt oder
+ * Update-Sicherheit: die Config trägt `version: 1`. Neue Optionen sind immer
+ * optional mit Default, bestehende Schlüssel werden nie umbenannt oder
  * entfernt. Ein eingefrorenes v1-Beispiel liegt in test/fixtures/v1-config.yaml
- * und muss in jeder kuenftigen Version identisch rendern.
+ * und muss in jeder künftigen Version identisch rendern. Abgeschaffte Felder
+ * (image_variant, image_url, *_color, box_color, fan_dur_*) werden ignoriert,
+ * nie abgelehnt.
  */
 export const CONFIG_VERSION = 1;
 
@@ -39,7 +41,7 @@ export class TomtutPoolDashboardCard extends LitElement {
   };
 
   setConfig(config) {
-    if (!config || typeof config !== "object") throw new Error("Ungueltige Konfiguration");
+    if (!config || typeof config !== "object") throw new Error("Ungültige Konfiguration");
     if (config.slots !== undefined && !Array.isArray(config.slots)) {
       throw new Error("`slots` muss eine Liste sein");
     }
@@ -112,8 +114,8 @@ export class TomtutPoolDashboardCard extends LitElement {
 
   /*
    * Jeder Slot-Typ bekommt ein eigenes Template — nicht per createElement,
-   * damit Lit die Elemente ueber Renders hinweg wiederverwendet und der
-   * Slot-Zustand (Bestaetigungsdialog, optimistische Stufe) erhalten bleibt.
+   * damit Lit die Elemente über Renders hinweg wiederverwendet und der
+   * Slot-Zustand (Bestätigungsdialog, optimistische Stufe) erhalten bleibt.
    */
   _renderSlot(slot) {
     const frame = this._config.frame;
@@ -155,7 +157,7 @@ export class TomtutPoolDashboardCard extends LitElement {
       padding: 0;
       overflow: visible;
     }
-    /* Container-Queries statt Media-Queries: es zaehlt die Breite der Card,
+    /* Container-Queries statt Media-Queries: es zählt die Breite der Card,
        nicht die des Fensters — sonst bricht das Raster in Sections-Views. */
     .wrap {
       container-type: inline-size;

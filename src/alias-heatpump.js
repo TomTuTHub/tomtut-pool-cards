@@ -2,22 +2,22 @@ import { TomtutPoolDashboardCard, CONFIG_VERSION } from "./dashboard-card.js";
 import { heatpumpHasEntity } from "./slots/heatpump.js";
 
 /*
- * custom:tomtut-pool-heatpump-card — duenner Alias auf das Dashboard.
+ * custom:tomtut-pool-heatpump-card — dünner Alias auf das Dashboard.
  *
  * Er nimmt die Konfiguration der bisherigen Einzel-Card 1:1 an (gleiche
  * Feldnamen) und rendert daraus ein Dashboard ohne Hero und ohne Rahmen mit
- * genau einem heatpump-Slot. Bestehende YAML laeuft damit unveraendert weiter;
+ * genau einem heatpump-Slot. Bestehende YAML läuft damit unverändert weiter;
  * neu ist nur das Artwork.
  */
 export class TomtutPoolHeatpumpCard extends TomtutPoolDashboardCard {
   setConfig(config) {
-    if (!config || typeof config !== "object") throw new Error("Ungueltige Konfiguration");
+    if (!config || typeof config !== "object") throw new Error("Ungültige Konfiguration");
     if (!heatpumpHasEntity(config)) {
       throw new Error(
-        "Mindestens eine Entity noetig: switch_entity, power_entity, target_entity oder current_entity"
+        "Mindestens eine Entity nötig: switch_entity, power_entity, target_entity oder current_entity"
       );
     }
-    /* `type` gehoert zur Lovelace-Card, nicht in die Slot-Config */
+    /* `type` gehört zur Lovelace-Card, nicht in die Slot-Config */
     const { type, ...rest } = config;
     this._aliasConfig = { ...config };
     super.setConfig({
@@ -34,12 +34,11 @@ export class TomtutPoolHeatpumpCard extends TomtutPoolDashboardCard {
 
   static getStubConfig() {
     return {
-      image_variant: "transparent",
       switch_entity: "",
       power_entity: "",
       target_entity: "",
       current_entity: "",
-      label_text: "Pool-Waermepumpe",
+      label_text: "Pool-Wärmepumpe",
     };
   }
 

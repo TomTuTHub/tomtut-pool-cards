@@ -4,10 +4,10 @@ import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { isOn, stateText, nameOf, domainOf } from "../shared/util.js";
 
 /*
- * Slot "custom" — Ueberschrift + bis zu drei Eintraegen.
- * Jeder Eintrag ist entweder ein Entity-Wert, ein Schalt-Button
- * (switch / light / input_boolean) oder ein Freitext.
- * Immer mittig; die Ausrichtung im Kasten ist grob waehlbar.
+ * Slot "custom" — im Editor "Freifeld (benutzerdefiniert)": Überschrift plus
+ * bis zu drei Einträgen. Jeder Eintrag ist entweder ein Entity-Wert, ein
+ * Schalt-Button (switch / light / input_boolean) oder ein Freitext.
+ * Immer mittig; die Ausrichtung im Kasten ist grob wählbar.
  */
 export const CUSTOM_MAX_ENTRIES = 3;
 const TOGGLE_DOMAINS = ["switch", "light", "input_boolean", "fan", "siren"];
@@ -26,9 +26,9 @@ export class TomtutPoolSlotCustom extends SlotBase {
   _toggle(entry) {
     const id = entry.entity;
     if (!id) return;
-    const domain = domainOf(id);
-    const service = TOGGLE_DOMAINS.includes(domain) ? "toggle" : "toggle";
-    this._call(id, service);
+    /* toggle gibt es in allen schaltbaren Domains gleichermaßen */
+    if (!TOGGLE_DOMAINS.includes(domainOf(id))) return;
+    this._call(id, "toggle");
   }
 
   _renderEntry(entry) {
@@ -62,7 +62,7 @@ export class TomtutPoolSlotCustom extends SlotBase {
         ${c.title ? html`<h3 class="slot-title">${c.title}</h3>` : nothing}
         ${entries.length
           ? entries.map((e) => this._renderEntry(e))
-          : html`<p class="slot-hint">Noch keine Eintraege — im Editor bis zu drei hinzufuegen.</p>`}
+          : html`<p class="slot-hint">Noch keine Einträge — im Editor bis zu drei hinzufügen.</p>`}
       </div>
     `);
   }

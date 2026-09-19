@@ -4,10 +4,10 @@ import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { SLOT_TYPES } from "../shared/assets.js";
 
 /*
- * Slot "frame" — ein leerer Rahmen, der das Raster symmetrisch haelt.
- * Zugleich der Platzhalter fuer reservierte Typen (uv / solar / inlet):
+ * Slot "frame" — ein leerer Rahmen, der das Raster symmetrisch hält.
+ * Zugleich der Platzhalter für reservierte Typen (uv / solar / inlet):
  * Die rendern bis zu ihrer Iteration als Rahmen mit kurzem Hinweis,
- * damit eine Config von heute spaeter unveraendert weiterlaeuft.
+ * damit eine Config von heute später unverändert weiterläuft.
  */
 export class TomtutPoolSlotFrame extends SlotBase {
   static properties = {

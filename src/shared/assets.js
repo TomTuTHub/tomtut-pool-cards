@@ -2,10 +2,18 @@
  * Asset- und Formen-Tabelle — die EINZIGE Stelle, an der Bilddateien stehen.
  *
  * Neue Becken-Form = ein PNG nach dist/ legen + einen Eintrag in SHAPES.
- * Kein Eingriff in Layout, Card oder Editor noetig.
+ * Kein Eingriff in Layout, Card oder Editor nötig.
  *
  * Alle Anker sind Prozentwerte des jeweiligen Bildes (left/top = Mittelpunkt
- * des Overlays). Sie wurden auf dem mitgelieferten Artwork vermessen.
+ * des Overlays). Grundlage war die Vermessung am Artwork; die Werte wurden
+ * danach auf Thomas' Testansicht (Iteration 1, Form "oval") nachgezogen:
+ * Für oval stehen exakt seine Werte, die übrigen Formen haben dieselbe
+ * Verschiebung bekommen (Thermometer −19,0 % links / +3,7 % oben,
+ * pH +6,7 / +1,9, RX +10,3 / +1,9). Jede Form bleibt damit relativ zu ihrem
+ * eigenen Becken richtig und folgt trotzdem seiner Aufteilung.
+ *
+ * Die Bilder werden nur noch transparent ausgeliefert — Hintergrund und
+ * Schriftfarbe kommen aus der Card-Option `frame.fill`.
  */
 
 export const IMAGE_BASE = "/local/community/tomtut-pool-cards/";
@@ -14,49 +22,49 @@ export const SHAPES = {
   oval: {
     label: "Oval",
     file: "poolbecken_oval.png",
-    thermo: { left: 32.5, top: 24.3 },
-    ph: { left: 27.8, top: 68.6 },
-    rx: { left: 53.7, top: 68.6 },
+    thermo: { left: 13.5, top: 28.0 },
+    ph: { left: 34.5, top: 70.5 },
+    rx: { left: 64.0, top: 70.5 },
     drain: { left: 87.4, top: 51.2 },
   },
   rechteck: {
     label: "Rechteck",
     file: "poolbecken_rechteck.png",
-    thermo: { left: 31.3, top: 28.8 },
-    ph: { left: 26.1, top: 73.0 },
-    rx: { left: 54.4, top: 73.0 },
+    thermo: { left: 12.3, top: 32.5 },
+    ph: { left: 32.8, top: 74.9 },
+    rx: { left: 64.7, top: 74.9 },
     drain: { left: 91.2, top: 59.2 },
   },
   achtform: {
     label: "Achtform",
     file: "poolbecken_achtform.png",
-    thermo: { left: 30.8, top: 26.9 },
-    ph: { left: 25.7, top: 71.7 },
-    rx: { left: 53.9, top: 71.7 },
+    thermo: { left: 11.8, top: 30.6 },
+    ph: { left: 32.4, top: 73.6 },
+    rx: { left: 64.2, top: 73.6 },
     drain: { left: 90.7, top: 59.2 },
   },
   rund: {
     label: "Rund",
     file: "poolbecken_rund.png",
-    thermo: { left: 31.8, top: 24.9 },
-    ph: { left: 26.9, top: 71.0 },
-    rx: { left: 53.9, top: 71.0 },
+    thermo: { left: 12.8, top: 28.6 },
+    ph: { left: 33.6, top: 72.9 },
+    rx: { left: 64.2, top: 72.9 },
     drain: { left: 89.2, top: 55.3 },
   },
   niere: {
     label: "Nierenform",
     file: "poolbecken_nierenform.png",
-    thermo: { left: 32.1, top: 28.8 },
-    ph: { left: 27.2, top: 69.7 },
-    rx: { left: 54.2, top: 69.7 },
+    thermo: { left: 13.1, top: 32.5 },
+    ph: { left: 33.9, top: 71.6 },
+    rx: { left: 64.5, top: 71.6 },
     drain: { left: 89.4, top: 54.5 },
   },
   freiform: {
     label: "Freiform",
     file: "poolbecken_freiform.png",
-    thermo: { left: 31.7, top: 27.9 },
-    ph: { left: 26.4, top: 74.3 },
-    rx: { left: 55.3, top: 74.3 },
+    thermo: { left: 12.7, top: 31.6 },
+    ph: { left: 33.1, top: 76.2 },
+    rx: { left: 65.6, top: 76.2 },
     drain: { left: 92.9, top: 61.9 },
   },
 };
@@ -66,43 +74,36 @@ export const DEFAULT_SHAPE = "oval";
 /* Unbekannte Form -> Fallback oval, nie ein Fehler */
 export const shapeOf = (name) => SHAPES[String(name || "").toLowerCase()] || SHAPES[DEFAULT_SHAPE];
 
-/* Geraete-Artwork je Slot-Typ und Variante */
+/*
+ * Geräte-Artwork je Slot-Typ. Es gibt bewusst nur noch die transparente
+ * Fassung: ob der Kasten hell, dunkel oder durchsichtig ist, entscheidet
+ * allein `frame.fill` — das Bild legt sich einfach darüber.
+ */
 export const DEVICE_IMAGES = {
-  heatpump: {
-    transparent: "waermepumpe_transparent.png",
-    weiss: "waermepumpe_weiss.png",
-    schwarz: "waermepumpe_schwarz.png",
-  },
+  heatpump: "waermepumpe_transparent.png",
   /* Iteration 1: Platzhalter im Vigipool-Skizzenstil.
-     Thomas' endgueltige Zeichnung ersetzt spaeter genau diese drei Dateien. */
-  pump: {
-    transparent: "poolpumpe_transparent.png",
-    weiss: "poolpumpe_weiss.png",
-    schwarz: "poolpumpe_schwarz.png",
-  },
+     Thomas' endgültige Zeichnung ersetzt später genau diese Datei. */
+  pump: "poolpumpe_transparent.png",
 };
 
 export const imagePath = (file) => IMAGE_BASE + file;
 
-/* Bildpfad eines Geraete-Slots: image_url schlaegt image_variant */
-export const deviceImage = (kind, config = {}) => {
-  if (config.image_url) return config.image_url;
-  const set = DEVICE_IMAGES[kind] || {};
-  const variant = config.image_variant || "transparent";
-  return imagePath(set[variant] || set.transparent || "");
-};
+/* Bildpfad eines Geräte-Slots */
+export const deviceImage = (kind) => imagePath(DEVICE_IMAGES[kind] || "");
 
 /*
- * Slot-Typen. `ready: false` = fuer eine spaetere Iteration reserviert
+ * Slot-Typen. `ready: false` = für eine spätere Iteration reserviert
  * (Artwork fehlt noch) — solche Slots rendern als leerer Rahmen mit Hinweis.
+ * Die Schlüssel sind Teil der Config und ändern sich nie (Update-Sicherheit),
+ * nur die Beschriftung im Editor.
  */
 export const SLOT_TYPES = {
-  heatpump: { label: "Waermepumpe", ready: true },
+  heatpump: { label: "Wärmepumpe", ready: true },
   pump: { label: "Poolpumpe", ready: true },
-  custom: { label: "Werte / Buttons", ready: true },
+  custom: { label: "Freifeld (benutzerdefiniert)", ready: true },
   frame: { label: "Leerer Rahmen", ready: true },
   hidden: { label: "Ausgeblendet", ready: true },
-  uv: { label: "UV-C-Lampe", ready: false, hint: "UV-C-Lampe folgt in einer spaeteren Version." },
-  solar: { label: "Solarheizung", ready: false, hint: "Solarheizung folgt in einer spaeteren Version." },
-  inlet: { label: "Einlaufduese", ready: false, hint: "Einlaufduese folgt in einer spaeteren Version." },
+  uv: { label: "UV-C-Lampe", ready: false, hint: "UV-C-Lampe folgt in einer späteren Version." },
+  solar: { label: "Solarheizung", ready: false, hint: "Solarheizung folgt in einer späteren Version." },
+  inlet: { label: "Einlaufdüse", ready: false, hint: "Einlaufdüse folgt in einer späteren Version." },
 };

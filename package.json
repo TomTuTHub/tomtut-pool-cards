@@ -1,7 +1,7 @@
 {
   "name": "tomtut-pool-cards",
   "version": "1.0.0",
-  "description": "TomTuT Pool Cards — Lovelace-Sammlung fuer Pool-Dashboards (Becken-Hero + Geraete-Slots)",
+  "description": "TomTuT Pool Cards — Lovelace-Sammlung für Pool-Dashboards (Becken-Hero + Geräte-Slots)",
   "type": "module",
   "main": "dist/tomtut-pool-cards.js",
   "scripts": {

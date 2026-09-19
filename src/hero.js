@@ -2,33 +2,49 @@ import { html, css, nothing } from "lit";
 import { SlotBase } from "./shared/slot-base.js";
 import { frameStyles, overlayStyles } from "./shared/styles.js";
 import { shapeOf, imagePath } from "./shared/assets.js";
-import { stateText } from "./shared/util.js";
+import { numText } from "./shared/util.js";
 
 /*
  * Hero — das Becken mit seinen Overlays.
  *
  * Die Anker (Thermometer, pH, RX, Bodenablauf) kommen aus der Formen-Tabelle
- * in shared/assets.js und lassen sich pro Card ueberschreiben. Eine neue Form
+ * in shared/assets.js und lassen sich pro Card überschreiben. Eine neue Form
  * braucht daher nur ein PNG + einen Tabelleneintrag, keinen Code hier.
  *
  * Bodenablauf: der Anker ist vorgesehen, das Sprite fehlt noch — bis dahin
- * wird bewusst nichts gerendert (kein Platzhalter-Kaestchen im Bild).
+ * wird bewusst nichts gerendert (kein Platzhalter-Kästchen im Bild).
+ *
+ * Farben kommen ausschließlich aus `frame.fill` (siehe shared/styles.js);
+ * ein früheres `box_color` in einer alten Config wird ignoriert.
  */
 export const HERO_DEFAULTS = {
-  thermo_scale: 100,
-  box_color: "weiss",
+  thermo_scale: 133,
+};
+
+/* Effektive Anker einer Form — auch der Editor initialisiert damit seine Regler */
+export const heroDefaultsFor = (shapeName) => {
+  const s = shapeOf(shapeName);
+  return {
+    ...HERO_DEFAULTS,
+    thermo_top: s.thermo.top,
+    thermo_left: s.thermo.left,
+    ph_top: s.ph.top,
+    ph_left: s.ph.left,
+    rx_top: s.rx.top,
+    rx_left: s.rx.left,
+  };
 };
 
 export class TomtutPoolHero extends SlotBase {
   get defaults() {
-    return HERO_DEFAULTS;
+    return heroDefaultsFor(this.config?.shape);
   }
 
   get shape() {
     return shapeOf(this.config?.shape);
   }
 
-  /* Anker aus der Formen-Tabelle, per Config ueberschreibbar */
+  /* Anker aus der Formen-Tabelle, per Config überschreibbar */
   _anchor(name, axis) {
     const key = `${name}_${axis}`;
     const v = this.config?.[key];
@@ -40,28 +56,27 @@ export class TomtutPoolHero extends SlotBase {
     const c = this.config || {};
     const shape = this.shape;
     const framed = c.framed === true;
-    const boxDark = this._v("box_color") === "schwarz";
-    const boxVars = boxDark
-      ? "--thermo-bg:rgba(30,30,30,0.9); --thermo-fg:#fff;"
-      : "--thermo-bg:rgba(255,255,255,0.92); --thermo-fg:#111;";
+    const showThermo = c.show_thermo !== false && !!c.temp_entity;
+    const showPh = c.show_ph !== false && !!c.ph_entity;
+    const showRx = c.show_rx !== false && !!c.rx_entity;
 
     const body = html`
-      <div class="img-wrap" style="${boxVars}">
+      <div class="img-wrap">
         <img src="${imagePath(shape.file)}" alt="Pool ${shape.label}" />
 
-        ${c.temp_entity
+        ${showThermo
           ? this.renderThermo({
-              value: stateText(this._ent(c.temp_entity)),
+              value: numText(this._ent(c.temp_entity)),
               top: this._anchor("thermo", "top"),
               left: this._anchor("thermo", "left"),
               scale: this._v("thermo_scale"),
               entity: c.temp_entity,
             })
           : nothing}
-        ${c.ph_entity
+        ${showPh
           ? this._chemBox("pH", c.ph_entity, this._anchor("ph", "top"), this._anchor("ph", "left"))
           : nothing}
-        ${c.rx_entity
+        ${showRx
           ? this._chemBox("RX", c.rx_entity, this._anchor("rx", "top"), this._anchor("rx", "left"))
           : nothing}
         ${c.label_text
@@ -76,7 +91,9 @@ export class TomtutPoolHero extends SlotBase {
       </div>
     `;
 
-    return framed ? this.renderSlot(body) : html`<div class="slot bare">${body}</div>`;
+    return framed
+      ? this.renderSlot(body)
+      : html`<div class="${this._frameClasses} bare">${body}</div>`;
   }
 
   _chemBox(key, entity, top, left) {
@@ -89,7 +106,7 @@ export class TomtutPoolHero extends SlotBase {
         @click="${this._moreInfo}"
       >
         <span class="chem-key">${key}</span>
-        <span class="chem-val">${stateText(ent)}</span>
+        <span class="chem-val">${numText(ent)}</span>
       </div>
     `;
   }
@@ -100,7 +117,6 @@ export class TomtutPoolHero extends SlotBase {
     css`
       .slot.bare {
         border: none;
-        background: none;
         padding: 0;
       }
     `,

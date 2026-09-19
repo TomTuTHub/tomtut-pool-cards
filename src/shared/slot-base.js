@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from "lit";
 import { isOn, toWatt, fmt, domainOf } from "./util.js";
 
-/* Luefter-/Laufrad-Grafik — uebernommen aus der Vigipool-Card (pump_style "fan") */
+/* Lüfter-/Laufrad-Grafik — übernommen aus der Vigipool-Card (pump_style "fan") */
 export const FAN_SVG =
   '<circle cx="20" cy="20" r="3" fill="currentColor"/>' +
   '<path d="M20,17 Q20,6 12,6 Q4,6 6,14 Q8,17 20,17 Z" fill="currentColor" opacity="0.85"/>' +
@@ -12,7 +12,7 @@ export const FAN_SVG =
 /*
  * Gemeinsame Basis aller Slots.
  *
- * Eigenschaften von aussen (die Dashboard-Card setzt sie):
+ * Eigenschaften von außen (die Dashboard-Card setzt sie):
  *   hass    — Home-Assistant-Objekt
  *   config  — die Slot-Konfiguration (type + typeigene Felder)
  *   frame   — { enabled: bool, fill: "transparent"|"weiss"|"schwarz" }
@@ -32,7 +32,7 @@ export class SlotBase extends LitElement {
     this._confirmOpen = false;
   }
 
-  /* Defaults des jeweiligen Slots — Unterklassen ueberschreiben das */
+  /* Defaults des jeweiligen Slots — Unterklassen überschreiben das */
   get defaults() {
     return {};
   }
@@ -83,15 +83,21 @@ export class SlotBase extends LitElement {
 
   /* ---------- Bausteine ---------- */
 
-  renderFan({ active, top, left, size, ratio, dur, color, inactive }) {
+  /*
+   * round: true  -> starre 1:1-Box, Grafik wird nie gestaucht oder geschert
+   *                 (Laufrad der Poolpumpe).
+   * ratio        -> nur für den perspektivisch elliptischen Lüfter der
+   *                 Wärmepumpe; das SVG darf dort mitverzerren.
+   */
+  renderFan({ active, top, left, size, ratio, dur, inactive, round = false }) {
     const cls = active ? "spinning" : inactive === "hidden" ? "hidden" : "idle";
-    const fanColor = color === "white" ? "#ffffff" : "#111111";
+    const r = round ? 1 : Number(ratio) || 1;
     return html`
       <div
-        class="fan-overlay ${cls}"
-        style="top:${top}%; left:${left}%; width:${size}%; --fan-dur:${dur}s; --fan-color:${fanColor}; --fan-ratio:${ratio};"
+        class="fan-overlay ${cls} ${round ? "round" : ""}"
+        style="top:${top}%; left:${left}%; width:${size}%; --fan-dur:${dur}s; --fan-ratio:${r};"
       >
-        <svg viewBox="0 0 40 40" preserveAspectRatio="none">
+        <svg viewBox="0 0 40 40" preserveAspectRatio="${round ? "xMidYMid meet" : "none"}">
           <g .innerHTML="${FAN_SVG}"></g>
         </svg>
       </div>
@@ -103,7 +109,7 @@ export class SlotBase extends LitElement {
       <div
         class="power-badge ${on ? "on" : "off"}"
         style="top:${top}%; left:${left}%; transform:scale(${(scale ?? 100) / 100});"
-        title="${on ? "Ausschalten (mit Rueckfrage)" : "Einschalten"}"
+        title="${on ? "Ausschalten (mit Rückfrage)" : "Einschalten"}"
         @click="${this._onPowerClick}"
       >
         <ha-icon icon="mdi:power"></ha-icon>
@@ -111,13 +117,12 @@ export class SlotBase extends LitElement {
     `;
   }
 
-  renderValueBox({ value, unit, top, bottom, left, scale, box, color, entity }) {
+  renderValueBox({ value, unit, top, bottom, left, scale, box, entity }) {
     const pos = bottom === undefined ? `top:${top}%;` : `bottom:${bottom}%;`;
     return html`
       <div
         class="value-box ${box === false ? "no-bg" : ""}"
-        style="${pos} left:${left}%; transform:translateX(-50%) scale(${(scale ?? 100) /
-        100}); --val-color:${color === "black" ? "#111" : "#fff"};"
+        style="${pos} left:${left}%; transform:translateX(-50%) scale(${(scale ?? 100) / 100});"
         data-entity="${entity || ""}"
         @click="${this._moreInfo}"
       >
@@ -152,7 +157,7 @@ export class SlotBase extends LitElement {
     `;
   }
 
-  /* ---------- Powerbutton mit Rueckfrage ---------- */
+  /* ---------- Powerbutton mit Rückfrage ---------- */
 
   /* Unterklassen liefern die Entity + den Warntext */
   get powerEntityId() {
@@ -160,7 +165,7 @@ export class SlotBase extends LitElement {
   }
 
   get powerConfirmText() {
-    return "Das Geraet wird hart vom Netz getrennt. Wirklich ausschalten?";
+    return "Das Gerät wird hart vom Netz getrennt. Wirklich ausschalten?";
   }
 
   _onPowerClick(ev) {
@@ -201,7 +206,7 @@ export class SlotBase extends LitElement {
     `;
   }
 
-  /* Watt-Text fuer die Wertebox */
+  /* Watt-Text für die Wertebox — ganzzahlig, nicht-numerisch wird "—" */
   wattText(id, decimals = 0) {
     const w = this._watt(id);
     return w === null ? "—" : fmt(w, decimals);

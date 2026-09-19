@@ -1,9 +1,10 @@
 import { LitElement, html, nothing } from "lit";
 import { Fields, editorStyles } from "../shared/fields.js";
+import { loadHaElements } from "../shared/ha-elements.js";
 import { SLOT_TYPES, DEFAULT_SHAPE } from "../shared/assets.js";
 import { HEATPUMP_DEFAULTS } from "../slots/heatpump.js";
 import { PUMP_DEFAULTS } from "../slots/pump.js";
-import { HERO_DEFAULTS } from "../hero.js";
+import { heroDefaultsFor } from "../hero.js";
 import {
   heroFields,
   heatpumpFields,
@@ -16,15 +17,25 @@ import {
 /*
  * Visueller Editor in drei Schritten:
  *   1. Becken   — Form + Werte auf dem Becken
- *   2. Geraete  — Slots anlegen, sortieren, Typ waehlen; danach nur noch die
- *                 Felder dieses Typs
- *   3. Optik    — Rahmen und Fuellung (gilt fuer alle Slots gleich)
+ *   2. Geräte   — Slots anlegen, sortieren, Typ wählen; danach erst wählen,
+ *                 welche Elemente das Gerät hat, und dann deren Felder
+ *   3. Optik    — Rahmen und Füllung (gilt für alle Slots gleich)
  *
- * YAML bleibt jederzeit moeglich, ist aber nie noetig.
+ * YAML bleibt jederzeit möglich, ist aber nie nötig.
  */
 const SLOT_DEFAULTS = {
   heatpump: HEATPUMP_DEFAULTS,
   pump: PUMP_DEFAULTS,
+};
+
+/* Patch anwenden; ein Wert `undefined` entfernt den Schlüssel aus der Config */
+export const applyPatch = (base, patch) => {
+  const next = { ...(base || {}) };
+  for (const [k, v] of Object.entries(patch || {})) {
+    if (v === undefined) delete next[k];
+    else next[k] = v;
+  }
+  return next;
 };
 
 export class TomtutPoolDashboardEditor extends LitElement {
@@ -32,6 +43,20 @@ export class TomtutPoolDashboardEditor extends LitElement {
     hass: { attribute: false },
     _config: { state: true },
   };
+
+  constructor() {
+    super();
+    /* Merkt abgewählte Felder, damit Wiedereinschalten sie zurückbringt */
+    this._stash = {};
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    /* ha-entity-picker / ha-icon-picker nachladen und danach neu zeichnen */
+    loadHaElements().then((ok) => {
+      if (ok) this.requestUpdate();
+    });
+  }
 
   setConfig(config) {
     this._config = {
@@ -49,11 +74,11 @@ export class TomtutPoolDashboardEditor extends LitElement {
   }
 
   _updateHero(patch) {
-    this._emit({ ...this._config, hero: { ...(this._config.hero || {}), ...patch } });
+    this._emit({ ...this._config, hero: applyPatch(this._config.hero, patch) });
   }
 
   _updateFrame(patch) {
-    this._emit({ ...this._config, frame: { ...(this._config.frame || {}), ...patch } });
+    this._emit({ ...this._config, frame: applyPatch(this._config.frame, patch) });
   }
 
   _slots() {
@@ -61,7 +86,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
   }
 
   _updateSlot(index, patch) {
-    const slots = this._slots().map((s, i) => (i === index ? { ...s, ...patch } : s));
+    const slots = this._slots().map((s, i) => (i === index ? applyPatch(s, patch) : s));
     this._emit({ ...this._config, slots });
   }
 
@@ -69,7 +94,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
     const slot = this._slots()[slotIndex] || {};
     const entries = Array.isArray(slot.entries) ? [...slot.entries] : [];
     while (entries.length <= entryIndex) entries.push({});
-    entries[entryIndex] = { ...entries[entryIndex], ...patch };
+    entries[entryIndex] = applyPatch(entries[entryIndex], patch);
     this._updateSlot(slotIndex, { entries });
   }
 
@@ -98,6 +123,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
       defaults: SLOT_DEFAULTS[slot.type] || {},
       update: (patch) => this._updateSlot(index, patch),
       idPrefix: `slot${index}`,
+      stash: this._stash,
     });
   }
 
@@ -117,11 +143,12 @@ export class TomtutPoolDashboardEditor extends LitElement {
               config: (Array.isArray(slot.entries) ? slot.entries : [])[entryIndex] || {},
               update: (patch) => this._updateEntry(index, entryIndex, patch),
               idPrefix: `slot${index}e${entryIndex}`,
+              stash: this._stash,
             })
           )
         );
       case "hidden":
-        return html`<small>Dieser Slot wird nicht angezeigt; die anderen ruecken nach.</small>`;
+        return html`<small>Dieser Slot wird nicht angezeigt; die anderen rücken nach.</small>`;
       default:
         return frameFields(f);
     }
@@ -134,15 +161,19 @@ export class TomtutPoolDashboardEditor extends LitElement {
     const heroF = new Fields({
       hass: this.hass,
       config: hero,
-      defaults: HERO_DEFAULTS,
+      /* Die Anker der gewählten Beckenform sind die Defaults — sonst stehen
+         die Regler links, obwohl das Overlay richtig sitzt. */
+      defaults: heroDefaultsFor(hero.shape),
       update: (patch) => this._updateHero(patch),
       idPrefix: "hero",
+      stash: this._stash,
     });
     const frameF = new Fields({
       hass: this.hass,
       config: frame,
       update: (patch) => this._updateFrame(patch),
       idPrefix: "frame",
+      stash: this._stash,
     });
     const slots = this._slots();
 
@@ -152,7 +183,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
         ${heroF.toggle("Becken anzeigen", "enabled", true)}
         ${hero.enabled === false ? nothing : heroFields(heroF)}
 
-        <div class="step-head">Schritt 2 — Geraete</div>
+        <div class="step-head">Schritt 2 — Geräte</div>
         ${slots.map(
           (slot, i) => html`
             <div class="slot-card">
@@ -190,21 +221,24 @@ export class TomtutPoolDashboardEditor extends LitElement {
             </div>
           `
         )}
-        <button class="add-btn" @click="${() => this._addSlot()}">+ Slot hinzufuegen</button>
+        <button class="add-btn" @click="${() => this._addSlot()}">+ Slot hinzufügen</button>
 
         <div class="step-head">Schritt 3 — Optik</div>
         ${frameF.toggle("Rahmen um die Slots", "enabled", true)}
         ${frameF.select(
-          "Fuellung",
+          "Füllung",
           "fill",
           [
-            ["transparent", "Transparent"],
+            ["transparent", "Transparent (Theme)"],
             ["weiss", "Weiß"],
             ["schwarz", "Schwarz"],
           ],
           "transparent"
         )}
-        <small>Die Schriftfarbe folgt der Fuellung automatisch.</small>
+        <small>
+          Die Füllung gilt für den ganzen Kasten: Hintergrund, Bild, Kästchen, Buttons und
+          Schriftfarbe. Transparent nimmt den Hintergrund des HA-Themes.
+        </small>
       </div>
     `;
   }
@@ -218,7 +252,7 @@ customElements.define("tomtut-pool-dashboard-editor", TomtutPoolDashboardEditor)
 
 /*
  * Editor des Alias custom:tomtut-pool-heatpump-card — arbeitet direkt auf der
- * flachen Alt-Config, damit bestehende Karten unveraendert bearbeitbar bleiben.
+ * flachen Alt-Config, damit bestehende Karten unverändert bearbeitbar bleiben.
  */
 export class TomtutPoolHeatpumpCardEditor extends LitElement {
   static properties = {
@@ -226,12 +260,24 @@ export class TomtutPoolHeatpumpCardEditor extends LitElement {
     _config: { state: true },
   };
 
+  constructor() {
+    super();
+    this._stash = {};
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    loadHaElements().then((ok) => {
+      if (ok) this.requestUpdate();
+    });
+  }
+
   setConfig(config) {
     this._config = { ...(config || {}) };
   }
 
   _update(patch) {
-    const next = { ...this._config, ...patch };
+    const next = applyPatch(this._config, patch);
     this._config = next;
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next } }));
   }
@@ -244,6 +290,7 @@ export class TomtutPoolHeatpumpCardEditor extends LitElement {
       defaults: HEATPUMP_DEFAULTS,
       update: (patch) => this._update(patch),
       idPrefix: "hp",
+      stash: this._stash,
     });
     return html`<div class="editor">${heatpumpFields(f)}</div>`;
   }

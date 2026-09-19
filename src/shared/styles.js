@@ -1,9 +1,21 @@
 import { css } from "lit";
 
 /*
- * Rahmen-Optik: gilt fuer ALLE Slots gleich (Card-weite Einstellung).
- * Klassen am aeusseren Slot-Container: framed / fill-transparent|weiss|schwarz.
- * Die Schriftfarbe folgt der Fuellung automatisch.
+ * Füllung = die EINE Optik-Einstellung der Card (`frame.fill`).
+ *
+ * Sie steuert den ganzen Kasten: Kastenhintergrund, Hintergrund hinter dem
+ * Bild, Buttons/Badges/Kästchen und die Schriftfarbe. Es gibt bewusst keine
+ * Farbwahl pro Element mehr und keine hellen/dunklen Bildvarianten — alles
+ * hängt an diesen Tokens:
+ *
+ *   --tt-bg      Hintergrund des Kastens (und damit hinter dem Bild)
+ *   --tt-fg      Schriftfarbe
+ *   --tt-line    Rahmen-/Trennlinien
+ *   --tt-soft    dezente Flächen (Taster, Powerbutton)
+ *   --tt-box-bg  Hintergrund der Overlay-Kästchen auf dem Bild
+ *   --tt-box-fg  Schrift in den Overlay-Kästchen
+ *
+ * transparent = Theme-Hintergrund von Home Assistant, Schrift folgt dem Theme.
  */
 export const frameStyles = css`
   :host {
@@ -21,22 +33,30 @@ export const frameStyles = css`
     padding: 10px;
     border-radius: 18px;
     border: 2px solid transparent;
+    background: var(--tt-bg);
     color: var(--tt-fg);
+    --tt-bg: transparent;
     --tt-fg: var(--primary-text-color, #111);
-    --tt-line: rgba(0, 0, 0, 0.55);
-    --tt-soft: rgba(0, 0, 0, 0.08);
+    --tt-line: rgba(127, 127, 127, 0.55);
+    --tt-soft: rgba(127, 127, 127, 0.16);
+    --tt-box-bg: var(--ha-card-background, var(--card-background-color, rgba(255, 255, 255, 0.92)));
+    --tt-box-fg: var(--primary-text-color, #111);
   }
   .slot.fill-weiss {
-    background: #ffffff;
+    --tt-bg: #ffffff;
     --tt-fg: #111111;
     --tt-line: rgba(0, 0, 0, 0.55);
     --tt-soft: rgba(0, 0, 0, 0.08);
+    --tt-box-bg: rgba(255, 255, 255, 0.92);
+    --tt-box-fg: #111111;
   }
   .slot.fill-schwarz {
-    background: #1e1e1e;
+    --tt-bg: #1e1e1e;
     --tt-fg: #ffffff;
     --tt-line: rgba(255, 255, 255, 0.45);
     --tt-soft: rgba(255, 255, 255, 0.12);
+    --tt-box-bg: rgba(30, 30, 30, 0.9);
+    --tt-box-fg: #ffffff;
   }
   .slot.framed {
     border-color: var(--tt-line);
@@ -55,11 +75,12 @@ export const frameStyles = css`
     opacity: 0.7;
     text-align: center;
     line-height: 1.35;
+    margin: 0;
   }
 `;
 
-/* Overlays auf den Geraete-/Becken-Bildern: Werte-Box, Powerbutton,
-   Thermometer, Laufrad/Luefter und der Bestaetigungs-Dialog. */
+/* Overlays auf den Geräte-/Becken-Bildern: Werte-Box, Powerbutton,
+   Thermometer, Laufrad/Lüfter und der Bestätigungs-Dialog. */
 export const overlayStyles = css`
   .img-wrap {
     position: relative;
@@ -76,13 +97,22 @@ export const overlayStyles = css`
     display: block;
   }
 
-  /* Drehendes Rad (Luefter / Laufrad) */
+  /*
+   * Drehendes Rad (Läufer / Lüfter).
+   *
+   * Das Laufrad der Poolpumpe ist rund und muss rund bleiben: feste 1:1-Box
+   * (--fan-ratio 1) und preserveAspectRatio="xMidYMid meet" im SVG. Nur der
+   * Lüfter der Wärmepumpe darf über --fan-ratio elliptisch werden, weil das
+   * Gitter im Artwork perspektivisch verzerrt gezeichnet ist.
+   * Gedreht wird um die Mitte der viewBox (= Nabe), nicht um den Schwerpunkt
+   * der Flächen — sonst eiert das Rad.
+   */
   .fan-overlay {
     position: absolute;
     aspect-ratio: 1 / var(--fan-ratio, 1);
     pointer-events: none;
     transform: translate(-50%, -50%);
-    color: var(--fan-color, #111);
+    color: var(--tt-fan-color, var(--tt-fg));
     opacity: 0.3;
     filter: grayscale(1);
     transition: opacity 0.3s, filter 0.3s;
@@ -91,10 +121,11 @@ export const overlayStyles = css`
     width: 100%;
     height: 100%;
     overflow: visible;
+    display: block;
   }
   .fan-overlay svg g {
-    transform-box: fill-box;
-    transform-origin: center;
+    transform-box: view-box;
+    transform-origin: 50% 50%;
   }
   .fan-overlay.hidden {
     opacity: 0;
@@ -121,7 +152,8 @@ export const overlayStyles = css`
     --mdc-icon-size: 1.75em;
     transition: box-shadow 0.3s, color 0.3s, opacity 0.3s;
     line-height: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: var(--tt-soft);
+    border: 1px solid var(--tt-line);
     transform-origin: top left;
     z-index: 6;
   }
@@ -144,8 +176,9 @@ export const overlayStyles = css`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: var(--tt-box-bg);
+    color: var(--tt-box-fg);
+    border: 1px solid var(--tt-line);
     border-radius: 0.7em;
     padding: 0.4em 1em;
     min-width: 5.2em;
@@ -159,17 +192,18 @@ export const overlayStyles = css`
     border: none;
     backdrop-filter: none;
     padding: 0.15em 0.4em;
+    color: var(--tt-fg);
   }
   .val {
     font-size: 1.4em;
     font-weight: 700;
-    color: var(--val-color, #fff);
+    color: inherit;
     white-space: nowrap;
   }
   .unit {
     font-size: 0.8em;
     font-weight: 600;
-    color: var(--val-color, #fff);
+    color: inherit;
     opacity: 0.7;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -180,11 +214,11 @@ export const overlayStyles = css`
   .label-badge {
     position: absolute;
     padding: 0.15em 0.55em;
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--tt-box-bg);
+    color: var(--tt-box-fg);
     border-radius: 0.3em;
     font-size: 0.8em;
     font-weight: 700;
-    color: #fff;
     letter-spacing: 0.5px;
     line-height: 1.3;
     pointer-events: none;
@@ -193,6 +227,7 @@ export const overlayStyles = css`
   }
   .label-badge.no-bg {
     background: none;
+    color: var(--tt-fg);
   }
 
   /* Thermometer (Skizzen-Look wie das Artwork) */
@@ -218,12 +253,12 @@ export const overlayStyles = css`
     padding: 0.2em 0.55em;
     border-radius: 0.55em;
     white-space: nowrap;
-    background: var(--thermo-bg, rgba(255, 255, 255, 0.92));
-    color: var(--thermo-fg, #111);
-    border: 1px solid rgba(0, 0, 0, 0.35);
+    background: var(--tt-box-bg);
+    color: var(--tt-box-fg);
+    border: 1px solid var(--tt-line);
   }
 
-  /* pH-/RX-Kaestchen auf der Beckenwand */
+  /* pH-/RX-Kästchen auf der Beckenwand */
   .chem-box {
     position: absolute;
     transform: translate(-50%, -50%);
@@ -234,9 +269,9 @@ export const overlayStyles = css`
     min-width: 15%;
     padding: 0.3em 0.7em;
     border-radius: 0.7em;
-    background: var(--thermo-bg, rgba(255, 255, 255, 0.92));
-    color: var(--thermo-fg, #111);
-    border: 1.5px solid rgba(0, 0, 0, 0.6);
+    background: var(--tt-box-bg);
+    color: var(--tt-box-fg);
+    border: 1.5px solid var(--tt-line);
     line-height: 1.15;
     z-index: 5;
   }
@@ -252,7 +287,7 @@ export const overlayStyles = css`
     white-space: nowrap;
   }
 
-  /* Bestaetigungs-Dialog */
+  /* Bestätigungs-Dialog */
   .confirm-overlay {
     position: absolute;
     inset: 0;

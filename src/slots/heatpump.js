@@ -2,63 +2,57 @@ import { html, css, nothing } from "lit";
 import { SlotBase } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { deviceImage } from "../shared/assets.js";
-import { fmt, isOn } from "../shared/util.js";
+import { fmt, isOn, numOf } from "../shared/util.js";
 
 /*
  * Slot "heatpump" — die komplette Logik der bisherigen
  * tomtut-pool-heatpump-card, nur als Slot-Modul.
  *
- * Die Feldnamen sind unveraendert, damit alte YAML 1:1 weiterlaeuft
- * (siehe alias-heatpump.js).
+ * Die Feldnamen sind unverändert, damit alte YAML 1:1 weiterläuft
+ * (siehe alias-heatpump.js). `image_variant` und `image_url` gibt es nicht
+ * mehr; stehen sie in einer alten Config, werden sie einfach ignoriert.
  *
- * Die Positions-Defaults sind auf das neue Skizzen-Artwork
- * (waermepumpe_*.png, 988 x 725) vermessen: das Lueftergitter liegt dort
- * bei 5,4–47,2 % der Breite und 17,4–82,5 % der Hoehe, ist also
- * perspektivisch elliptisch — daher fan_ratio statt eines runden Overlays.
+ * Die Positions-Defaults stammen aus Thomas' Testansicht (2026-09-19).
+ * Der Lüfter bleibt bewusst elliptisch (fan_ratio): das Gitter ist im
+ * Artwork perspektivisch gezeichnet.
  */
 export const HEATPUMP_DEFAULTS = {
-  /* Luefter */
-  fan_top: 50,
+  /* Lüfter */
+  fan_top: 49.5,
   fan_left: 26,
   fan_size: 42,
   fan_ratio: 1.14,
   fan_speed: 60,
-  fan_color: "black",
   fan_inactive: "gray",
   fan_power_threshold: 100,
   /* Powerbutton */
-  power_btn_top: 20,
-  power_btn_left: 54,
-  power_btn_scale: 100,
+  power_btn_top: 5,
+  power_btn_left: 3,
+  power_btn_scale: 139,
   /* Stromverbrauch */
-  power_top: 20,
-  power_left: 74,
-  power_scale: 95,
+  power_top: 22,
+  power_left: 62,
+  power_scale: 100,
   power_box: true,
-  power_color: "white",
   power_label: true,
-  power_decimals: 0,
   /* Ist-Temperatur */
   current_bottom: 40,
-  current_left: 70,
+  current_left: 62,
   current_scale: 100,
   current_box: true,
-  current_color: "white",
   current_label: true,
   /* Soll-Temperatur */
   target_bottom: 16,
-  target_left: 70,
-  target_scale: 100,
+  target_left: 63,
+  target_scale: 119,
   target_box: true,
-  target_color: "white",
   target_label: true,
   target_step: 0.5,
   /* Freitext-Badge */
   label_top: 4,
   label_left: 50,
-  label_scale: 100,
+  label_scale: 180,
   label_box: true,
-  label_color: "white",
 };
 
 export const heatpumpHasEntity = (c = {}) =>
@@ -74,7 +68,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
   }
 
   get powerConfirmText() {
-    return `Eine laufende Waermepumpe sollte erst am Geraet bzw. ueber den Betriebsmodus
+    return `Eine laufende Wärmepumpe sollte erst am Gerät bzw. über den Betriebsmodus
       ausgeschaltet werden — nicht einfach den Stecker ziehen! Hartes Trennen im Betrieb
       kann Kompressor und Elektronik schaden.`;
   }
@@ -85,12 +79,12 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     const e = this._ent(id);
     if (!e) return null;
     const climate = String(id).startsWith("climate.");
-    const value = climate ? e.attributes?.temperature : parseFloat(e.state);
-    if (value === undefined || value === null || isNaN(value)) return null;
+    const value = climate ? numOf(e.attributes?.temperature) : numOf(e.state);
+    if (value === null) return null;
     const a = e.attributes || {};
     return {
       climate,
-      value: Number(value),
+      value,
       min: climate ? a.min_temp ?? 5 : a.min ?? 5,
       max: climate ? a.max_temp ?? 40 : a.max ?? 40,
       step: this.config.target_step ?? (climate ? a.target_temp_step ?? 0.5 : a.step ?? 0.5),
@@ -106,10 +100,10 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     const e = this._ent(id);
     if (!e) return null;
     const climate = String(id).startsWith("climate.");
-    const value = climate ? e.attributes?.current_temperature : parseFloat(e.state);
-    if (value === undefined || value === null || isNaN(value)) return null;
+    const value = climate ? numOf(e.attributes?.current_temperature) : numOf(e.state);
+    if (value === null) return null;
     return {
-      value: Number(value),
+      value,
       unit: climate
         ? this.hass?.config?.unit_system?.temperature ?? "°C"
         : e.attributes?.unit_of_measurement ?? "°C",
@@ -122,8 +116,8 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     if (mode !== "power" && fanEnt) {
       const s = String(fanEnt.state).toLowerCase();
       if (isOn(s)) return true;
-      const n = parseFloat(s);
-      return !isNaN(n) && n > 0;
+      const n = numOf(s);
+      return n !== null && n > 0;
     }
     if (mode === "entity") return false;
     const w = this._watt(this.config.power_entity);
@@ -161,16 +155,10 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     this._stepTarget(-1);
   }
 
+  /* Rendert immer — auch ohne hass und ohne eine einzige Entity. */
   render() {
     const c = this.config || {};
-    if (!this.hass) return this.renderSlot(nothing);
-    if (!heatpumpHasEntity(c)) {
-      return this.renderSlot(
-        html`<p class="slot-hint">
-          Waermepumpe: bitte mindestens eine Entity waehlen (Schalter, Leistung, Soll oder Ist).
-        </p>`
-      );
-    }
+    const configured = heatpumpHasEntity(c);
 
     const showFan = c.show_fan !== false;
     const showPowerBtn = c.show_power_button !== false && !!c.switch_entity;
@@ -186,17 +174,16 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
 
     return this.renderSlot(html`
       <div class="img-wrap">
-        <img src="${deviceImage("heatpump", c)}" alt="Waermepumpe" />
+        <img src="${deviceImage("heatpump")}" alt="Wärmepumpe" />
 
         ${showFan
           ? this.renderFan({
-              active: this._fanActive,
+              active: configured && this._fanActive,
               top: this._v("fan_top"),
               left: this._v("fan_left"),
               size: this._v("fan_size"),
               ratio: this._v("fan_ratio"),
               dur: fanDur,
-              color: this._v("fan_color"),
               inactive: this._v("fan_inactive"),
             })
           : nothing}
@@ -210,13 +197,12 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
           : nothing}
         ${showPower
           ? this.renderValueBox({
-              value: this.wattText(c.power_entity, Number(this._v("power_decimals")) || 0),
+              value: this.wattText(c.power_entity),
               unit: this._v("power_label") === false ? "" : "Watt",
               top: this._v("power_top"),
               left: this._v("power_left"),
               scale: this._v("power_scale"),
               box: this._v("power_box"),
-              color: this._v("power_color"),
               entity: c.power_entity,
             })
           : nothing}
@@ -228,7 +214,6 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
               left: this._v("current_left"),
               scale: this._v("current_scale"),
               box: this._v("current_box"),
-              color: this._v("current_color"),
               entity: c.current_entity,
             })
           : nothing}
@@ -238,8 +223,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
                 class="value-box target ${this._v("target_box") === false ? "no-bg" : ""}"
                 style="bottom:${this._v("target_bottom")}%; left:${this._v(
                   "target_left"
-                )}%; transform:translateX(-50%) scale(${(this._v("target_scale") ?? 100) /
-                100}); --val-color:${this._v("target_color") === "black" ? "#111" : "#fff"};"
+                )}%; transform:translateX(-50%) scale(${(this._v("target_scale") ?? 100) / 100});"
               >
                 <div class="target-row">
                   <button
@@ -276,8 +260,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
                 class="label-badge ${this._v("label_box") === false ? "no-bg" : ""}"
                 style="top:${this._v("label_top")}%; left:${this._v(
                   "label_left"
-                )}%; transform:translateX(-50%) scale(${(this._v("label_scale") ?? 100) /
-                100}); color:${this._v("label_color") === "black" ? "#111" : "#fff"};"
+                )}%; transform:translateX(-50%) scale(${(this._v("label_scale") ?? 100) / 100});"
               >
                 ${labelText}
               </div>
@@ -285,6 +268,11 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
           : nothing}
         ${this.renderConfirm("Wirklich stromlos schalten?")}
       </div>
+      ${configured
+        ? nothing
+        : html`<p class="slot-hint">
+            Wärmepumpe: bitte mindestens eine Entity wählen (Schalter, Leistung, Soll oder Ist).
+          </p>`}
     `);
   }
 
@@ -306,9 +294,9 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
         align-items: center;
       }
       .step {
-        background: rgba(255, 255, 255, 0.12);
-        color: var(--val-color, #fff);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: var(--tt-soft);
+        color: inherit;
+        border: 1px solid var(--tt-line);
         border-radius: 0.5em;
         width: 1.9em;
         height: 1.9em;
@@ -323,7 +311,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
         transition: background 0.2s, transform 0.1s;
       }
       .step:hover {
-        background: rgba(255, 255, 255, 0.24);
+        filter: brightness(1.15);
       }
       .step:active {
         transform: scale(0.92);

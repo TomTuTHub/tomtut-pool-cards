@@ -1,4 +1,4 @@
-/* Kleine Helfer, die alle Slots teilen. Bewusst ohne Abhaengigkeiten. */
+/* Kleine Helfer, die alle Slots teilen. Bewusst ohne Abhängigkeiten. */
 
 export const ON_STATES = [
   "on", "true", "heat", "cool", "heating", "cooling",
@@ -6,6 +6,20 @@ export const ON_STATES = [
 ];
 
 export const isOn = (state) => ON_STATES.includes(String(state).toLowerCase());
+
+/*
+ * Strenger Zahl-Check. parseFloat wäre zu gutmütig: aus einem Zeitstempel
+ * ("2026-09-19T12:00:00+02:00") macht es klaglos die Zahl 2026. Genau so kam
+ * es im Test zu einer Watt-Box mit "2684485632". Nur ein durchgehend
+ * numerischer State gilt hier als Zahl, alles andere ist "kein Wert".
+ */
+export const numOf = (raw) => {
+  if (raw === undefined || raw === null) return null;
+  const s = String(raw).trim().replace(",", ".");
+  if (!/^[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?$/.test(s)) return null;
+  const n = Number(s);
+  return isFinite(n) ? n : null;
+};
 
 /* Zahl mit deutschem Dezimalkomma */
 export const fmt = (v, dec = 0) => {
@@ -17,8 +31,8 @@ export const fmt = (v, dec = 0) => {
 /* Leistungssensor -> Watt (kW wird umgerechnet) */
 export const toWatt = (entity) => {
   if (!entity) return null;
-  const v = parseFloat(entity.state);
-  if (isNaN(v)) return null;
+  const v = numOf(entity.state);
+  if (v === null) return null;
   const unit = String(entity.attributes?.unit_of_measurement || "W").toLowerCase();
   return unit === "kw" ? v * 1000 : v;
 };
@@ -45,14 +59,27 @@ export const domainOf = (id) => String(id || "").split(".")[0];
 export const nameOf = (entity, id) =>
   entity?.attributes?.friendly_name || String(id || "").split(".")[1] || String(id || "");
 
-/* Wert + Einheit einer beliebigen Entity als Text */
+/*
+ * Zahlenwert einer Entity für ein Overlay (Thermometer, pH/RX, Watt …):
+ * höchstens eine Nachkommastelle, Einheit dahinter, nicht-numerisch -> "—".
+ * Ganze Zahlen bleiben ohne Komma ("712 mV", nicht "712,0 mV").
+ */
+export const numText = (entity, { decimals } = {}) => {
+  const n = numOf(entity?.state);
+  if (n === null) return "—";
+  const dec = decimals ?? (Number.isInteger(n) ? 0 : 1);
+  const unit = entity.attributes?.unit_of_measurement;
+  return fmt(n, Math.min(dec, 1)) + (unit ? " " + unit : "");
+};
+
+/*
+ * Freier Text einer Entity (Werte-Slot): Zahlen wie oben, sonst der State
+ * im Klartext — dort sind "on"/"Sommerbetrieb" gewollte Anzeigen.
+ */
 export const stateText = (entity) => {
   if (!entity) return "—";
+  const n = numOf(entity.state);
   const unit = entity.attributes?.unit_of_measurement;
-  const n = parseFloat(entity.state);
-  if (!isNaN(n) && String(entity.state).trim() !== "") {
-    const dec = Math.abs(n) >= 100 || Number.isInteger(n) ? 0 : 1;
-    return fmt(n, dec) + (unit ? " " + unit : "");
-  }
+  if (n !== null) return fmt(n, Number.isInteger(n) ? 0 : 1) + (unit ? " " + unit : "");
   return String(entity.state) + (unit ? " " + unit : "");
 };
