@@ -12,8 +12,9 @@ Aufruf:
 Was passiert:
   * Becken   — auf max. 1280 px Breite skaliert, auf eine Palette reduziert
                (Skizzen-Artwork, daher ohne sichtbaren Verlust) -> ca. 1/9 der Groesse
-  * Geraete  — dieselbe Optimierung, zusaetzlich die Varianten
-               weiss (#FFFFFF) und schwarz (#1E1E1E) durch Komposition
+  * Geraete  — dieselbe Optimierung, ausschliesslich transparent. Helle und
+               dunkle Varianten gibt es seit Iteration 2 nicht mehr: der
+               Hintergrund kommt aus der Card-Option `frame.fill`.
   * Poolpumpe — transparente Raender werden vorher weggeschnitten
 
 Benoetigt Pillow (pip install pillow).
@@ -39,8 +40,6 @@ GERAETE = [
     ("Waermepumpe.png", "waermepumpe", False),
     ("poolpumpe_platzhalter_vigipoolstil.png", "poolpumpe", True),
 ]
-
-VARIANTEN = {"weiss": (255, 255, 255), "schwarz": (30, 30, 30)}
 
 
 def load(path, trim=False):
@@ -79,12 +78,6 @@ def main():
         size = save(im, os.path.join(dst, f"{praefix}_transparent.png"))
         total += size
         print(f"{praefix+'_transparent.png':34s} {im.size[0]:5d}x{im.size[1]:<5d} {size/1024:8.1f} kB")
-        for name, farbe in VARIANTEN.items():
-            bg = Image.new("RGB", im.size, farbe)
-            bg.paste(im, mask=im.split()[3])
-            size = save(bg, os.path.join(dst, f"{praefix}_{name}.png"))
-            total += size
-            print(f"{praefix+'_'+name+'.png':34s} {im.size[0]:5d}x{im.size[1]:<5d} {size/1024:8.1f} kB")
 
     print(f"\nSumme: {total/1024/1024:.2f} MB")
     return 0
