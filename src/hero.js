@@ -14,16 +14,19 @@ import { numText } from "./shared/util.js";
  * Bodenablauf: der Anker ist vorgesehen, das Sprite fehlt noch — bis dahin
  * wird bewusst nichts gerendert (kein Platzhalter-Kästchen im Bild).
  *
+ * Auch der Freitext hängt seit Iteration 4 an der Form (`label_anker`): sein
+ * Platz ist oben mittig über der Wasserfläche, und die liegt je nach Becken
+ * unterschiedlich hoch im Bild.
+ *
  * Farben kommen ausschließlich aus `frame.fill` (siehe shared/styles.js);
  * ein früheres `box_color` in einer alten Config wird ignoriert.
  */
 export const HERO_DEFAULTS = {
   thermo_scale: 133,
-  /* Freitext-Badge — die Defaults sind die bisherige feste Position,
-     damit bestehende Configs unverändert aussehen. */
+  label_scale: 100,
+  /* Rückfall, falls eine Form (noch) keinen gemessenen Freitext-Anker hat */
   label_top: 3,
   label_left: 50,
-  label_scale: 100,
 };
 
 /* Effektive Anker einer Form — auch der Editor initialisiert damit seine Regler */
@@ -37,6 +40,8 @@ export const heroDefaultsFor = (shapeName) => {
     ph_left: s.ph.left,
     rx_top: s.rx.top,
     rx_left: s.rx.left,
+    label_top: s.label_anker?.top ?? HERO_DEFAULTS.label_top,
+    label_left: s.label_anker?.left ?? HERO_DEFAULTS.label_left,
   };
 };
 

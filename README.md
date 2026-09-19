@@ -11,7 +11,7 @@
 > Dashboard-Screenshot folgt.
 
 Eine Lovelace-Card für das **ganze Poolgelände**: oben das Becken mit Live-Werten,
-daneben Kästen für Wärmepumpe, Poolpumpe und eigene Werte. Du wählst in der Card ab,
+daneben Kästen für Wärmepumpe, Poolpumpe, UV-C-Lampe und eigene Werte. Du wählst in der Card ab,
 was du nicht hast — es bleibt kein Loch im Layout, die übrigen Kästen rücken nach.
 
 Die Card ist **generisch**: sie bringt keine eigene Integration mit, sondern hängt an den
@@ -39,6 +39,10 @@ eine Herstellerintegration in Home Assistant landen.
 - **Poolpumpen-Kasten** — Stufen **N1 · N2 · N3** und **STOP** als Taster mit „seit …"-Anzeige,
   drehendes Laufrad mit eigenem Tempo je Stufe, Watt-Anzeige, optionaler Temperaturfühler,
   Hauptschalter mit Rückfrage. Funktioniert mit Impulstastern **und** mit Dauerrelais.
+- **UV-C-Lampen-Kasten** — Powerbutton mit Rückfrage, Watt-Anzeige, optionaler
+  Temperaturfühler und ein ruhiges blau-violettes Glühen über dem Rohr, solange die Lampe
+  läuft. Das Bild lässt sich frei drehen und spiegeln, damit die Lampe so im Kasten liegt
+  wie in der Anlage.
 - **Freifeld (benutzerdefiniert)** — freie Überschrift plus bis zu drei Einträge: Entity-Wert,
   Schalt-Button oder Freitext.
 - **Eine Optik-Einstellung für alles** — Rahmen an/aus und `fill: transparent | weiss | schwarz`.
@@ -89,7 +93,7 @@ liegen damit automatisch am richtigen Platz und müssen nicht separat kopiert we
 Im Dashboard-Editor: **Karte hinzufügen** → **TomTuT Pool Dashboard**. Der visuelle Editor
 öffnet sich automatisch; die folgenden Beispiele zeigen dasselbe in YAML.
 
-### 1. Alles — Becken, Wärmepumpe, Poolpumpe, Freifeld
+### 1. Alles — Becken, Wärmepumpe, Poolpumpe, UV-Lampe, Freifeld
 
 ```yaml
 type: custom:tomtut-pool-dashboard
@@ -121,6 +125,10 @@ slots:
     main_entity: input_boolean.poolpumpe_schalter
     power_entity: sensor.poolpumpe_power
     temp_entity: sensor.temperaturfuehler_poolpumpe_druckseite_temperature
+  - type: uv
+    label: UV-C-Lampe
+    switch_entity: switch.shelly_uv_lampe
+    power_entity: sensor.shelly_uv_lampe_power
   - type: custom
     title: Werte
     align: mitte
@@ -206,12 +214,15 @@ slots:
 | `rx_entity` | – | Redox/RX → Kästchen auf der Beckenwand |
 | `label_text` | – | Freitext auf dem Becken |
 | `label_scale` | `100` | Größe des Freitexts in % |
-| `label_top` / `label_left` | `3` / `50` | Position des Freitexts in % (Standard = mittig oben) |
+| `label_top` / `label_left` | aus der Formen-Tabelle | Position des Freitexts in % (Standard = oben mittig über der Wasserfläche) |
 | `framed` | `false` | Becken mit Rahmen zeichnen |
 | `show_thermo` / `show_ph` / `show_rx` | `true` | Einzelne Overlays abschalten |
 | `show_drain` | `false` | Bodenablauf — Grafik folgt, wird derzeit nicht gezeichnet |
 | `thermo_top` / `thermo_left` / `thermo_scale` | aus der Formen-Tabelle | Position und Größe des Thermometers |
 | `ph_top` / `ph_left` / `rx_top` / `rx_left` | aus der Formen-Tabelle | Position der Kästchen |
+
+Die Anker der Formen-Tabelle sind an den Bildern vermessen (siehe [Beckenformen](#beckenformen));
+alle lassen sich pro Card überschreiben.
 
 ### `frame` — Optik aller Slots
 
@@ -233,7 +244,7 @@ bewusst keine Farbwahl pro Element und keine hellen/dunklen Bildvarianten mehr.
 | `custom` | fertig | Freifeld (benutzerdefiniert): Werte, Buttons, Freitext |
 | `frame` | fertig | Leerer Rahmen — hält das Raster symmetrisch |
 | `hidden` | fertig | Slot ausblenden; die übrigen rücken nach |
-| `uv` | reserviert | UV-C-Lampe — zeichnet bis dahin einen Rahmen mit Hinweis |
+| `uv` | fertig | UV-C-Lampe im Rohrstrang |
 | `solar` | reserviert | Solarheizung — dito |
 | `inlet` | reserviert | Einlaufdüse — dito |
 
@@ -307,6 +318,49 @@ Dazu zwei Regeln unter „Wann steht die Pumpe?": ist `main_entity` aus, sind di
 gesperrt und das Laufrad steht. Liegt `power_entity` unter `idle_watt`, steht das Laufrad
 ebenfalls — die Taster bleiben aber bedienbar.
 
+### Slot `uv` — UV-C-Lampe
+
+Alle drei Entities sind optional; es reicht eine.
+
+| Option | Standard | Beschreibung |
+|---|---|---|
+| `label` | – | Überschrift über dem Bild |
+| `switch_entity` | – | Steckdose/Relais der Lampe → Powerbutton mit Rückfrage (`switch`, `input_boolean`, `light`) |
+| `power_entity` | – | Leistung in W oder kW → Watt-Box |
+| `temp_entity` | – | Temperaturfühler → Thermometer |
+| `show_power_button` / `show_power` / `show_temp` / `show_glow` | `true` | Einzelne Elemente abschalten |
+| `anschluss` | `seite` | Bildvariante: `seite` (Anschluss seitlich) oder `oben` |
+| `rotate` | `0` | Bild drehen, 0–359° |
+| `mirror` | `false` | Bild waagrecht spiegeln |
+| `glow_top` / `glow_left` | `40` / `56` | Mitte des Glühbereichs in % |
+| `glow_size` / `glow_thickness` | `40` / `13` | Länge und Dicke des Glühbereichs in % |
+| `glow_angle` | `-15` | Neigung des Glühbereichs in ° (Neigung des Rohrs im Artwork) |
+| `glow_intensity` | `80` | Leuchtstärke in % |
+| `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `9` / `76` / `100` / `true` / `true` | Watt-Box |
+| `temp_top` / `temp_left` / `temp_scale` | `19` / `40` / `110` | Thermometer |
+| `power_btn_top` / `power_btn_left` / `power_btn_scale` | `6` / `3` / `120` | Powerbutton |
+
+```yaml
+- type: uv
+  label: UV-C-Lampe
+  switch_entity: switch.uv_lampe
+  power_entity: sensor.uv_lampe_power
+  temp_entity: sensor.uv_lampe_temperatur
+```
+
+**Glühen:** steht `switch_entity` auf `on`, liegt ein weiches blau-violettes Licht über dem
+Rohrkörper — **statisch, ohne Animation**. Bei `off`, unbekanntem Zustand oder fehlendem
+Schalter bleibt das Bild ruhig. Ohne `switch_entity` gibt es kein Glühen.
+
+**Drehen und Spiegeln:** gedreht wird das Bild **samt Glühen**; Thermometer, Watt-Box und
+Powerbutton bleiben aufrecht und lesbar. Bei einer Drehung, die nicht 0° oder 180° ist, wird
+der Kasten quadratisch und das Bild so weit verkleinert, dass nichts heraussteht — die
+Overlays sitzen dann anders und wollen im Editor neu gesetzt werden.
+
+> Eine UV-Lampe kann nichts regeln, darum hat der Slot bewusst weder Durchflussfeld noch
+> Stufen. In den meisten Anlagen hängt sie ohnehin an einer Zeitschaltuhr parallel zur
+> Poolpumpe.
+
 ### Slot `custom` — Freifeld (benutzerdefiniert)
 
 | Option | Standard | Beschreibung |
@@ -345,8 +399,21 @@ Zeitstempel, Text), wird als **„—"** dargestellt statt als sinnlose Zahl.
 | `freiform` | `poolbecken_freiform.png` |
 
 Eine neue Form braucht genau zwei Dinge: das PNG in `dist/` und einen Eintrag in `SHAPES`
-(`src/shared/assets.js`) mit den Ankern für Thermometer, pH, RX und Bodenablauf. Layout,
-Card und Editor bleiben unberührt.
+(`src/shared/assets.js`) mit den Ankern für Thermometer, pH, RX, Bodenablauf und Freitext.
+Layout, Card und Editor bleiben unberührt.
+
+Die Anker sind **am Bild vermessen**, nicht geschätzt:
+
+```bash
+node tools/becken-zonen.mjs --anker   # Ankertabelle für SHAPES
+node tools/becken-zonen.mjs           # Zonenkarte für den Test neu schreiben
+```
+
+Das Werkzeug trennt in jedem Bild die Wasserfläche von der vorderen Beckenwand und setzt
+danach die Anker: Thermometer links auf dem Wasser, pH und RX nebeneinander auf einer Höhe
+mittig auf der Wand, Bodenablauf rechts unten auf dem Wasser, Freitext oben mittig. Die
+Zonenkarte landet in `test/fixtures/becken-zonen.json`; der Smoke-Test prüft damit, dass
+jeder Anker wirklich in seiner Zone liegt.
 
 > Das Artwork der Poolpumpe ist in dieser Version noch ein **Platzhalter** und wird durch die
 > endgültige Zeichnung ersetzt. Positionen und Bedienung ändern sich dadurch nicht.
@@ -384,6 +451,10 @@ Felder mit Standardwert** dazu; bestehende Schlüssel werden nicht umbenannt und
 entfernt. Eine eingefrorene Beispiel-Config liegt als `test/fixtures/v1-config.yaml` im Repo
 und muss in jeder künftigen Version identisch rendern — der Smoke-Test prüft genau das.
 
+Wird ein reservierter Slot-Typ fertig, ersetzt sein Artwork den Platzhalter-Rahmen — die
+Konfiguration bleibt dieselbe. Genau so kam in Iteration 4 die UV-Lampe zu einem `type: uv`,
+der vorher nur ein Rahmen mit Hinweis war.
+
 Felder, die es nicht mehr gibt (`image_variant`, `image_url`, `box_color`, `fan_dur_*`,
 `fan_color`, `power_color` und die übrigen Farbwähler), werden **ignoriert, nie abgelehnt**.
 Alte Karten laufen also unverändert weiter, sie holen sich ihre Farben jetzt nur aus
@@ -411,6 +482,8 @@ src/
   shared/                Formen-/Asset-Tabelle, Styles, Slot-Basis, Editor-Felder
   editor/                visueller Editor
 tools/prepare-assets.py  erzeugt die optimierten PNGs in dist/
+tools/becken-zonen.mjs   vermisst die Becken-Bilder (Anker + Zonen-Fixture)
+tools/png-lesen.mjs      minimaler PNG-Leser für das Messwerkzeug
 ```
 
 Die ausgelieferten Bilder entstehen aus dem Original-Artwork über

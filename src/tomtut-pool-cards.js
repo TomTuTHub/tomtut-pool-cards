@@ -47,7 +47,16 @@ export {
 /* Für den Smoke-Test (und alles, was gegen das Bundle prüfen will) */
 export { PUMP_DEFAULTS, fanDuration } from "./slots/pump.js";
 export { HEATPUMP_DEFAULTS } from "./slots/heatpump.js";
+export { UV_DEFAULTS, passFaktor, normGrad } from "./slots/uv.js";
 export { HERO_DEFAULTS, heroDefaultsFor } from "./hero.js";
-export { SHAPES, DEVICE_IMAGES, SLOT_TYPES, SLOT_TYPE_GROUPS, slotTypeOptions } from "./shared/assets.js";
+export {
+  SHAPES,
+  DEVICE_IMAGES,
+  DEVICE_VARIANTS,
+  DEVICE_RATIOS,
+  SLOT_TYPES,
+  SLOT_TYPE_GROUPS,
+  slotTypeOptions,
+} from "./shared/assets.js";
 export { numText, numOf, toWatt } from "./shared/util.js";
 export { applyPatch } from "./editor/dashboard-editor.js";

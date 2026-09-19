@@ -4,11 +4,13 @@ import { loadHaElements } from "../shared/ha-elements.js";
 import { DEFAULT_SHAPE, slotTypeOptions } from "../shared/assets.js";
 import { HEATPUMP_DEFAULTS } from "../slots/heatpump.js";
 import { PUMP_DEFAULTS } from "../slots/pump.js";
+import { UV_DEFAULTS } from "../slots/uv.js";
 import { heroDefaultsFor } from "../hero.js";
 import {
   heroFields,
   heatpumpFields,
   pumpFields,
+  uvFields,
   customFields,
   customEntryFields,
   frameFields,
@@ -26,6 +28,7 @@ import {
 const SLOT_DEFAULTS = {
   heatpump: HEATPUMP_DEFAULTS,
   pump: PUMP_DEFAULTS,
+  uv: UV_DEFAULTS,
 };
 
 /* Patch anwenden; ein Wert `undefined` entfernt den Schlüssel aus der Config */
@@ -135,6 +138,8 @@ export class TomtutPoolDashboardEditor extends LitElement {
         return heatpumpFields(f);
       case "pump":
         return pumpFields(f);
+      case "uv":
+        return uvFields(f);
       case "custom":
         return customFields(f, (entryIndex) =>
           customEntryFields(

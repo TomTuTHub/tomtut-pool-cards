@@ -2,6 +2,7 @@ import { LitElement, html, css, nothing } from "lit";
 import "./hero.js";
 import "./slots/heatpump.js";
 import "./slots/pump.js";
+import "./slots/uv.js";
 import "./slots/custom.js";
 import "./slots/placeholder.js";
 import { SLOT_TYPES, DEFAULT_SHAPE } from "./shared/assets.js";
@@ -28,6 +29,7 @@ export const DEFAULT_FRAME = { enabled: true, fill: "transparent" };
 const SLOT_TAGS = {
   heatpump: "tomtut-pool-slot-heatpump",
   pump: "tomtut-pool-slot-pump",
+  uv: "tomtut-pool-slot-uv",
   custom: "tomtut-pool-slot-custom",
   frame: "tomtut-pool-slot-frame",
 };
@@ -133,6 +135,12 @@ export class TomtutPoolDashboardCard extends LitElement {
           .config="${slot}"
           .frame="${frame}"
         ></tomtut-pool-slot-pump>`;
+      case "uv":
+        return html`<tomtut-pool-slot-uv
+          .hass="${this.hass}"
+          .config="${slot}"
+          .frame="${frame}"
+        ></tomtut-pool-slot-uv>`;
       case "custom":
         return html`<tomtut-pool-slot-custom
           .hass="${this.hass}"

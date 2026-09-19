@@ -69,6 +69,7 @@ check("Slot-Elemente registriert", () => {
     "tomtut-pool-hero",
     "tomtut-pool-slot-heatpump",
     "tomtut-pool-slot-pump",
+    "tomtut-pool-slot-uv",
     "tomtut-pool-slot-custom",
     "tomtut-pool-slot-frame",
   ]) {
@@ -158,6 +159,18 @@ const makeHass = (overrides = {}) => ({
       last_changed: iso(60),
     },
     "switch.poolbeleuchtung": { state: "off", attributes: {}, last_changed: iso(60) },
+    /* UV-C-Lampe */
+    "switch.uv_lampe": { state: "on", attributes: {}, last_changed: iso(7200) },
+    "sensor.uv_lampe_power": {
+      state: "41",
+      attributes: { unit_of_measurement: "W" },
+      last_changed: iso(60),
+    },
+    "sensor.uv_lampe_temperatur": {
+      state: "31.2",
+      attributes: { unit_of_measurement: "°C" },
+      last_changed: iso(60),
+    },
     /* Poolpumpe: N2 ist der juengste Taster */
     "switch.shelly_pumpe_n1": { state: "off", attributes: {}, last_changed: iso(13 * 3600) },
     "switch.shelly_pumpe_n2": { state: "off", attributes: {}, last_changed: iso(46 * 60) },
@@ -245,23 +258,26 @@ check("Hero zeigt pH und RX", () => {
 });
 check("Hero-Anker kommen aus der Formen-Tabelle", () => {
   const style = hero.shadowRoot.querySelector(".thermo").getAttribute("style");
-  assert.match(style, /top:31\.6%/);
-  assert.match(style, /left:12\.7%/);
+  const anker = pkg.SHAPES.freiform.thermo;
+  assert.match(style, new RegExp(`top:${anker.top}%`));
+  assert.match(style, new RegExp(`left:${anker.left}%`));
 });
 check("Bodenablauf wird (noch) nicht gerendert", () =>
   assert.equal(hero.shadowRoot.querySelector(".drain"), null)
 );
-check("Hero-Freitext steht ohne eigene Werte an der alten Stelle", () => {
+check("Hero-Freitext sitzt auf dem Anker der Form", () => {
   const badge = hero.shadowRoot.querySelector(".label-badge");
   assert.ok(badge, "Freitext-Badge fehlt");
   assert.match(badge.textContent, /Pool/);
   const style = badge.getAttribute("style");
-  assert.match(style, /top:3%/);
-  assert.match(style, /left:50%/);
+  const anker = pkg.SHAPES.freiform.label_anker;
+  assert.match(style, new RegExp(`top:${anker.top}%`));
+  assert.match(style, new RegExp(`left:${anker.left}%`));
   assert.match(style, /scale\(1\)/);
+  assert.equal(pkg.HERO_DEFAULTS.label_scale, 100);
+  /* Formen ohne gemessenen Anker fielen auf die alte feste Stelle zurueck */
   assert.equal(pkg.HERO_DEFAULTS.label_top, 3);
   assert.equal(pkg.HERO_DEFAULTS.label_left, 50);
-  assert.equal(pkg.HERO_DEFAULTS.label_scale, 100);
 });
 
 const labelCard = await mount(
@@ -344,7 +360,7 @@ const typesCard = await mount(
   Dashboard,
   {
     hero: { enabled: false },
-    slots: [{ type: "hidden" }, { type: "uv" }, { type: "frame" }],
+    slots: [{ type: "hidden" }, { type: "solar" }, { type: "frame" }],
   },
   makeHass()
 );
@@ -352,10 +368,10 @@ check("hidden-Slot wird nicht gerendert", () => {
   assert.equal(typesCard.visibleSlots.length, 2);
   assert.equal(typesCard.shadowRoot.querySelectorAll("tomtut-pool-slot-frame").length, 2);
 });
-const uvSlot = typesCard.shadowRoot.querySelectorAll("tomtut-pool-slot-frame")[0];
-await uvSlot.updateComplete;
-check("reservierter Typ uv rendert als Rahmen mit Hinweis", () =>
-  assert.match(uvSlot.shadowRoot.textContent, /UV-C-Lampe folgt/)
+const solarSlot = typesCard.shadowRoot.querySelectorAll("tomtut-pool-slot-frame")[0];
+await solarSlot.updateComplete;
+check("reservierter Typ solar rendert als Rahmen mit Hinweis", () =>
+  assert.match(solarSlot.shadowRoot.textContent, /Solarheizung folgt/)
 );
 
 /* ------------------------------------------------------------------ */
@@ -734,8 +750,10 @@ check("v1-Config rendert unveraendert", () => {
   assert.ok(sr.querySelector("tomtut-pool-slot-heatpump"));
   assert.ok(sr.querySelector("tomtut-pool-slot-pump"));
   assert.ok(sr.querySelector("tomtut-pool-slot-custom"));
-  /* uv (reserviert) + frame = zwei Rahmen; hidden faellt weg */
-  assert.equal(sr.querySelectorAll("tomtut-pool-slot-frame").length, 2);
+  /* Der uv-Slot von damals ist seit Iteration 4 eine echte UV-Lampe und
+     rendert sein Artwork statt des Platzhalters — die Config bleibt gleich. */
+  assert.ok(sr.querySelector("tomtut-pool-slot-uv"));
+  assert.equal(sr.querySelectorAll("tomtut-pool-slot-frame").length, 1);
   assert.equal(frozen.visibleSlots.length, 5);
 });
 const frozenHero = frozen.shadowRoot.querySelector("tomtut-pool-hero");
@@ -785,7 +803,7 @@ check("Editor: Slot-Typen in der Reihenfolge mit Geraete-Trenner", () => {
       "— Geräte —",
       "Wärmepumpe",
       "Poolpumpe",
-      "UV-C-Lampe (folgt)",
+      "UV-C-Lampe",
       "Solarheizung (folgt)",
       "Einlaufdüse (folgt)",
     ]
@@ -995,6 +1013,7 @@ check("nur noch transparente Geraetebilder", () =>
   assert.deepEqual(pkg.DEVICE_IMAGES, {
     heatpump: "waermepumpe_transparent.png",
     pump: "poolpumpe_transparent.png",
+    uv: "uv_lampe_transparent.png",
   })
 );
 
@@ -1156,10 +1175,13 @@ const heroReglerVon = (el, key) =>
     (i) => !i.closest(".slot-card")
   )[0];
 
-check("Editor: Freitext-Regler des Beckens starten auf den Defaults", () => {
+/* Die Freitext-Regler starten auf dem Anker der gewaehlten Form (Freiform) */
+const freitextDefaults = pkg.heroDefaultsFor("freiform");
+check("Editor: Freitext-Regler des Beckens starten auf dem Anker der Form", () => {
   assert.equal(heroReglerVon(editor, "label_scale").value, String(pkg.HERO_DEFAULTS.label_scale));
-  assert.equal(heroReglerVon(editor, "label_top").value, String(pkg.HERO_DEFAULTS.label_top));
-  assert.equal(heroReglerVon(editor, "label_left").value, String(pkg.HERO_DEFAULTS.label_left));
+  assert.equal(heroReglerVon(editor, "label_top").value, String(freitextDefaults.label_top));
+  assert.equal(heroReglerVon(editor, "label_left").value, String(freitextDefaults.label_left));
+  assert.equal(freitextDefaults.label_top, pkg.SHAPES.freiform.label_anker.top);
   assert.match(editor.shadowRoot.textContent, /Freitext — Darstellung/);
 });
 check("Editor: ohne Freitext bleiben die Becken-Regler ausgeblendet", () => {
@@ -1175,8 +1197,8 @@ await ed2.updateComplete;
 check("Editor: Freitext eintragen blendet die Regler ein", () => {
   assert.equal(ed2Fired.hero.label_text, "Schwimmbad");
   assert.equal(heroReglerVon(ed2, "label_scale").value, String(pkg.HERO_DEFAULTS.label_scale));
-  assert.equal(heroReglerVon(ed2, "label_top").value, String(pkg.HERO_DEFAULTS.label_top));
-  assert.equal(heroReglerVon(ed2, "label_left").value, String(pkg.HERO_DEFAULTS.label_left));
+  assert.equal(heroReglerVon(ed2, "label_top").value, String(freitextDefaults.label_top));
+  assert.equal(heroReglerVon(ed2, "label_left").value, String(freitextDefaults.label_left));
 });
 
 const heroScale = heroReglerVon(ed2, "label_scale");
@@ -1213,6 +1235,362 @@ check("Editor: wieder anwaehlen bringt die Felder zurueck", () => {
 check("Editor: Patch mit undefined entfernt den Schluessel", () =>
   assert.deepEqual(pkg.applyPatch({ a: 1, b: 2 }, { b: undefined, c: 3 }), { a: 1, c: 3 })
 );
+
+/* ================================================================== */
+/* Iteration 4 — UV-C-Lampe                                            */
+/* ================================================================== */
+
+const UV_CONFIG = {
+  type: "uv",
+  label: "UV-C-Lampe",
+  switch_entity: "switch.uv_lampe",
+  power_entity: "sensor.uv_lampe_power",
+  temp_entity: "sensor.uv_lampe_temperatur",
+};
+
+const mountUv = async (config = UV_CONFIG, hass = makeHass()) => {
+  const card = await mount(Dashboard, { hero: { enabled: false }, slots: [config] }, hass);
+  const slot = card.shadowRoot.querySelector("tomtut-pool-slot-uv");
+  await slot.updateComplete;
+  return slot;
+};
+
+const uv = await mountUv();
+
+check("UV: eigener Slot statt Platzhalter", () => {
+  assert.equal(pkg.SLOT_TYPES.uv.ready, true);
+  assert.equal(pkg.SLOT_TYPES.uv.label, "UV-C-Lampe");
+  assert.ok(!("hint" in pkg.SLOT_TYPES.uv), "Platzhalter-Hinweis lebt noch");
+});
+check("UV: Artwork aus dem Card-Ordner", () =>
+  assert.equal(
+    uv.shadowRoot.querySelector("img").getAttribute("src"),
+    "/local/community/tomtut-pool-cards/uv_lampe_transparent.png"
+  )
+);
+check("UV: Ueberschrift, Watt-Box und Thermometer", () => {
+  assert.match(uv.shadowRoot.querySelector(".slot-title").textContent, /UV-C-Lampe/);
+  assert.match(uv.shadowRoot.textContent, /41/);
+  assert.match(uv.shadowRoot.textContent, /31,2 °C/);
+});
+check("UV: kein Durchfluss- und kein Luefterelement", () => {
+  assert.equal(uv.shadowRoot.querySelector(".fan-overlay"), null);
+  assert.ok(!/Durchfluss/.test(uv.shadowRoot.textContent));
+});
+
+/* ---- Glueheffekt ---- */
+
+check("UV: Lampe an -> statisches Gluehen auf dem Rohr", () => {
+  const glow = uv.shadowRoot.querySelector(".glow");
+  assert.ok(glow, "Gluehen fehlt");
+  const stil = glow.getAttribute("style");
+  assert.match(stil, new RegExp(`left:${pkg.UV_DEFAULTS.glow_left}%`));
+  assert.match(stil, new RegExp(`top:${pkg.UV_DEFAULTS.glow_top}%`));
+  assert.match(stil, new RegExp(`width:${pkg.UV_DEFAULTS.glow_size}%`));
+  assert.match(stil, /rotate\(-15deg\)/);
+  assert.match(stil, /aspect-ratio:/);
+});
+check("UV: das Gluehen ist nicht animiert", () => {
+  const css = cssOf("tomtut-pool-slot-uv");
+  assert.match(css, /\.glow\s*\{/);
+  assert.ok(!/\.glow[^}]*animation/.test(css), "Gluehen animiert");
+});
+check("UV: Gluehbereich haengt am Seitenverhaeltnis des Bildes", () => {
+  const stil = uv.shadowRoot.querySelector(".glow").getAttribute("style");
+  const soll =
+    Math.round(
+      ((pkg.UV_DEFAULTS.glow_size * pkg.DEVICE_RATIOS.uv) / pkg.UV_DEFAULTS.glow_thickness) * 1000
+    ) / 1000;
+  assert.match(stil, new RegExp(`aspect-ratio:${String(soll).replace(".", "\\.")}`));
+});
+
+const uvAus = await mountUv(
+  UV_CONFIG,
+  makeHass({ "switch.uv_lampe": { state: "off", attributes: {}, last_changed: iso(60) } })
+);
+check("UV: Lampe aus -> kein Gluehen", () =>
+  assert.equal(uvAus.shadowRoot.querySelector(".glow"), null)
+);
+const uvUnbekannt = await mountUv(
+  UV_CONFIG,
+  makeHass({ "switch.uv_lampe": { state: "unavailable", attributes: {}, last_changed: iso(60) } })
+);
+check("UV: unbekannter Zustand -> kein Gluehen", () =>
+  assert.equal(uvUnbekannt.shadowRoot.querySelector(".glow"), null)
+);
+const uvOhneGlow = await mountUv({ ...UV_CONFIG, show_glow: false });
+check("UV: Gluehen abwaehlbar", () =>
+  assert.equal(uvOhneGlow.shadowRoot.querySelector(".glow"), null)
+);
+
+/* ---- Powerbutton mit Rueckfrage ---- */
+
+calls.length = 0;
+uv.shadowRoot.querySelector(".power-badge").click();
+await uv.updateComplete;
+check("UV: Ausschalten fragt nach", () => {
+  assert.equal(calls.length, 0);
+  const dialog = uv.shadowRoot.querySelector(".confirm-overlay");
+  assert.ok(dialog);
+  assert.match(dialog.textContent, /UV-C-Lampe ausschalten\?/);
+  assert.match(dialog.textContent, /Brennstunden/);
+});
+uv.shadowRoot.querySelector(".btn.danger").click();
+await uv.updateComplete;
+check("UV: Bestaetigen schaltet aus", () =>
+  assert.deepEqual(calls[0], {
+    domain: "switch",
+    service: "turn_off",
+    data: { entity_id: "switch.uv_lampe" },
+  })
+);
+calls.length = 0;
+uvAus.shadowRoot.querySelector(".power-badge").click();
+await uvAus.updateComplete;
+check("UV: Einschalten geht ohne Rueckfrage", () =>
+  assert.deepEqual(calls, [
+    { domain: "switch", service: "turn_on", data: { entity_id: "switch.uv_lampe" } },
+  ])
+);
+
+/* ---- Bildvariante, Drehen, Spiegeln ---- */
+
+const uvOben = await mountUv({ ...UV_CONFIG, anschluss: "oben" });
+check("UV: Bildvariante 'Anschluss oben'", () =>
+  assert.equal(
+    uvOben.shadowRoot.querySelector("img").getAttribute("src"),
+    "/local/community/tomtut-pool-cards/uv_lampe_transparent_2.png"
+  )
+);
+const uvKrumm = await mountUv({ ...UV_CONFIG, anschluss: "gibtsnicht" });
+check("UV: unbekannte Variante faellt auf das Standardbild zurueck", () =>
+  assert.equal(
+    uvKrumm.shadowRoot.querySelector("img").getAttribute("src"),
+    "/local/community/tomtut-pool-cards/uv_lampe_transparent.png"
+  )
+);
+
+check("UV: ungedreht bleibt der Kasten wie bei den anderen Geraeten", () => {
+  assert.equal(uv.shadowRoot.querySelector(".img-wrap.quadrat"), null);
+  assert.equal(uv.shadowRoot.querySelector(".bild").getAttribute("style"), "");
+});
+
+const uvGedreht = await mountUv({ ...UV_CONFIG, rotate: 90 });
+check("UV: gedrehtes Bild sitzt in einem quadratischen Kasten", () => {
+  assert.ok(uvGedreht.shadowRoot.querySelector(".img-wrap.quadrat"));
+  assert.match(uvGedreht.shadowRoot.querySelector(".bild").getAttribute("style"), /rotate\(90deg\)/);
+});
+check("UV: Gluehen dreht mit, die Bedienelemente nicht", () => {
+  assert.ok(uvGedreht.shadowRoot.querySelector(".bild .glow"), "Gluehen dreht nicht mit");
+  assert.equal(uvGedreht.shadowRoot.querySelector(".bild .thermo"), null);
+  assert.equal(uvGedreht.shadowRoot.querySelector(".bild .value-box"), null);
+  assert.equal(uvGedreht.shadowRoot.querySelector(".bild .power-badge"), null);
+  assert.ok(uvGedreht.shadowRoot.querySelector(".thermo"));
+  assert.ok(uvGedreht.shadowRoot.querySelector(".power-badge"));
+});
+const uv180 = await mountUv({ ...UV_CONFIG, rotate: 180 });
+check("UV: 180° braucht keinen quadratischen Kasten", () => {
+  assert.equal(uv180.shadowRoot.querySelector(".img-wrap.quadrat"), null);
+  assert.match(uv180.shadowRoot.querySelector(".bild").getAttribute("style"), /rotate\(180deg\)/);
+});
+const uvGespiegelt = await mountUv({ ...UV_CONFIG, mirror: true });
+check("UV: Spiegeln ohne Drehung", () => {
+  const stil = uvGespiegelt.shadowRoot.querySelector(".bild").getAttribute("style");
+  assert.match(stil, /scaleX\(-1\)/);
+  assert.ok(!/rotate/.test(stil));
+  assert.equal(uvGespiegelt.shadowRoot.querySelector(".img-wrap.quadrat"), null);
+});
+
+check("UV: Passfaktor haelt das gedrehte Bild im Kasten", () => {
+  const r = pkg.DEVICE_RATIOS.uv;
+  assert.equal(pkg.passFaktor(0, r), 1);
+  assert.equal(pkg.passFaktor(180, r), 1);
+  assert.equal(pkg.passFaktor(90, r), 1);
+  for (let grad = 0; grad < 360; grad += 5) {
+    const f = pkg.passFaktor(grad, r);
+    const rad = (grad * Math.PI) / 180;
+    const c = Math.abs(Math.cos(rad)), si = Math.abs(Math.sin(rad));
+    const huelleBreit = f * (c + si / r);
+    const huelleHoch = f * (si + c / r);
+    assert.ok(f > 0 && f <= 1, `Faktor ${f} bei ${grad}°`);
+    assert.ok(huelleBreit <= 1.0001 && huelleHoch <= 1.0001, `ragt raus bei ${grad}°`);
+  }
+  /* ein hochkantes Bild muesste verkleinert werden */
+  assert.ok(pkg.passFaktor(45, 1) < 1);
+});
+check("UV: Drehwinkel wird normalisiert", () => {
+  assert.equal(pkg.normGrad(-90), 270);
+  assert.equal(pkg.normGrad(360), 0);
+  assert.equal(pkg.normGrad(370.4), 10);
+  assert.equal(pkg.normGrad("nicht"), 0);
+});
+
+const uvLeer = await mountUv({ type: "uv" });
+check("UV ohne Entity zeigt Hinweis statt Fehler", () => {
+  assert.match(uvLeer.shadowRoot.textContent, /mindestens eine Entity/);
+  assert.equal(
+    uvLeer.shadowRoot.querySelector("img").getAttribute("src"),
+    "/local/community/tomtut-pool-cards/uv_lampe_transparent.png"
+  );
+  assert.equal(uvLeer.shadowRoot.querySelector(".glow"), null);
+});
+
+/* ---- Editor ---- */
+
+const ed4 = new Editor();
+ed4.setConfig({ hero: { enabled: false }, slots: [{ ...UV_CONFIG }] });
+ed4.hass = makeHass();
+document.body.appendChild(ed4);
+await ed4.updateComplete;
+let ed4Fired = null;
+ed4.addEventListener("config-changed", (e) => (ed4Fired = e.detail.config));
+
+check("Editor: UV-Slot hat Elemente, Felder und Hilfetext", () => {
+  const txt = ed4.shadowRoot.textContent;
+  assert.match(txt, /Glüheffekt/);
+  assert.match(txt, /Zeitschaltuhr parallel zur Poolpumpe/);
+  assert.ok(ed4.shadowRoot.querySelector('input[data-key="switch_entity"]'));
+  assert.ok(ed4.shadowRoot.querySelector('input[data-key="power_entity"]'));
+  assert.ok(ed4.shadowRoot.querySelector('input[data-key="temp_entity"]'));
+  assert.ok(!/Durchfluss/.test(txt), "UV hat ein Durchflussfeld");
+});
+check("Editor: UV-Regler starten auf den gemessenen Defaults", () => {
+  const val = (key) => ed4.shadowRoot.querySelector(`input[data-key="${key}"]`).value;
+  assert.equal(val("glow_left"), String(pkg.UV_DEFAULTS.glow_left));
+  assert.equal(val("glow_top"), String(pkg.UV_DEFAULTS.glow_top));
+  assert.equal(val("glow_size"), String(pkg.UV_DEFAULTS.glow_size));
+  assert.equal(val("glow_angle"), String(pkg.UV_DEFAULTS.glow_angle));
+  assert.equal(val("rotate"), "0");
+});
+check("Editor: UV bietet Bildvariante, Drehen und Spiegeln", () => {
+  const sel = ed4.shadowRoot.querySelector('select[data-key="anschluss"]');
+  assert.ok(sel);
+  assert.deepEqual(
+    Array.from(sel.querySelectorAll("option")).map((o) => o.value),
+    ["seite", "oben"]
+  );
+  assert.ok(ed4.shadowRoot.querySelector('input[data-key="mirror"]'));
+});
+
+const drehRegler = ed4.shadowRoot.querySelector('input[data-key="rotate"]');
+drehRegler.value = "270";
+drehRegler.dispatchEvent(new dom.window.Event("input"));
+await ed4.updateComplete;
+check("Editor: Drehen landet in der Slot-Config", () =>
+  assert.equal(ed4Fired.slots[0].rotate, 270)
+);
+
+const glowBox = ed4.shadowRoot.querySelector('input[data-key="show_glow"]');
+glowBox.checked = false;
+glowBox.dispatchEvent(new dom.window.Event("change"));
+await ed4.updateComplete;
+check("Editor: Gluehen abwaehlen raeumt seine Schluessel aus der Config", () => {
+  assert.equal(ed4Fired.slots[0].show_glow, false);
+  for (const key of ["glow_top", "glow_left", "glow_size", "glow_angle"]) {
+    assert.ok(!(key in ed4Fired.slots[0]), `${key} steht noch drin`);
+  }
+  assert.equal(ed4.shadowRoot.querySelector('input[data-key="glow_top"]'), null);
+});
+
+/* ================================================================== */
+/* Iteration 4 — am Bild vermessene Becken-Anker                       */
+/* ================================================================== */
+
+const zonen = JSON.parse(readFileSync(join(here, "fixtures/becken-zonen.json"), "utf8"));
+
+/* Zonen-Zeichen an einer Prozentposition: w = Wasser, m = Wand, . = aussen */
+const zoneAn = (form, left, top) => {
+  const f = zonen.formen[form];
+  const x = Math.min(f.zeilen[0].length - 1, Math.floor((left / 100) * f.breite / zonen.zelle));
+  const y = Math.min(f.zeilen.length - 1, Math.floor((top / 100) * f.hoehe / zonen.zelle));
+  return f.zeilen[y][x];
+};
+
+check("Zonenkarte deckt alle Formen ab", () => {
+  assert.deepEqual(Object.keys(zonen.formen), Object.keys(pkg.SHAPES));
+  for (const [name, form] of Object.entries(pkg.SHAPES)) {
+    assert.equal(zonen.formen[name].datei, form.file, `${name}: anderes Bild vermessen`);
+    assert.ok(zonen.formen[name].zeilen.length > 10);
+  }
+});
+check("Thermometer und Bodenablauf liegen auf der Wasserflaeche", () => {
+  for (const [name, form] of Object.entries(pkg.SHAPES)) {
+    for (const anker of ["thermo", "drain"]) {
+      assert.equal(
+        zoneAn(name, form[anker].left, form[anker].top),
+        "w",
+        `${name}/${anker} liegt nicht auf dem Wasser`
+      );
+    }
+  }
+});
+check("pH und RX liegen auf der vorderen Beckenwand", () => {
+  for (const [name, form] of Object.entries(pkg.SHAPES)) {
+    for (const anker of ["ph", "rx"]) {
+      assert.equal(
+        zoneAn(name, form[anker].left, form[anker].top),
+        "m",
+        `${name}/${anker} liegt nicht auf der Wand`
+      );
+    }
+  }
+});
+check("Anker in der Tabelle = Anker der Messung", () => {
+  for (const [name, form] of Object.entries(pkg.SHAPES)) {
+    const gemessen = zonen.formen[name].anker;
+    for (const anker of ["thermo", "ph", "rx", "drain"]) {
+      assert.deepEqual(form[anker], gemessen[anker], `${name}/${anker} weicht von der Messung ab`);
+    }
+    assert.deepEqual(form.label_anker, gemessen.label, `${name}/Freitext weicht ab`);
+  }
+});
+check("pH und RX stehen nebeneinander auf einer Hoehe", () => {
+  for (const [name, form] of Object.entries(pkg.SHAPES)) {
+    assert.equal(form.ph.top, form.rx.top, `${name}: pH und RX auf verschiedener Hoehe`);
+    assert.ok(form.rx.left - form.ph.left > 20, `${name}: pH und RX kleben aneinander`);
+  }
+});
+check("Bodenablauf sitzt rechts unten, Thermometer links", () => {
+  for (const [name, form] of Object.entries(pkg.SHAPES)) {
+    assert.ok(form.thermo.left < 25, `${name}: Thermometer nicht links`);
+    assert.ok(form.drain.left > 70, `${name}: Bodenablauf nicht rechts`);
+    assert.ok(form.drain.top > form.thermo.top, `${name}: Bodenablauf nicht unterhalb`);
+  }
+});
+check("Freitext steht oben mittig", () => {
+  for (const [name, form] of Object.entries(pkg.SHAPES)) {
+    assert.ok(Math.abs(form.label_anker.left - 50) <= 5, `${name}: Freitext nicht mittig`);
+    assert.ok(form.label_anker.top >= 1 && form.label_anker.top <= 25, `${name}: Freitext zu tief`);
+  }
+});
+
+const ankerCard = await mount(
+  Dashboard,
+  {
+    hero: {
+      shape: "achtform",
+      temp_entity: "sensor.pool_wassertemperatur",
+      ph_entity: "sensor.pool_ph",
+      rx_entity: "sensor.pool_redox",
+      label_text: "Pool",
+    },
+    slots: [],
+  },
+  makeHass()
+);
+const ankerHero = ankerCard.shadowRoot.querySelector("tomtut-pool-hero");
+await ankerHero.updateComplete;
+check("Hero setzt die gemessenen Anker der gewaehlten Form", () => {
+  const form = pkg.SHAPES.achtform;
+  const thermo = ankerHero.shadowRoot.querySelector(".thermo").getAttribute("style");
+  assert.match(thermo, new RegExp(`top:${form.thermo.top}%`));
+  assert.match(thermo, new RegExp(`left:${form.thermo.left}%`));
+  const boxen = ankerHero.shadowRoot.querySelectorAll(".chem-box");
+  assert.match(boxen[0].getAttribute("style"), new RegExp(`left:${form.ph.left}%`));
+  assert.match(boxen[1].getAttribute("style"), new RegExp(`left:${form.rx.left}%`));
+  const badge = ankerHero.shadowRoot.querySelector(".label-badge").getAttribute("style");
+  assert.match(badge, new RegExp(`top:${form.label_anker.top}%`));
+});
 
 /* ------------------------------------------------------------------ */
 

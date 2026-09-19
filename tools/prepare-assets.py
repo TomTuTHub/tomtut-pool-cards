@@ -16,6 +16,13 @@ Was passiert:
                dunkle Varianten gibt es seit Iteration 2 nicht mehr: der
                Hintergrund kommt aus der Card-Option `frame.fill`.
   * Poolpumpe — transparente Raender werden vorher weggeschnitten
+  * UV-Lampe  — zwei Bildvarianten (Anschluss seitlich / oben); NICHT
+               beschneiden, sonst laegen die beiden nicht mehr deckungsgleich
+
+Nach einem neuen Geraetebild gehoert das Seitenverhaeltnis in DEVICE_RATIOS
+(src/shared/assets.js); nach einem neuen Beckenbild einmal
+`node tools/becken-zonen.mjs --anker` laufen lassen und die Anker in SHAPES
+uebernehmen.
 
 Benoetigt Pillow (pip install pillow).
 """
@@ -35,10 +42,12 @@ BECKEN = {
     "Poolbecken_Freiform.png": "poolbecken_freiform.png",
 }
 
-# Quelle -> Zielpraefix, trim = transparente Raender abschneiden
+# Quelle -> Zieldatei, trim = transparente Raender abschneiden
 GERAETE = [
-    ("Waermepumpe.png", "waermepumpe", False),
-    ("poolpumpe_platzhalter_vigipoolstil.png", "poolpumpe", True),
+    ("Waermepumpe.png", "waermepumpe_transparent.png", False),
+    ("poolpumpe_platzhalter_vigipoolstil.png", "poolpumpe_transparent.png", True),
+    ("UV_C_Lampe.png", "uv_lampe_transparent.png", False),
+    ("UV_C_Lampe_2.png", "uv_lampe_transparent_2.png", False),
 ]
 
 
@@ -73,11 +82,11 @@ def main():
         total += size
         print(f"{ziel:34s} {im.size[0]:5d}x{im.size[1]:<5d} {size/1024:8.1f} kB")
 
-    for quelle, praefix, trim in GERAETE:
+    for quelle, ziel, trim in GERAETE:
         im = load(os.path.join(src, quelle), trim=trim)
-        size = save(im, os.path.join(dst, f"{praefix}_transparent.png"))
+        size = save(im, os.path.join(dst, ziel))
         total += size
-        print(f"{praefix+'_transparent.png':34s} {im.size[0]:5d}x{im.size[1]:<5d} {size/1024:8.1f} kB")
+        print(f"{ziel:34s} {im.size[0]:5d}x{im.size[1]:<5d} {size/1024:8.1f} kB")
 
     print(f"\nSumme: {total/1024/1024:.2f} MB")
     return 0

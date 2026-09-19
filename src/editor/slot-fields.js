@@ -428,6 +428,124 @@ export const pumpFields = (f) => html`
     : nothing}
 `;
 
+/* ---------------- UV-C-Lampe ---------------- */
+
+export const uvFields = (f) => html`
+  ${elementsGroup(html`
+    ${f.element("⏻ Powerbutton", "show_power_button", [
+      "switch_entity",
+      "power_btn_top",
+      "power_btn_left",
+      "power_btn_scale",
+    ])}
+    ${f.element("⚡ Stromverbrauch", "show_power", [
+      "power_entity",
+      "power_bottom",
+      "power_left",
+      "power_scale",
+      "power_box",
+      "power_label",
+    ])}
+    ${f.element("🌡 Temperatur", "show_temp", [
+      "temp_entity",
+      "temp_top",
+      "temp_left",
+      "temp_scale",
+    ])}
+    ${f.element("💡 Glüheffekt", "show_glow", [
+      "glow_top",
+      "glow_left",
+      "glow_size",
+      "glow_thickness",
+      "glow_angle",
+      "glow_intensity",
+    ])}
+  `)}
+  <small>Die UV-Lampe läuft üblicherweise per Zeitschaltuhr parallel zur Poolpumpe.</small>
+  ${f.text("Überschrift (optional)", "label", "", "z.B. UV-C-Lampe")}
+  ${f.shown("show_power_button")
+    ? html`
+        ${f.entity(
+          "Powerbutton — Schalter",
+          "switch_entity",
+          "Steckdose/Relais der Lampe. Ausschalten fragt immer nach.",
+          ...SCHALTER
+        )}
+        ${section(
+          "Powerbutton — Position",
+          html`
+            ${f.slider("Von oben", "power_btn_top", 0, 100)}
+            ${f.slider("Von links", "power_btn_left", 0, 100)}
+            ${f.slider("Größe", "power_btn_scale", 50, 200)}
+          `
+        )}
+      `
+    : nothing}
+  ${f.shown("show_power")
+    ? html`
+        ${f.entity("Stromverbrauch", "power_entity", "W oder kW.", ...VERBRAUCH)}
+        ${section(
+          "Stromverbrauch — Darstellung",
+          html`
+            ${f.slider("Von unten", "power_bottom", 0, 100)}
+            ${f.slider("Von links", "power_left", 0, 100)}
+            ${f.slider("Größe", "power_scale", 50, 150)}
+            ${f.toggle("Box anzeigen", "power_box", true)}
+            ${f.toggle("Einheit anzeigen", "power_label", true)}
+          `
+        )}
+      `
+    : nothing}
+  ${f.shown("show_temp")
+    ? html`
+        ${f.entity("Temperaturfühler", "temp_entity", "Zeigt das Thermometer.", ...MESSWERT)}
+        ${section(
+          "Thermometer — Position",
+          html`
+            ${f.slider("Von oben", "temp_top", 0, 100)}
+            ${f.slider("Von links", "temp_left", 0, 100)}
+            ${f.slider("Größe", "temp_scale", 50, 200)}
+          `
+        )}
+      `
+    : nothing}
+  ${f.shown("show_glow")
+    ? section(
+        "Glüheffekt — Lage auf dem Rohr",
+        html`
+          ${f.slider("Von oben", "glow_top", 0, 100, "%", 0.5)}
+          ${f.slider("Von links", "glow_left", 0, 100, "%", 0.5)}
+          ${f.slider("Länge", "glow_size", 5, 100, "%", 0.5)}
+          ${f.slider("Dicke", "glow_thickness", 2, 60, "%", 0.5)}
+          ${f.slider("Neigung", "glow_angle", -90, 90, "°", 1)}
+          ${f.slider("Leuchtstärke", "glow_intensity", 10, 100)}
+          <small>Leuchtet nur, solange der Schalter an ist — ohne Animation.</small>
+        `
+      )
+    : nothing}
+  ${section(
+    "Bild — Anschluss, Drehung, Spiegelung",
+    html`
+      ${f.select(
+        "Anschluss am linken T-Stück",
+        "anschluss",
+        [
+          ["seite", "Seitlich (Standard)"],
+          ["oben", "Nach oben"],
+        ],
+        "seite"
+      )}
+      ${f.slider("Drehen", "rotate", 0, 359, "°", 1)}
+      ${f.toggle("Waagrecht spiegeln", "mirror", false)}
+      <small>
+        Gedreht wird das Bild samt Glühen; Thermometer, Watt-Box und Powerbutton bleiben
+        aufrecht. Bei gedrehtem Bild wird der Kasten quadratisch, damit nichts abgeschnitten
+        wird — die Overlays wollen dann neu gesetzt werden.
+      </small>
+    `
+  )}
+`;
+
 /* ---------------- Freifeld (benutzerdefiniert) ---------------- */
 
 export const customFields = (f, entryFields) => html`
