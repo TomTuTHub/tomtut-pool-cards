@@ -251,6 +251,41 @@ check("Hero-Anker kommen aus der Formen-Tabelle", () => {
 check("Bodenablauf wird (noch) nicht gerendert", () =>
   assert.equal(hero.shadowRoot.querySelector(".drain"), null)
 );
+check("Hero-Freitext steht ohne eigene Werte an der alten Stelle", () => {
+  const badge = hero.shadowRoot.querySelector(".label-badge");
+  assert.ok(badge, "Freitext-Badge fehlt");
+  assert.match(badge.textContent, /Pool/);
+  const style = badge.getAttribute("style");
+  assert.match(style, /top:3%/);
+  assert.match(style, /left:50%/);
+  assert.match(style, /scale\(1\)/);
+  assert.equal(pkg.HERO_DEFAULTS.label_top, 3);
+  assert.equal(pkg.HERO_DEFAULTS.label_left, 50);
+  assert.equal(pkg.HERO_DEFAULTS.label_scale, 100);
+});
+
+const labelCard = await mount(
+  Dashboard,
+  {
+    hero: { shape: "oval", label_text: "Schwimmbad", label_scale: 150, label_top: 20, label_left: 30 },
+    slots: [],
+  },
+  makeHass()
+);
+const labelHero = labelCard.shadowRoot.querySelector("tomtut-pool-hero");
+await labelHero.updateComplete;
+check("Hero-Freitext folgt Groesse und Position aus der Config", () => {
+  const style = labelHero.shadowRoot.querySelector(".label-badge").getAttribute("style");
+  assert.match(style, /top:20%/);
+  assert.match(style, /left:30%/);
+  assert.match(style, /scale\(1\.5\)/);
+});
+const stillCard = await mount(Dashboard, { hero: { shape: "oval" }, slots: [] }, makeHass());
+const stillHero = stillCard.shadowRoot.querySelector("tomtut-pool-hero");
+await stillHero.updateComplete;
+check("Hero ohne Freitext zeichnet kein Badge", () =>
+  assert.equal(stillHero.shadowRoot.querySelector(".label-badge"), null)
+);
 
 const fallbackCard = await mount(
   Dashboard,
@@ -738,6 +773,45 @@ check("Editor zeigt je Slot eine Karte", () =>
 check("Editor schlaegt Entities vor", () =>
   assert.ok(editor.shadowRoot.querySelectorAll("datalist option").length > 0)
 );
+check("Editor: Slot-Typen in der Reihenfolge mit Geraete-Trenner", () => {
+  const sel = editor.shadowRoot.querySelector('.slot-head select[data-key="type"]');
+  const opts = Array.from(sel.querySelectorAll("option"));
+  assert.deepEqual(
+    opts.map((o) => o.textContent.trim()),
+    [
+      "Freifeld (benutzerdefiniert)",
+      "Ausgeblendet",
+      "Leerer Rahmen",
+      "— Geräte —",
+      "Wärmepumpe",
+      "Poolpumpe",
+      "UV-C-Lampe (folgt)",
+      "Solarheizung (folgt)",
+      "Einlaufdüse (folgt)",
+    ]
+  );
+  const trenner = opts[3];
+  assert.ok(trenner.disabled, "Trenner ist waehlbar");
+  assert.ok(!trenner.hasAttribute("value"), "Trenner hat einen Wert");
+  assert.equal(sel.value, "heatpump", "gewaehlter Typ nicht mehr vorausgewaehlt");
+});
+check("slotTypeOptions liefert genau einen Trenner vor den Geraeten", () => {
+  const opts = pkg.slotTypeOptions();
+  const idx = opts.findIndex((o) => o.trenner);
+  assert.equal(opts.filter((o) => o.trenner).length, 1);
+  assert.equal(opts[idx].label, "— Geräte —");
+  assert.deepEqual(
+    opts.slice(0, idx).map((o) => o.value),
+    ["custom", "hidden", "frame"]
+  );
+  assert.deepEqual(
+    opts.slice(idx + 1).map((o) => o.value),
+    ["heatpump", "pump", "uv", "solar", "inlet"]
+  );
+  /* jeder Typ aus der Tabelle taucht genau einmal auf */
+  const werte = opts.filter((o) => !o.trenner).map((o) => o.value);
+  assert.deepEqual([...werte].sort(), Object.keys(pkg.SLOT_TYPES).sort());
+});
 check("Editor bietet die Beckenformen an", () => {
   const sel = editor.shadowRoot.querySelector('select[data-key="shape"]');
   assert.ok(sel);
@@ -1075,6 +1149,43 @@ check("Editor: echte Umlaute in den Beschriftungen", () => {
   }
   assert.equal(pkg.SLOT_TYPES.custom.label, "Freifeld (benutzerdefiniert)");
 });
+
+/* Hero-Regler liegen ausserhalb der Slot-Karten — Slots haben gleichnamige Felder */
+const heroReglerVon = (el, key) =>
+  Array.from(el.shadowRoot.querySelectorAll(`input[data-key="${key}"]`)).filter(
+    (i) => !i.closest(".slot-card")
+  )[0];
+
+check("Editor: Freitext-Regler des Beckens starten auf den Defaults", () => {
+  assert.equal(heroReglerVon(editor, "label_scale").value, String(pkg.HERO_DEFAULTS.label_scale));
+  assert.equal(heroReglerVon(editor, "label_top").value, String(pkg.HERO_DEFAULTS.label_top));
+  assert.equal(heroReglerVon(editor, "label_left").value, String(pkg.HERO_DEFAULTS.label_left));
+  assert.match(editor.shadowRoot.textContent, /Freitext — Darstellung/);
+});
+check("Editor: ohne Freitext bleiben die Becken-Regler ausgeblendet", () => {
+  assert.equal(heroReglerVon(ed2, "label_scale"), undefined);
+  assert.equal(heroReglerVon(ed2, "label_top"), undefined);
+  assert.equal(heroReglerVon(ed2, "label_left"), undefined);
+});
+
+const heroText = ed2.shadowRoot.querySelector('input[data-key="label_text"]');
+heroText.value = "Schwimmbad";
+heroText.dispatchEvent(new dom.window.Event("input"));
+await ed2.updateComplete;
+check("Editor: Freitext eintragen blendet die Regler ein", () => {
+  assert.equal(ed2Fired.hero.label_text, "Schwimmbad");
+  assert.equal(heroReglerVon(ed2, "label_scale").value, String(pkg.HERO_DEFAULTS.label_scale));
+  assert.equal(heroReglerVon(ed2, "label_top").value, String(pkg.HERO_DEFAULTS.label_top));
+  assert.equal(heroReglerVon(ed2, "label_left").value, String(pkg.HERO_DEFAULTS.label_left));
+});
+
+const heroScale = heroReglerVon(ed2, "label_scale");
+heroScale.value = "140";
+heroScale.dispatchEvent(new dom.window.Event("input"));
+await ed2.updateComplete;
+check("Editor: Freitext-Groesse landet in der Hero-Config", () =>
+  assert.equal(ed2Fired.hero.label_scale, 140)
+);
 
 const tempBox = ed2.shadowRoot.querySelector('input[data-key="show_temp"]');
 tempBox.checked = false;

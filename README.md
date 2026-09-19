@@ -205,6 +205,8 @@ slots:
 | `ph_entity` | – | pH-Wert → Kästchen auf der Beckenwand |
 | `rx_entity` | – | Redox/RX → Kästchen auf der Beckenwand |
 | `label_text` | – | Freitext auf dem Becken |
+| `label_scale` | `100` | Größe des Freitexts in % |
+| `label_top` / `label_left` | `3` / `50` | Position des Freitexts in % (Standard = mittig oben) |
 | `framed` | `false` | Becken mit Rahmen zeichnen |
 | `show_thermo` / `show_ph` / `show_rx` | `true` | Einzelne Overlays abschalten |
 | `show_drain` | `false` | Bodenablauf — Grafik folgt, wird derzeit nicht gezeichnet |
@@ -237,6 +239,10 @@ bewusst keine Farbwahl pro Element und keine hellen/dunklen Bildvarianten mehr.
 
 Reservierte Typen kannst du heute schon eintragen: die Card rendert einen leeren Rahmen und
 füllt ihn, sobald der Typ fertig ist — deine Konfiguration bleibt unverändert.
+
+Im Editor stehen im Auswahlfeld zuerst die allgemeinen Slots (`custom`, `hidden`, `frame`),
+danach trennt eine nicht wählbare Zeile „— Geräte —“ die Gerätetypen ab. Die Schlüssel selbst
+sind davon unberührt — die Reihenfolge ist reine Anzeige.
 
 ### Slot `heatpump`
 

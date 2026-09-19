@@ -76,6 +76,16 @@ export const heroFields = (f) => html`
       `
     : nothing}
   ${f.text("Freitext auf dem Becken (optional)", "label_text", "", "z.B. Pool")}
+  ${f.raw("label_text")
+    ? section(
+        "Freitext — Darstellung",
+        html`
+          ${f.slider("Größe", "label_scale", 50, 200)}
+          ${f.slider("Von oben", "label_top", 0, 100, "%", 0.5)}
+          ${f.slider("Von links", "label_left", 0, 100, "%", 0.5)}
+        `
+      )
+    : nothing}
   ${f.toggle("Becken mit Rahmen", "framed", false)}
 `;
 

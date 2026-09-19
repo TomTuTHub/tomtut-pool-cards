@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from "lit";
 import { Fields, editorStyles } from "../shared/fields.js";
 import { loadHaElements } from "../shared/ha-elements.js";
-import { SLOT_TYPES, DEFAULT_SHAPE } from "../shared/assets.js";
+import { DEFAULT_SHAPE, slotTypeOptions } from "../shared/assets.js";
 import { HEATPUMP_DEFAULTS } from "../slots/heatpump.js";
 import { PUMP_DEFAULTS } from "../slots/pump.js";
 import { heroDefaultsFor } from "../hero.js";
@@ -194,12 +194,17 @@ export class TomtutPoolDashboardEditor extends LitElement {
                     data-key="type"
                     @change="${(e) => this._updateSlot(i, { type: e.target.value })}"
                   >
-                    ${Object.entries(SLOT_TYPES).map(
-                      ([key, meta]) => html`
-                        <option value="${key}" ?selected="${(slot.type || "frame") === key}">
-                          ${meta.label}${meta.ready === false ? " (folgt)" : ""}
-                        </option>
-                      `
+                    ${slotTypeOptions().map((o) =>
+                      o.trenner
+                        ? html`<option disabled data-trenner>${o.label}</option>`
+                        : html`
+                            <option
+                              value="${o.value}"
+                              ?selected="${(slot.type || "frame") === o.value}"
+                            >
+                              ${o.label}
+                            </option>
+                          `
                     )}
                   </select>
                 </div>

@@ -388,6 +388,10 @@ export const editorStyles = css`
     padding: 6px;
     font-size: 13px;
   }
+  .row select option[disabled] {
+    font-style: italic;
+    color: var(--secondary-text-color, #888);
+  }
   .row-val {
     width: 54px;
     text-align: right;

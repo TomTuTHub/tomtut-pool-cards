@@ -19,6 +19,11 @@ import { numText } from "./shared/util.js";
  */
 export const HERO_DEFAULTS = {
   thermo_scale: 133,
+  /* Freitext-Badge — die Defaults sind die bisherige feste Position,
+     damit bestehende Configs unverändert aussehen. */
+  label_top: 3,
+  label_left: 50,
+  label_scale: 100,
 };
 
 /* Effektive Anker einer Form — auch der Editor initialisiert damit seine Regler */
@@ -82,8 +87,9 @@ export class TomtutPoolHero extends SlotBase {
         ${c.label_text
           ? html`<div
               class="label-badge"
-              style="top:${c.label_top ?? 3}%; left:${c.label_left ??
-              50}%; transform:translateX(-50%);"
+              style="top:${this._v("label_top")}%; left:${this._v(
+                "label_left"
+              )}%; transform:translateX(-50%) scale(${(this._v("label_scale") ?? 100) / 100});"
             >
               ${c.label_text}
             </div>`

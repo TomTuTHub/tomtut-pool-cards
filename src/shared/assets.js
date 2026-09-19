@@ -107,3 +107,37 @@ export const SLOT_TYPES = {
   solar: { label: "Solarheizung", ready: false, hint: "Solarheizung folgt in einer späteren Version." },
   inlet: { label: "Einlaufdüse", ready: false, hint: "Einlaufdüse folgt in einer späteren Version." },
 };
+
+/*
+ * Reihenfolge im Auswahlfeld des Editors — bewusst anders als die Tabelle
+ * oben: zuerst die allgemeinen Slots (Freifeld, Ausgeblendet, Leerer Rahmen),
+ * danach ein nicht wählbarer Trenner und erst dann die Gerätetypen.
+ * Die Schlüssel selbst bleiben unverändert; das hier ist reine Anzeige.
+ */
+export const SLOT_TYPE_GROUPS = [
+  { trenner: null, keys: ["custom", "hidden", "frame"] },
+  { trenner: "— Geräte —", keys: ["heatpump", "pump", "uv", "solar", "inlet"] },
+];
+
+/*
+ * Flache Optionsliste für das <select>. Ein Eintrag mit `trenner: true` ist
+ * die nicht wählbare Zwischenüberschrift (disabled option) — das ist die
+ * Variante, die ein natives Select in jedem Browser sauber darstellt.
+ * Nicht in einer Gruppe gelistete Typen hängen sich hinten an, damit ein
+ * neuer Slot-Typ nie aus dem Editor fällt.
+ */
+export const slotTypeOptions = () => {
+  const genannt = new Set(SLOT_TYPE_GROUPS.flatMap((g) => g.keys));
+  const rest = Object.keys(SLOT_TYPES).filter((k) => !genannt.has(k));
+  const opt = (key) => ({
+    value: key,
+    label: SLOT_TYPES[key].label + (SLOT_TYPES[key].ready === false ? " (folgt)" : ""),
+  });
+  const aus = [];
+  for (const g of SLOT_TYPE_GROUPS) {
+    if (g.trenner) aus.push({ trenner: true, label: g.trenner });
+    for (const k of g.keys) if (SLOT_TYPES[k]) aus.push(opt(k));
+  }
+  for (const k of rest) aus.push(opt(k));
+  return aus;
+};
