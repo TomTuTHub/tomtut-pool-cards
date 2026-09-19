@@ -14,7 +14,8 @@
  * eintragen — die Regeln dazu stehen im Werkzeug. Zur Kontrolle prüft der
  * Smoke-Test jeden Anker gegen die Zonenkarte in
  * test/fixtures/becken-zonen.json (Thermometer und Bodenablauf auf Wasser,
- * pH und RX auf der Wand).
+ * pH und RX auf der Wand, Skimmer und Einlaufdüse auf der hinteren
+ * Wasserkante).
  *
  * Die Bilder werden nur noch transparent ausgeliefert — Hintergrund und
  * Schriftfarbe kommen aus der Card-Option `frame.fill`.
@@ -30,6 +31,8 @@ export const SHAPES = {
     ph: { left: 34.1, top: 69.5 },
     rx: { left: 63.9, top: 69.5 },
     drain: { left: 78.0, top: 30.9 },
+    skimmer: { left: 22.3, top: 19.3 },
+    inlet: { left: 65.5, top: 11.6 },
     label_anker: { left: 49.8, top: 1.3 },
   },
   rechteck: {
@@ -39,6 +42,8 @@ export const SHAPES = {
     ph: { left: 32.6, top: 68.5 },
     rx: { left: 64.5, top: 68.5 },
     drain: { left: 79.6, top: 33.4 },
+    skimmer: { left: 20, top: 24.1 },
+    inlet: { left: 66.2, top: 14.6 },
     label_anker: { left: 49.4, top: 13.2 },
   },
   achtform: {
@@ -48,6 +53,8 @@ export const SHAPES = {
     ph: { left: 32.7, top: 68.2 },
     rx: { left: 65.1, top: 68.2 },
     drain: { left: 80.4, top: 34.8 },
+    skimmer: { left: 19.8, top: 23.8 },
+    inlet: { left: 66.7, top: 12.1 },
     label_anker: { left: 49.7, top: 15.6 },
   },
   rund: {
@@ -57,6 +64,8 @@ export const SHAPES = {
     ph: { left: 33.5, top: 72.4 },
     rx: { left: 64.5, top: 72.4 },
     drain: { left: 79.3, top: 39.1 },
+    skimmer: { left: 21.3, top: 13.5 },
+    inlet: { left: 66.2, top: 12.6 },
     label_anker: { left: 49.8, top: 1.0 },
   },
   niere: {
@@ -66,6 +75,8 @@ export const SHAPES = {
     ph: { left: 34.4, top: 65.3 },
     rx: { left: 65.0, top: 65.3 },
     drain: { left: 79.5, top: 35.7 },
+    skimmer: { left: 22.3, top: 21.8 },
+    inlet: { left: 66.6, top: 15.3 },
     label_anker: { left: 50.5, top: 10.2 },
   },
   freiform: {
@@ -75,6 +86,8 @@ export const SHAPES = {
     ph: { left: 33.4, top: 75.4 },
     rx: { left: 66.6, top: 75.4 },
     drain: { left: 82.3, top: 47.1 },
+    skimmer: { left: 20.4, top: 28.6 },
+    inlet: { left: 68.4, top: 14.8 },
     label_anker: { left: 50.9, top: 6.7 },
   },
 };
@@ -91,10 +104,31 @@ export const shapeOf = (name) => SHAPES[String(name || "").toLowerCase()] || SHA
  */
 export const DEVICE_IMAGES = {
   heatpump: "waermepumpe_transparent.png",
-  /* Iteration 1: Platzhalter im Vigipool-Skizzenstil.
-     Thomas' endgültige Zeichnung ersetzt später genau diese Datei. */
   pump: "poolpumpe_transparent.png",
   uv: "uv_lampe_transparent.png",
+  solar: "solar_transparent.png",
+  inlet: "einlaufduese_transparent.png",
+};
+
+/*
+ * Sprites auf dem Becken (Hero).
+ *
+ * Sie werden bewusst NICHT ins Becken-Artwork eingebacken: so bleibt jedes
+ * Teil einzeln an- und abwählbar und funktioniert über alle sechs Formen,
+ * ohne dass es sechs Bildvarianten je Zubehörteil bräuchte.
+ *
+ *   ankerName   Eintrag in SHAPES, auf dem das Sprite sitzt (Mittelpunkt)
+ *   groesse     Breite in Prozent der Beckenbreite (im Editor verstellbar)
+ *   standard    an oder aus, wenn die Config nichts sagt
+ *
+ * Skimmer und Einlaufdüse sind ab Werk an — so sieht ein frisches Becken aus
+ * wie ein echtes. Der Bodenablauf ist aus, weil ihn längst nicht jedes Becken
+ * hat (Aufstellbecken meist nicht).
+ */
+export const HERO_SPRITES = {
+  skimmer: { file: "skimmer_transparent.png", anker: "skimmer", groesse: 10, standard: true },
+  einlauf: { file: "einlaufduese_transparent.png", anker: "inlet", groesse: 6.5, standard: true },
+  drain: { file: "bodenablauf_transparent.png", anker: "drain", groesse: 9, standard: false },
 };
 
 /*
@@ -118,8 +152,10 @@ export const DEVICE_VARIANTS = {
  */
 export const DEVICE_RATIOS = {
   heatpump: 988 / 725,
-  pump: 221 / 150,
+  pump: 1191 / 889,
   uv: 947 / 384,
+  solar: 1188 / 888,
+  inlet: 1192 / 889,
 };
 
 export const imagePath = (file) => IMAGE_BASE + file;
@@ -132,8 +168,10 @@ export const deviceImage = (kind, variante) =>
 export const deviceRatio = (kind) => DEVICE_RATIOS[kind] || 1;
 
 /*
- * Slot-Typen. `ready: false` = für eine spätere Iteration reserviert
- * (Artwork fehlt noch) — solche Slots rendern als leerer Rahmen mit Hinweis.
+ * Slot-Typen. `ready: false` wäre ein für eine spätere Iteration reservierter
+ * Typ (Artwork fehlt noch) — der rendert dann als leerer Rahmen mit Hinweis.
+ * Seit Iteration 5 gibt es keinen solchen Typ mehr; das Feld bleibt, weil die
+ * Mechanik für künftige Geräte gebraucht wird.
  * Die Schlüssel sind Teil der Config und ändern sich nie (Update-Sicherheit),
  * nur die Beschriftung im Editor.
  */
@@ -144,8 +182,8 @@ export const SLOT_TYPES = {
   frame: { label: "Leerer Rahmen", ready: true },
   hidden: { label: "Ausgeblendet", ready: true },
   uv: { label: "UV-C-Lampe", ready: true },
-  solar: { label: "Solarheizung", ready: false, hint: "Solarheizung folgt in einer späteren Version." },
-  inlet: { label: "Einlaufdüse", ready: false, hint: "Einlaufdüse folgt in einer späteren Version." },
+  solar: { label: "Solarheizung", ready: true },
+  inlet: { label: "Einlaufdüse", ready: true },
 };
 
 /*

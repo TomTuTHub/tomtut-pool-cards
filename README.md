@@ -43,6 +43,15 @@ eine Herstellerintegration in Home Assistant landen.
   Temperaturfühler und ein ruhiges blau-violettes Glühen über dem Rohr, solange die Lampe
   läuft. Das Bild lässt sich frei drehen und spiegeln, damit die Lampe so im Kasten liegt
   wie in der Anlage.
+- **Solarheizungs-Kasten** — Absorberfeld mit Vorlauf- und Rücklauf-Thermometer an den
+  beiden Rohrstutzen, optionalem Stromverbrauch und Powerbutton (Solarventil oder -pumpe)
+  mit Rückfrage. Der Vergleich der beiden Temperaturen zeigt auf einen Blick, ob die Sonne
+  gerade etwas bringt.
+- **Einlaufdüsen-Kasten** — bewusst minimal: ein Thermometer an der Düsenöffnung zeigt, wie
+  warm das Wasser ist, das gerade ins Becken läuft.
+- **Zubehör am Becken** — Skimmer, Einlaufdüse und Bodenablauf liegen als eigene kleine
+  Bilder auf dem Becken, nicht in der Zeichnung. Jedes ist einzeln an- und abwählbar, in der
+  Größe verstellbar und sitzt auf jeder der sechs Formen richtig.
 - **Freifeld (benutzerdefiniert)** — freie Überschrift plus bis zu drei Einträge: Entity-Wert,
   Schalt-Button oder Freitext.
 - **Eine Optik-Einstellung für alles** — Rahmen an/aus und `fill: transparent | weiss | schwarz`.
@@ -93,7 +102,7 @@ liegen damit automatisch am richtigen Platz und müssen nicht separat kopiert we
 Im Dashboard-Editor: **Karte hinzufügen** → **TomTuT Pool Dashboard**. Der visuelle Editor
 öffnet sich automatisch; die folgenden Beispiele zeigen dasselbe in YAML.
 
-### 1. Alles — Becken, Wärmepumpe, Poolpumpe, UV-Lampe, Freifeld
+### 1. Alles — Becken, Wärmepumpe, Poolpumpe, UV-Lampe, Solar, Einlaufdüse, Freifeld
 
 ```yaml
 type: custom:tomtut-pool-dashboard
@@ -104,6 +113,8 @@ hero:
   ph_entity: sensor.pool_ph
   rx_entity: sensor.pool_redox
   label_text: Pool
+  # Skimmer und Einlaufdüse sind ab Werk an, der Bodenablauf nicht
+  show_drain: true
 frame:
   enabled: true
   fill: transparent
@@ -129,6 +140,14 @@ slots:
     label: UV-C-Lampe
     switch_entity: switch.shelly_uv_lampe
     power_entity: sensor.shelly_uv_lampe_power
+  - type: solar
+    label: Solarheizung
+    switch_entity: switch.solarventil
+    temp_in_entity: sensor.solar_vorlauf
+    temp_out_entity: sensor.solar_ruecklauf
+  - type: inlet
+    label: Einlaufdüse
+    temp_entity: sensor.einlauf_temperatur
   - type: custom
     title: Werte
     align: mitte
@@ -217,12 +236,22 @@ slots:
 | `label_top` / `label_left` | aus der Formen-Tabelle | Position des Freitexts in % (Standard = oben mittig über der Wasserfläche) |
 | `framed` | `false` | Becken mit Rahmen zeichnen |
 | `show_thermo` / `show_ph` / `show_rx` | `true` | Einzelne Overlays abschalten |
-| `show_drain` | `false` | Bodenablauf — Grafik folgt, wird derzeit nicht gezeichnet |
+| `show_skimmer` | `true` | Skimmer am hinteren Beckenrand links |
+| `show_inlet` | `true` | Einlaufdüse am hinteren Beckenrand rechts |
+| `show_drain` | `false` | Bodenablauf auf der Wasserfläche |
 | `thermo_top` / `thermo_left` / `thermo_scale` | aus der Formen-Tabelle | Position und Größe des Thermometers |
 | `ph_top` / `ph_left` / `rx_top` / `rx_left` | aus der Formen-Tabelle | Position der Kästchen |
+| `skimmer_top` / `skimmer_left` / `skimmer_size` | aus der Formen-Tabelle / `10` | Lage und Breite des Skimmers |
+| `inlet_top` / `inlet_left` / `inlet_size` | aus der Formen-Tabelle / `6.5` | Lage und Breite der Einlaufdüse |
+| `drain_top` / `drain_left` / `drain_size` | aus der Formen-Tabelle / `9` | Lage und Breite des Bodenablaufs |
 
 Die Anker der Formen-Tabelle sind an den Bildern vermessen (siehe [Beckenformen](#beckenformen));
-alle lassen sich pro Card überschreiben.
+alle lassen sich pro Card überschreiben. Die drei `*_size`-Werte sind die **Breite in Prozent
+der Beckenbreite** — im Editor steht dafür je ein Regler „Größe".
+
+Skimmer und Einlaufdüse sind ab Werk **an**: so sieht ein Becken aus, das im Betrieb ist.
+Wer nur das nackte Becken will, schaltet beide ab. Der Bodenablauf ist ab Werk **aus**, weil
+ihn längst nicht jedes Becken hat.
 
 ### `frame` — Optik aller Slots
 
@@ -245,11 +274,12 @@ bewusst keine Farbwahl pro Element und keine hellen/dunklen Bildvarianten mehr.
 | `frame` | fertig | Leerer Rahmen — hält das Raster symmetrisch |
 | `hidden` | fertig | Slot ausblenden; die übrigen rücken nach |
 | `uv` | fertig | UV-C-Lampe im Rohrstrang |
-| `solar` | reserviert | Solarheizung — dito |
-| `inlet` | reserviert | Einlaufdüse — dito |
+| `solar` | fertig | Solarheizung (Absorberfeld) |
+| `inlet` | fertig | Einlaufdüse |
 
-Reservierte Typen kannst du heute schon eintragen: die Card rendert einen leeren Rahmen und
-füllt ihn, sobald der Typ fertig ist — deine Konfiguration bleibt unverändert.
+Alle Typen sind fertig — es gibt keinen reservierten Typ mehr. Ein unbekannter `type` (etwa
+ein Tippfehler oder ein Typ aus einer neueren Version) rendert weiterhin als leerer Rahmen,
+statt die Card scheitern zu lassen.
 
 Im Editor stehen im Auswahlfeld zuerst die allgemeinen Slots (`custom`, `hidden`, `frame`),
 danach trennt eine nicht wählbare Zeile „— Geräte —“ die Gerätetypen ab. Die Schlüssel selbst
@@ -288,7 +318,10 @@ Mindestens **eine** der vier Entities sollte gesetzt sein; sonst zeigt der Kaste
 | `idle_watt` | `30` | Ruhewatt: unter diesem Verbrauch gilt die Pumpe als stehend (Laufrad grau) |
 | `label` | – | Überschrift über dem Kasten |
 | `fan_speed_1` / `fan_speed_2` / `fan_speed_3` | `3` / `5` / `8` | Tempo des Laufrads je Stufe auf der Skala **1–10** (links langsam, rechts schnell) |
-| `fan_top` / `fan_left` / `fan_size` | `48.5` / `35` / `29.5` | Lage des Laufrads in % des Bildes — die Box ist immer quadratisch, das Rad bleibt kreisrund |
+| `fan_top` / `fan_left` / `fan_size` | `52` / `61` / `19` | Lage des Laufrads in % des Bildes — ab Werk mittig auf der Volute (dem Spiralgehäuse). Die Box ist immer quadratisch, das Rad bleibt kreisrund |
+| `power_btn_top` / `power_btn_left` / `power_btn_scale` | `43` / `79` / `110` | Powerbutton — ab Werk auf dem Motor |
+| `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `9` / `26` / `98` / `true` / `true` | Watt-Box unten links |
+| `temp_top` / `temp_left` / `temp_scale` | `10` / `36` / `119` | Thermometer oben am Ausgangsstutzen |
 | `show_stages` / `show_power_button` / `show_power` / `show_temp` / `show_fan` | `true` | Einzelne Elemente abwählen |
 
 Mindestens `stage_entities` (≥ 1) **oder** `main_entity` sollte gesetzt sein.
@@ -361,6 +394,40 @@ Overlays sitzen dann anders und wollen im Editor neu gesetzt werden.
 > Stufen. In den meisten Anlagen hängt sie ohnehin an einer Zeitschaltuhr parallel zur
 > Poolpumpe.
 
+### Slot `solar` — Solarheizung
+
+Eine Solarheizung heizt nicht selbst, sie gibt nur den Weg über die Absorber frei. Alle
+Entities sind optional; es reicht eine.
+
+| Option | Standard | Beschreibung |
+|---|---|---|
+| `label` | – | Überschrift über dem Bild |
+| `switch_entity` | – | Solarventil oder Solarpumpe → Powerbutton mit Rückfrage (`switch`, `input_boolean`, `light`) |
+| `temp_in_entity` | – | Vorlauf (Wasser zum Absorber) → Thermometer am unteren Stutzen |
+| `temp_out_entity` | – | Rücklauf (Wasser zurück ins Becken) → Thermometer am oberen Stutzen |
+| `power_entity` | – | Leistung der Solarpumpe in W oder kW → Watt-Box |
+| `show_power_button` / `show_temp_in` / `show_temp_out` / `show_power` | `true` | Einzelne Elemente abschalten |
+| `power_btn_top` / `power_btn_left` / `power_btn_scale` | `8` / `4` / `110` | Powerbutton |
+| `temp_in_top` / `temp_in_left` / `temp_in_scale` | `84` / `76` / `105` | Vorlauf-Thermometer |
+| `temp_out_top` / `temp_out_left` / `temp_out_scale` | `17` / `76` / `105` | Rücklauf-Thermometer |
+| `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `6` / `30` / `100` / `true` / `true` | Watt-Box |
+
+Welcher Stutzen welcher ist, sagt die Position: die Defaults sitzen an den beiden Rohrstutzen
+rechts im Bild — unten Vorlauf, oben Rücklauf. Verschieben geht im Editor.
+
+### Slot `inlet` — Einlaufdüse
+
+Der schlankeste Slot der Sammlung: eine Einlaufdüse hat nichts zu schalten.
+
+| Option | Standard | Beschreibung |
+|---|---|---|
+| `label` | – | Überschrift über dem Bild |
+| `temp_entity` | – | Temperatur des einströmenden Wassers → Thermometer an der Düsenöffnung |
+| `show_temp` | `true` | Thermometer abschalten |
+| `temp_top` / `temp_left` / `temp_scale` | `50` / `28` / `115` | Thermometer |
+
+Dieselbe Zeichnung sitzt zusätzlich als kleines Bild am Becken selbst (`hero.show_inlet`).
+
 ### Slot `custom` — Freifeld (benutzerdefiniert)
 
 | Option | Standard | Beschreibung |
@@ -399,8 +466,8 @@ Zeitstempel, Text), wird als **„—"** dargestellt statt als sinnlose Zahl.
 | `freiform` | `poolbecken_freiform.png` |
 
 Eine neue Form braucht genau zwei Dinge: das PNG in `dist/` und einen Eintrag in `SHAPES`
-(`src/shared/assets.js`) mit den Ankern für Thermometer, pH, RX, Bodenablauf und Freitext.
-Layout, Card und Editor bleiben unberührt.
+(`src/shared/assets.js`) mit den Ankern für Thermometer, pH, RX, Bodenablauf, Skimmer,
+Einlaufdüse und Freitext. Layout, Card und Editor bleiben unberührt.
 
 Die Anker sind **am Bild vermessen**, nicht geschätzt:
 
@@ -411,12 +478,15 @@ node tools/becken-zonen.mjs           # Zonenkarte für den Test neu schreiben
 
 Das Werkzeug trennt in jedem Bild die Wasserfläche von der vorderen Beckenwand und setzt
 danach die Anker: Thermometer links auf dem Wasser, pH und RX nebeneinander auf einer Höhe
-mittig auf der Wand, Bodenablauf rechts unten auf dem Wasser, Freitext oben mittig. Die
-Zonenkarte landet in `test/fixtures/becken-zonen.json`; der Smoke-Test prüft damit, dass
-jeder Anker wirklich in seiner Zone liegt.
+mittig auf der Wand, Bodenablauf rechts unten auf dem Wasser, Skimmer und Einlaufdüse auf der
+hinteren Wasserkante (links bzw. rechts), Freitext oben mittig. Die Zonenkarte landet in
+`test/fixtures/becken-zonen.json`; der Smoke-Test prüft damit, dass jeder Anker wirklich in
+seiner Zone liegt.
 
-> Das Artwork der Poolpumpe ist in dieser Version noch ein **Platzhalter** und wird durch die
-> endgültige Zeichnung ersetzt. Positionen und Bedienung ändern sich dadurch nicht.
+Das Zubehör am Becken ist bewusst **nicht in die Zeichnung eingebacken**: Skimmer,
+Einlaufdüse und Bodenablauf sind eigene PNGs (`HERO_SPRITES` in `src/shared/assets.js`), die
+auf ihrem Anker sitzen. So bleibt jedes Teil einzeln abwählbar und funktioniert auf allen
+sechs Formen, ohne dass es je Form eine eigene Bildvariante bräuchte.
 
 ---
 
@@ -452,8 +522,13 @@ entfernt. Eine eingefrorene Beispiel-Config liegt als `test/fixtures/v1-config.y
 und muss in jeder künftigen Version identisch rendern — der Smoke-Test prüft genau das.
 
 Wird ein reservierter Slot-Typ fertig, ersetzt sein Artwork den Platzhalter-Rahmen — die
-Konfiguration bleibt dieselbe. Genau so kam in Iteration 4 die UV-Lampe zu einem `type: uv`,
-der vorher nur ein Rahmen mit Hinweis war.
+Konfiguration bleibt dieselbe. Genau so kam in Iteration 4 die UV-Lampe zu einem `type: uv`
+und in Iteration 5 die Solarheizung (`type: solar`) und die Einlaufdüse (`type: inlet`) zu
+ihrem Bild; wer sie vorher schon eingetragen hatte, sieht sie jetzt einfach.
+
+Eine Ausnahme von „sieht aus wie vorher" ist bewusst gewählt: seit Iteration 5 zeigt ein
+Becken ohne weitere Angabe **Skimmer und Einlaufdüse**. Wer das nicht will, setzt
+`show_skimmer: false` bzw. `show_inlet: false`.
 
 Felder, die es nicht mehr gibt (`image_variant`, `image_url`, `box_color`, `fan_dur_*`,
 `fan_color`, `power_color` und die übrigen Farbwähler), werden **ignoriert, nie abgelehnt**.
@@ -481,7 +556,7 @@ src/
   slots/                 ein Modul je Slot-Typ
   shared/                Formen-/Asset-Tabelle, Styles, Slot-Basis, Editor-Felder
   editor/                visueller Editor
-tools/prepare-assets.py  erzeugt die optimierten PNGs in dist/
+tools/prepare-assets.py  erzeugt die optimierten PNGs in dist/ (Becken, Geräte, Sprites)
 tools/becken-zonen.mjs   vermisst die Becken-Bilder (Anker + Zonen-Fixture)
 tools/png-lesen.mjs      minimaler PNG-Leser für das Messwerkzeug
 ```

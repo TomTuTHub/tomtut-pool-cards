@@ -15,14 +15,21 @@ Was passiert:
   * Geraete  — dieselbe Optimierung, ausschliesslich transparent. Helle und
                dunkle Varianten gibt es seit Iteration 2 nicht mehr: der
                Hintergrund kommt aus der Card-Option `frame.fill`.
-  * Poolpumpe — transparente Raender werden vorher weggeschnitten
+  * Sprites   — Skimmer, Einlaufduese und Bodenablauf liegen zusaetzlich als
+               kleine Bilder auf dem Becken (siehe HERO_SPRITES in
+               src/shared/assets.js); dieselbe Optimierung
+  * Trim      — transparente Raender werden weggeschnitten, damit die
+               Prozent-Positionen der Overlays am Motiv haengen und nicht am
+               Rand der Leinwand
   * UV-Lampe  — zwei Bildvarianten (Anschluss seitlich / oben); NICHT
                beschneiden, sonst laegen die beiden nicht mehr deckungsgleich
 
 Nach einem neuen Geraetebild gehoert das Seitenverhaeltnis in DEVICE_RATIOS
-(src/shared/assets.js); nach einem neuen Beckenbild einmal
-`node tools/becken-zonen.mjs --anker` laufen lassen und die Anker in SHAPES
-uebernehmen.
+(src/shared/assets.js) und die Overlay-Defaults des Slots wollen am neuen
+Motiv nachgemessen werden; nach einem neuen Beckenbild einmal
+`node tools/becken-zonen.mjs --anker` laufen lassen, die Anker in SHAPES
+uebernehmen und `node tools/becken-zonen.mjs` die Test-Fixture neu schreiben
+lassen.
 
 Benoetigt Pillow (pip install pillow).
 """
@@ -31,6 +38,10 @@ import sys
 from PIL import Image
 
 MAX_WIDTH = 1280
+# Reine Becken-Sprites werden nie gross angezeigt (rund 10 % der Beckenbreite),
+# deshalb reicht ihnen ein Bruchteil der Aufloesung — spart ueber 100 kB, die
+# HACS sonst in jede Home-Assistant-Installation kopiert.
+MAX_SPRITE_WIDTH = 640
 COLORS = 192
 
 BECKEN = {
@@ -45,20 +56,29 @@ BECKEN = {
 # Quelle -> Zieldatei, trim = transparente Raender abschneiden
 GERAETE = [
     ("Waermepumpe.png", "waermepumpe_transparent.png", False),
-    ("poolpumpe_platzhalter_vigipoolstil.png", "poolpumpe_transparent.png", True),
+    ("Poolpumpe.png", "poolpumpe_transparent.png", True),
     ("UV_C_Lampe.png", "uv_lampe_transparent.png", False),
     ("UV_C_Lampe_2.png", "uv_lampe_transparent_2.png", False),
+    ("Solarheizung.png", "solar_transparent.png", True),
+    ("Einlaufduese.png", "einlaufduese_transparent.png", True),
+]
+
+# Nur Sprites auf dem Becken, nie als grosses Geraetebild — kleiner ausgeliefert.
+# (Die Einlaufduese ist beides und steht deshalb oben bei den Geraeten.)
+SPRITES = [
+    ("Skimmer.png", "skimmer_transparent.png"),
+    ("Bodenablauf.png", "bodenablauf_transparent.png"),
 ]
 
 
-def load(path, trim=False):
+def load(path, trim=False, max_width=MAX_WIDTH):
     im = Image.open(path).convert("RGBA")
     if trim:
         box = im.getbbox()
         if box:
             im = im.crop(box)
-    if im.width > MAX_WIDTH:
-        im = im.resize((MAX_WIDTH, round(im.height * MAX_WIDTH / im.width)), Image.LANCZOS)
+    if im.width > max_width:
+        im = im.resize((max_width, round(im.height * max_width / im.width)), Image.LANCZOS)
     return im
 
 
@@ -84,6 +104,12 @@ def main():
 
     for quelle, ziel, trim in GERAETE:
         im = load(os.path.join(src, quelle), trim=trim)
+        size = save(im, os.path.join(dst, ziel))
+        total += size
+        print(f"{ziel:34s} {im.size[0]:5d}x{im.size[1]:<5d} {size/1024:8.1f} kB")
+
+    for quelle, ziel in SPRITES:
+        im = load(os.path.join(src, quelle), trim=True, max_width=MAX_SPRITE_WIDTH)
         size = save(im, os.path.join(dst, ziel))
         total += size
         print(f"{ziel:34s} {im.size[0]:5d}x{im.size[1]:<5d} {size/1024:8.1f} kB")

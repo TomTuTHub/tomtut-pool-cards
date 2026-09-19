@@ -1,18 +1,20 @@
 import { html, css, nothing } from "lit";
 import { SlotBase } from "./shared/slot-base.js";
 import { frameStyles, overlayStyles } from "./shared/styles.js";
-import { shapeOf, imagePath } from "./shared/assets.js";
+import { shapeOf, imagePath, HERO_SPRITES } from "./shared/assets.js";
 import { numText } from "./shared/util.js";
 
 /*
  * Hero — das Becken mit seinen Overlays.
  *
- * Die Anker (Thermometer, pH, RX, Bodenablauf) kommen aus der Formen-Tabelle
- * in shared/assets.js und lassen sich pro Card überschreiben. Eine neue Form
- * braucht daher nur ein PNG + einen Tabelleneintrag, keinen Code hier.
+ * Die Anker (Thermometer, pH, RX, Bodenablauf, Skimmer, Einlaufdüse) kommen
+ * aus der Formen-Tabelle in shared/assets.js und lassen sich pro Card
+ * überschreiben. Eine neue Form braucht daher nur ein PNG + einen
+ * Tabelleneintrag, keinen Code hier.
  *
- * Bodenablauf: der Anker ist vorgesehen, das Sprite fehlt noch — bis dahin
- * wird bewusst nichts gerendert (kein Platzhalter-Kästchen im Bild).
+ * Skimmer, Einlaufdüse und Bodenablauf sind seit Iteration 5 eigene Sprites
+ * (HERO_SPRITES) statt Teil der Zeichnung: sie liegen auf der Wasserfläche,
+ * bleiben einzeln abwählbar und gelten für alle Formen gleichermaßen.
  *
  * Auch der Freitext hängt seit Iteration 4 an der Form (`label_anker`): sein
  * Platz ist oben mittig über der Wasserfläche, und die liegt je nach Becken
@@ -27,11 +29,22 @@ export const HERO_DEFAULTS = {
   /* Rückfall, falls eine Form (noch) keinen gemessenen Freitext-Anker hat */
   label_top: 3,
   label_left: 50,
+  /* Sprite-Größen: Breite in Prozent der Beckenbreite */
+  skimmer_size: HERO_SPRITES.skimmer.groesse,
+  inlet_size: HERO_SPRITES.einlauf.groesse,
+  drain_size: HERO_SPRITES.drain.groesse,
 };
 
 /* Effektive Anker einer Form — auch der Editor initialisiert damit seine Regler */
 export const heroDefaultsFor = (shapeName) => {
   const s = shapeOf(shapeName);
+  const anker = {};
+  for (const sprite of Object.values(HERO_SPRITES)) {
+    const a = s[sprite.anker];
+    if (!a) continue;
+    anker[`${sprite.anker}_top`] = a.top;
+    anker[`${sprite.anker}_left`] = a.left;
+  }
   return {
     ...HERO_DEFAULTS,
     thermo_top: s.thermo.top,
@@ -40,6 +53,7 @@ export const heroDefaultsFor = (shapeName) => {
     ph_left: s.ph.left,
     rx_top: s.rx.top,
     rx_left: s.rx.left,
+    ...anker,
     label_top: s.label_anker?.top ?? HERO_DEFAULTS.label_top,
     label_left: s.label_anker?.left ?? HERO_DEFAULTS.label_left,
   };
@@ -73,6 +87,7 @@ export class TomtutPoolHero extends SlotBase {
     const body = html`
       <div class="img-wrap">
         <img src="${imagePath(shape.file)}" alt="Pool ${shape.label}" />
+        ${this._sprites()}
 
         ${showThermo
           ? this.renderThermo({
@@ -105,6 +120,34 @@ export class TomtutPoolHero extends SlotBase {
     return framed
       ? this.renderSlot(body)
       : html`<div class="${this._frameClasses} bare">${body}</div>`;
+  }
+
+  /*
+   * Zubehör auf dem Becken (Skimmer, Einlaufdüse, Bodenablauf).
+   *
+   * Jedes Sprite hängt an seinem Anker der Form, ist einzeln an-/abwählbar
+   * (`show_skimmer`, `show_inlet`, `show_drain`) und in der Größe verstellbar
+   * (`*_size` = Breite in Prozent der Beckenbreite). Es liegt über der
+   * Wasserfläche, aber unter Thermometer, pH/RX und Freitext.
+   */
+  _sprites() {
+    const c = this.config || {};
+    return Object.values(HERO_SPRITES).map((sprite) => {
+      const gesetzt = c[`show_${sprite.anker}`];
+      const an = gesetzt === undefined || gesetzt === null ? sprite.standard : gesetzt !== false;
+      if (!an) return nothing;
+      const groesse = Number(this._v(`${sprite.anker}_size`));
+      const breite = groesse > 0 ? groesse : sprite.groesse;
+      return html`<img
+        class="hero-sprite sprite-${sprite.anker}"
+        src="${imagePath(sprite.file)}"
+        alt=""
+        style="top:${this._anchor(sprite.anker, "top")}%; left:${this._anchor(
+          sprite.anker,
+          "left"
+        )}%; width:${breite}%;"
+      />`;
+    });
   }
 
   _chemBox(key, entity, top, left) {

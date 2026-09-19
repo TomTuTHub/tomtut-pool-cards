@@ -20,6 +20,24 @@ const KLIMA = ["climate", "number", "input_number", "sensor"];
 
 /* ---------------- Becken (Hero) ---------------- */
 
+/*
+ * Größe und Lage eines Becken-Sprites (Skimmer, Einlaufdüse, Bodenablauf).
+ * Alle drei haben dieselben drei Regler — deshalb eine Funktion statt
+ * dreimal derselbe Block. `anker` ist der Name in der Formen-Tabelle.
+ */
+const spriteFelder = (f, titel, anker, schalter, standard) =>
+  f.shown(schalter, standard)
+    ? section(
+        `${titel} — Größe und Lage`,
+        html`
+          ${f.slider("Größe", `${anker}_size`, 2, 30, "%", 0.5)}
+          ${f.slider("Von oben", `${anker}_top`, 0, 100, "%", 0.5)}
+          ${f.slider("Von links", `${anker}_left`, 0, 100, "%", 0.5)}
+          <small>Die Größe ist die Breite in Prozent der Beckenbreite.</small>
+        `
+      )
+    : nothing;
+
 export const heroFields = (f) => html`
   ${elementsGroup(html`
     ${f.element("🌡 Thermometer", "show_thermo", [
@@ -30,7 +48,9 @@ export const heroFields = (f) => html`
     ])}
     ${f.element("🧪 pH-Kästchen", "show_ph", ["ph_entity", "ph_top", "ph_left"])}
     ${f.element("⚗ Redox / RX-Kästchen", "show_rx", ["rx_entity", "rx_top", "rx_left"])}
-    ${f.element("⚓ Bodenablauf (Grafik folgt)", "show_drain", [], false)}
+    ${f.element("🛟 Skimmer", "show_skimmer", ["skimmer_size", "skimmer_top", "skimmer_left"])}
+    ${f.element("💦 Einlaufdüse", "show_inlet", ["inlet_size", "inlet_top", "inlet_left"])}
+    ${f.element("⚓ Bodenablauf", "show_drain", ["drain_size", "drain_top", "drain_left"], false)}
   `)}
   ${f.select(
     "Beckenform",
@@ -75,6 +95,9 @@ export const heroFields = (f) => html`
         )}
       `
     : nothing}
+  ${spriteFelder(f, "Skimmer", "skimmer", "show_skimmer", true)}
+  ${spriteFelder(f, "Einlaufdüse", "inlet", "show_inlet", true)}
+  ${spriteFelder(f, "Bodenablauf", "drain", "show_drain", false)}
   ${f.text("Freitext auf dem Becken (optional)", "label_text", "", "z.B. Pool")}
   ${f.raw("label_text")
     ? section(
@@ -544,6 +567,149 @@ export const uvFields = (f) => html`
       </small>
     `
   )}
+`;
+
+/* ---------------- Solarheizung ---------------- */
+
+export const solarFields = (f) => html`
+  ${elementsGroup(html`
+    ${f.element("⏻ Powerbutton", "show_power_button", [
+      "switch_entity",
+      "power_btn_top",
+      "power_btn_left",
+      "power_btn_scale",
+    ])}
+    ${f.element("🌡 Vorlauf (ins Feld)", "show_temp_in", [
+      "temp_in_entity",
+      "temp_in_top",
+      "temp_in_left",
+      "temp_in_scale",
+    ])}
+    ${f.element("🌡 Rücklauf (ins Becken)", "show_temp_out", [
+      "temp_out_entity",
+      "temp_out_top",
+      "temp_out_left",
+      "temp_out_scale",
+    ])}
+    ${f.element("⚡ Stromverbrauch", "show_power", [
+      "power_entity",
+      "power_bottom",
+      "power_left",
+      "power_scale",
+      "power_box",
+      "power_label",
+    ])}
+  `)}
+  <small>
+    Die Solarheizung heizt nicht selbst — sie gibt nur den Weg über die Absorber frei. Der
+    Vergleich Vorlauf/Rücklauf zeigt, ob sie gerade etwas bringt.
+  </small>
+  ${f.text("Überschrift (optional)", "label", "", "z.B. Solarheizung")}
+  ${f.shown("show_power_button")
+    ? html`
+        ${f.entity(
+          "Powerbutton — Ventil oder Pumpe",
+          "switch_entity",
+          "Solarventil oder Solarpumpe. Abschalten fragt immer nach.",
+          ...SCHALTER
+        )}
+        ${section(
+          "Powerbutton — Position",
+          html`
+            ${f.slider("Von oben", "power_btn_top", 0, 100)}
+            ${f.slider("Von links", "power_btn_left", 0, 100)}
+            ${f.slider("Größe", "power_btn_scale", 50, 200)}
+          `
+        )}
+      `
+    : nothing}
+  ${f.shown("show_temp_in")
+    ? html`
+        ${f.entity(
+          "Vorlauf-Temperatur",
+          "temp_in_entity",
+          "Wasser, das zum Absorber läuft — unterer Stutzen.",
+          ...MESSWERT
+        )}
+        ${section(
+          "Vorlauf — Position",
+          html`
+            ${f.slider("Von oben", "temp_in_top", 0, 100, "%", 0.5)}
+            ${f.slider("Von links", "temp_in_left", 0, 100, "%", 0.5)}
+            ${f.slider("Größe", "temp_in_scale", 50, 200)}
+          `
+        )}
+      `
+    : nothing}
+  ${f.shown("show_temp_out")
+    ? html`
+        ${f.entity(
+          "Rücklauf-Temperatur",
+          "temp_out_entity",
+          "Wasser, das zurück ins Becken läuft — oberer Stutzen.",
+          ...MESSWERT
+        )}
+        ${section(
+          "Rücklauf — Position",
+          html`
+            ${f.slider("Von oben", "temp_out_top", 0, 100, "%", 0.5)}
+            ${f.slider("Von links", "temp_out_left", 0, 100, "%", 0.5)}
+            ${f.slider("Größe", "temp_out_scale", 50, 200)}
+          `
+        )}
+      `
+    : nothing}
+  ${f.shown("show_power")
+    ? html`
+        ${f.entity("Stromverbrauch", "power_entity", "Solarpumpe in W oder kW.", ...VERBRAUCH)}
+        ${section(
+          "Stromverbrauch — Darstellung",
+          html`
+            ${f.slider("Von unten", "power_bottom", 0, 100)}
+            ${f.slider("Von links", "power_left", 0, 100)}
+            ${f.slider("Größe", "power_scale", 50, 150)}
+            ${f.toggle("Box anzeigen", "power_box", true)}
+            ${f.toggle("Einheit anzeigen", "power_label", true)}
+          `
+        )}
+      `
+    : nothing}
+`;
+
+/* ---------------- Einlaufdüse ---------------- */
+
+export const inletFields = (f) => html`
+  ${elementsGroup(html`
+    ${f.element("🌡 Temperatur", "show_temp", [
+      "temp_entity",
+      "temp_top",
+      "temp_left",
+      "temp_scale",
+    ])}
+  `)}
+  <small>
+    Die Einlaufdüse hat nichts zu schalten — sie zeigt, was gerade ins Becken läuft. Als
+    kleines Bild sitzt sie zusätzlich am Becken selbst (Schritt 1).
+  </small>
+  ${f.text("Überschrift (optional)", "label", "", "z.B. Einlaufdüse")}
+  ${f.shown("show_temp")
+    ? html`
+        ${f.entity(
+          "Temperatur des einströmenden Wassers",
+          "temp_entity",
+          "Zeigt das Thermometer an der Düsenöffnung.",
+          ...MESSWERT
+        )}
+        ${section(
+          "Thermometer — Position",
+          html`
+            ${f.slider("Von oben", "temp_top", 0, 100, "%", 0.5)}
+            ${f.slider("Von links", "temp_left", 0, 100, "%", 0.5)}
+            ${f.slider("Größe", "temp_scale", 50, 200)}
+          `
+        )}
+      `
+    : nothing}
 `;
 
 /* ---------------- Freifeld (benutzerdefiniert) ---------------- */

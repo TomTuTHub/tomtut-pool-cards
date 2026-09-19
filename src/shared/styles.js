@@ -98,6 +98,21 @@ export const overlayStyles = css`
   }
 
   /*
+   * Zubehör-Sprites auf dem Becken (Skimmer, Einlaufdüse, Bodenablauf).
+   * Die Breite steht im Inline-Stil (Prozent der Beckenbreite) und schlägt
+   * die 100 % der Regel darüber; die Höhe folgt dem Seitenverhältnis.
+   * Sie liegen über dem Wasser, aber unter Thermometer, pH/RX und Freitext.
+   */
+  .img-wrap > img.hero-sprite {
+    position: absolute;
+    height: auto;
+    max-width: none;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  /*
    * Drehendes Rad (Läufer / Lüfter).
    *
    * Das Laufrad der Poolpumpe ist rund und muss rund bleiben: feste 1:1-Box

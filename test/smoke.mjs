@@ -262,9 +262,11 @@ check("Hero-Anker kommen aus der Formen-Tabelle", () => {
   assert.match(style, new RegExp(`top:${anker.top}%`));
   assert.match(style, new RegExp(`left:${anker.left}%`));
 });
-check("Bodenablauf wird (noch) nicht gerendert", () =>
-  assert.equal(hero.shadowRoot.querySelector(".drain"), null)
-);
+check("Becken-Sprites: Skimmer und Einlaufduese ab Werk an, Bodenablauf aus", () => {
+  assert.ok(hero.shadowRoot.querySelector("img.sprite-skimmer"), "Skimmer fehlt");
+  assert.ok(hero.shadowRoot.querySelector("img.sprite-inlet"), "Einlaufduese fehlt");
+  assert.equal(hero.shadowRoot.querySelector("img.sprite-drain"), null);
+});
 check("Hero-Freitext sitzt auf dem Anker der Form", () => {
   const badge = hero.shadowRoot.querySelector(".label-badge");
   assert.ok(badge, "Freitext-Badge fehlt");
@@ -360,19 +362,21 @@ const typesCard = await mount(
   Dashboard,
   {
     hero: { enabled: false },
-    slots: [{ type: "hidden" }, { type: "solar" }, { type: "frame" }],
+    slots: [{ type: "hidden" }, { type: "solar" }, { type: "frame" }, { type: "gibtsnicht" }],
   },
   makeHass()
 );
 check("hidden-Slot wird nicht gerendert", () => {
-  assert.equal(typesCard.visibleSlots.length, 2);
-  assert.equal(typesCard.shadowRoot.querySelectorAll("tomtut-pool-slot-frame").length, 2);
+  assert.equal(typesCard.visibleSlots.length, 3);
+  assert.ok(typesCard.shadowRoot.querySelector("tomtut-pool-slot-solar"));
 });
-const solarSlot = typesCard.shadowRoot.querySelectorAll("tomtut-pool-slot-frame")[0];
-await solarSlot.updateComplete;
-check("reservierter Typ solar rendert als Rahmen mit Hinweis", () =>
-  assert.match(solarSlot.shadowRoot.textContent, /Solarheizung folgt/)
-);
+/* Seit Iteration 5 ist kein Typ mehr reserviert; der Rahmen-Platzhalter
+   faengt nur noch voellig unbekannte Typen ab (alte oder vertippte Config). */
+const unbekannt = typesCard.shadowRoot.querySelectorAll("tomtut-pool-slot-frame");
+check("unbekannter Typ faellt auf den leeren Rahmen zurueck", () => {
+  assert.equal(unbekannt.length, 2);
+  assert.equal(typesCard.shadowRoot.querySelectorAll("tomtut-pool-slot-solar").length, 1);
+});
 
 /* ------------------------------------------------------------------ */
 /* Slot heatpump                                                       */
@@ -804,8 +808,8 @@ check("Editor: Slot-Typen in der Reihenfolge mit Geraete-Trenner", () => {
       "Wärmepumpe",
       "Poolpumpe",
       "UV-C-Lampe",
-      "Solarheizung (folgt)",
-      "Einlaufdüse (folgt)",
+      "Solarheizung",
+      "Einlaufdüse",
     ]
   );
   const trenner = opts[3];
@@ -1009,13 +1013,19 @@ check("Laufrad-Farbe folgt der Fuellung", () =>
 
 /* ---- image_variant / image_url sind weg ---- */
 
-check("nur noch transparente Geraetebilder", () =>
+check("nur noch transparente Geraetebilder", () => {
   assert.deepEqual(pkg.DEVICE_IMAGES, {
     heatpump: "waermepumpe_transparent.png",
     pump: "poolpumpe_transparent.png",
     uv: "uv_lampe_transparent.png",
-  })
-);
+    solar: "solar_transparent.png",
+    inlet: "einlaufduese_transparent.png",
+  });
+  /* auch die Becken-Sprites gibt es nur transparent */
+  for (const [name, sprite] of Object.entries(pkg.HERO_SPRITES)) {
+    assert.match(sprite.file, /_transparent\.png$/, `${name}: keine transparente Fassung`);
+  }
+});
 
 const legacyCard = await mount(
   Dashboard,
@@ -1513,9 +1523,9 @@ check("Zonenkarte deckt alle Formen ab", () => {
     assert.ok(zonen.formen[name].zeilen.length > 10);
   }
 });
-check("Thermometer und Bodenablauf liegen auf der Wasserflaeche", () => {
+check("Thermometer, Ablauf, Skimmer und Einlaufduese liegen auf dem Wasser", () => {
   for (const [name, form] of Object.entries(pkg.SHAPES)) {
-    for (const anker of ["thermo", "drain"]) {
+    for (const anker of ["thermo", "drain", "skimmer", "inlet"]) {
       assert.equal(
         zoneAn(name, form[anker].left, form[anker].top),
         "w",
@@ -1538,7 +1548,7 @@ check("pH und RX liegen auf der vorderen Beckenwand", () => {
 check("Anker in der Tabelle = Anker der Messung", () => {
   for (const [name, form] of Object.entries(pkg.SHAPES)) {
     const gemessen = zonen.formen[name].anker;
-    for (const anker of ["thermo", "ph", "rx", "drain"]) {
+    for (const anker of ["thermo", "ph", "rx", "drain", "skimmer", "inlet"]) {
       assert.deepEqual(form[anker], gemessen[anker], `${name}/${anker} weicht von der Messung ab`);
     }
     assert.deepEqual(form.label_anker, gemessen.label, `${name}/Freitext weicht ab`);
@@ -1590,6 +1600,378 @@ check("Hero setzt die gemessenen Anker der gewaehlten Form", () => {
   assert.match(boxen[1].getAttribute("style"), new RegExp(`left:${form.rx.left}%`));
   const badge = ankerHero.shadowRoot.querySelector(".label-badge").getAttribute("style");
   assert.match(badge, new RegExp(`top:${form.label_anker.top}%`));
+});
+
+/* ================================================================== */
+/* Iteration 5 — Poolpumpe, Solarheizung, Einlaufduese, Becken-Sprites */
+/* ================================================================== */
+
+/* ---- Poolpumpe: Thomas' Zeichnung statt Platzhalter ---- */
+
+check("Pumpe: Artwork und Seitenverhaeltnis des neuen Motivs", () => {
+  assert.equal(pkg.DEVICE_IMAGES.pump, "poolpumpe_transparent.png");
+  assert.ok(Math.abs(pkg.DEVICE_RATIOS.pump - 1191 / 889) < 1e-9, "Ratio nicht nachgezogen");
+});
+check("Pumpe: Laufrad sitzt auf der Volute und bleibt darin", () => {
+  const d = pkg.PUMP_DEFAULTS;
+  assert.equal(d.fan_top, 52);
+  assert.equal(d.fan_left, 61);
+  assert.equal(d.fan_size, 19);
+  /* Die Volute reicht im Bild von rund 52 % bis 70 % der Breite */
+  assert.ok(d.fan_left - d.fan_size / 2 >= 51, "Laufrad ragt nach links aus der Volute");
+  assert.ok(d.fan_left + d.fan_size / 2 <= 71, "Laufrad ragt nach rechts aus der Volute");
+});
+check("Pumpe: Overlays stehen auf den vermessenen Defaults", () => {
+  const stil = (sel) => pump.shadowRoot.querySelector(sel).getAttribute("style");
+  assert.match(stil(".fan-overlay"), /top:52%/);
+  assert.match(stil(".fan-overlay"), /left:61%/);
+  assert.match(stil(".fan-overlay"), /width:19%/);
+  /* Powerbutton auf dem Motor (rechte Bildhaelfte) */
+  assert.match(stil(".power-badge"), /top:43%/);
+  assert.match(stil(".power-badge"), /left:79%/);
+  /* Watt-Box unten links */
+  assert.match(stil(".value-box"), /bottom:9%/);
+  assert.match(stil(".value-box"), /left:26%/);
+  /* Thermometer oben beim Ausgangsstutzen */
+  assert.match(stil(".thermo"), /top:10%/);
+  assert.match(stil(".thermo"), /left:36%/);
+});
+
+/* ---- Solarheizung ---- */
+
+const SOLAR_CONFIG = {
+  type: "solar",
+  label: "Solarheizung",
+  switch_entity: "switch.solarventil",
+  temp_in_entity: "sensor.solar_vorlauf",
+  temp_out_entity: "sensor.solar_ruecklauf",
+  power_entity: "sensor.solar_power",
+};
+const solarHass = () =>
+  makeHass({
+    "switch.solarventil": { state: "on", attributes: {}, last_changed: iso(900) },
+    "sensor.solar_vorlauf": {
+      state: "24.1",
+      attributes: { unit_of_measurement: "°C" },
+      last_changed: iso(60),
+    },
+    "sensor.solar_ruecklauf": {
+      state: "29.8",
+      attributes: { unit_of_measurement: "°C" },
+      last_changed: iso(60),
+    },
+    "sensor.solar_power": {
+      state: "0.085",
+      attributes: { unit_of_measurement: "kW" },
+      last_changed: iso(60),
+    },
+  });
+const mountSolar = async (config = SOLAR_CONFIG, hass = solarHass()) => {
+  const card = await mount(Dashboard, { hero: { enabled: false }, slots: [config] }, hass);
+  const slot = card.shadowRoot.querySelector("tomtut-pool-slot-solar");
+  await slot.updateComplete;
+  return slot;
+};
+const solar = await mountSolar();
+
+check("Solar: eigener Slot statt Platzhalter", () => {
+  assert.equal(pkg.SLOT_TYPES.solar.ready, true);
+  assert.equal(pkg.SLOT_TYPES.solar.label, "Solarheizung");
+  assert.ok(!("hint" in pkg.SLOT_TYPES.solar), "Platzhalter-Hinweis lebt noch");
+  assert.ok(customElements.get("tomtut-pool-slot-solar"));
+});
+check("Solar: Artwork aus dem Card-Ordner", () =>
+  assert.equal(
+    solar.shadowRoot.querySelector("img").getAttribute("src"),
+    "/local/community/tomtut-pool-cards/solar_transparent.png"
+  )
+);
+check("Solar: Vorlauf, Ruecklauf, Watt und Powerbutton", () => {
+  const thermos = solar.shadowRoot.querySelectorAll(".thermo");
+  assert.equal(thermos.length, 2, "zwei Thermometer erwartet");
+  const txt = solar.shadowRoot.textContent;
+  assert.match(txt, /24,1 °C/);
+  assert.match(txt, /29,8 °C/);
+  assert.match(txt, /85/); /* kW -> Watt */
+  assert.ok(solar.shadowRoot.querySelector(".power-badge.on"));
+  assert.match(solar.shadowRoot.querySelector(".slot-title").textContent, /Solarheizung/);
+});
+check("Solar: Ruecklauf oben, Vorlauf unten am Stutzen", () => {
+  const d = pkg.SOLAR_DEFAULTS;
+  assert.ok(d.temp_out_top < 30, "Ruecklauf nicht am oberen Stutzen");
+  assert.ok(d.temp_in_top > 70, "Vorlauf nicht am unteren Stutzen");
+  assert.equal(d.temp_in_left, d.temp_out_left, "Stutzen liegen uebereinander");
+  const stile = Array.from(solar.shadowRoot.querySelectorAll(".thermo")).map((t) =>
+    t.getAttribute("style")
+  );
+  assert.match(stile[0], new RegExp(`top:${d.temp_out_top}%`));
+  assert.match(stile[1], new RegExp(`top:${d.temp_in_top}%`));
+});
+
+calls.length = 0;
+solar.shadowRoot.querySelector(".power-badge").click();
+await solar.updateComplete;
+check("Solar: Abschalten fragt nach", () => {
+  assert.equal(calls.length, 0);
+  assert.ok(solar.shadowRoot.querySelector(".confirm-overlay"));
+  assert.match(solar.shadowRoot.textContent, /Absorber/);
+});
+solar.shadowRoot.querySelector(".btn.danger").click();
+await solar.updateComplete;
+check("Solar: Bestaetigen schaltet ab", () =>
+  assert.deepEqual(calls[0], {
+    domain: "switch",
+    service: "turn_off",
+    data: { entity_id: "switch.solarventil" },
+  })
+);
+
+const solarLeer = await mountSolar({ type: "solar" });
+check("Solar ohne Entity rendert trotzdem und zeigt den Hinweis", () => {
+  assert.ok(solarLeer.shadowRoot.querySelector("img"));
+  assert.equal(solarLeer.shadowRoot.querySelectorAll(".thermo").length, 0);
+  assert.match(solarLeer.shadowRoot.textContent, /mindestens eine Entity/);
+});
+const solarOhneVorlauf = await mountSolar({ ...SOLAR_CONFIG, show_temp_in: false });
+check("Solar: einzelnes Element abwaehlbar", () =>
+  assert.equal(solarOhneVorlauf.shadowRoot.querySelectorAll(".thermo").length, 1)
+);
+
+/* ---- Einlaufduese ---- */
+
+const INLET_CONFIG = {
+  type: "inlet",
+  label: "Einlaufdüse",
+  temp_entity: "sensor.einlauf_temperatur",
+};
+const inletHass = () =>
+  makeHass({
+    "sensor.einlauf_temperatur": {
+      state: "26.9",
+      attributes: { unit_of_measurement: "°C" },
+      last_changed: iso(60),
+    },
+  });
+const mountInlet = async (config = INLET_CONFIG, hass = inletHass()) => {
+  const card = await mount(Dashboard, { hero: { enabled: false }, slots: [config] }, hass);
+  const slot = card.shadowRoot.querySelector("tomtut-pool-slot-inlet");
+  await slot.updateComplete;
+  return slot;
+};
+const inlet = await mountInlet();
+
+check("Einlauf: eigener Slot statt Platzhalter", () => {
+  assert.equal(pkg.SLOT_TYPES.inlet.ready, true);
+  assert.equal(pkg.SLOT_TYPES.inlet.label, "Einlaufdüse");
+  assert.ok(!("hint" in pkg.SLOT_TYPES.inlet), "Platzhalter-Hinweis lebt noch");
+  assert.ok(customElements.get("tomtut-pool-slot-inlet"));
+});
+check("Einlauf: Artwork und ein Thermometer an der Duesenoeffnung", () => {
+  assert.equal(
+    inlet.shadowRoot.querySelector("img").getAttribute("src"),
+    "/local/community/tomtut-pool-cards/einlaufduese_transparent.png"
+  );
+  const thermos = inlet.shadowRoot.querySelectorAll(".thermo");
+  assert.equal(thermos.length, 1);
+  assert.match(inlet.shadowRoot.textContent, /26,9 °C/);
+  const stil = thermos[0].getAttribute("style");
+  assert.match(stil, new RegExp(`top:${pkg.INLET_DEFAULTS.temp_top}%`));
+  assert.match(stil, new RegExp(`left:${pkg.INLET_DEFAULTS.temp_left}%`));
+});
+check("Einlauf: kein Schalter, keine Watt-Box, kein Laufrad", () => {
+  assert.equal(inlet.shadowRoot.querySelector(".power-badge"), null);
+  assert.equal(inlet.shadowRoot.querySelector(".value-box"), null);
+  assert.equal(inlet.shadowRoot.querySelector(".fan-overlay"), null);
+});
+const inletLeer = await mountInlet({ type: "inlet" });
+check("Einlauf ohne Entity rendert trotzdem und zeigt den Hinweis", () => {
+  assert.ok(inletLeer.shadowRoot.querySelector("img"));
+  assert.match(inletLeer.shadowRoot.textContent, /Temperaturfühler/);
+});
+
+/* ---- Sprites auf dem Becken ---- */
+
+const spriteCard = await mount(
+  Dashboard,
+  { hero: { shape: "rechteck", show_drain: true }, slots: [] },
+  makeHass()
+);
+const spriteHero = spriteCard.shadowRoot.querySelector("tomtut-pool-hero");
+await spriteHero.updateComplete;
+
+check("Becken: alle drei Sprites mit Bild, Anker und Groesse", () => {
+  const form = pkg.SHAPES.rechteck;
+  for (const [name, anker] of [
+    ["skimmer", "skimmer"],
+    ["einlauf", "inlet"],
+    ["drain", "drain"],
+  ]) {
+    const sprite = pkg.HERO_SPRITES[name];
+    const el = spriteHero.shadowRoot.querySelector(`img.sprite-${anker}`);
+    assert.ok(el, `${name} fehlt`);
+    assert.equal(el.getAttribute("src"), "/local/community/tomtut-pool-cards/" + sprite.file);
+    const stil = el.getAttribute("style");
+    assert.match(stil, new RegExp(`top:${form[anker].top}%`));
+    assert.match(stil, new RegExp(`left:${form[anker].left}%`));
+    assert.match(stil, new RegExp(`width:${sprite.groesse}%`));
+  }
+});
+check("Becken: Sprites liegen ueber dem Wasser, unter den Messwerten", () => {
+  const css = cssOf("tomtut-pool-hero");
+  assert.match(css, /img\.hero-sprite/);
+  assert.match(css, /z-index:\s*3/);
+  /* Thermometer, Kaestchen und Freitext liegen hoeher */
+  assert.match(css, /z-index:\s*5/);
+});
+check("Becken: Sprite-Groessen sind die der Tabelle", () => {
+  assert.equal(pkg.HERO_SPRITES.skimmer.groesse, 10);
+  assert.equal(pkg.HERO_SPRITES.einlauf.groesse, 6.5);
+  assert.equal(pkg.HERO_SPRITES.drain.groesse, 9);
+  assert.equal(pkg.HERO_DEFAULTS.skimmer_size, 10);
+  assert.equal(pkg.HERO_DEFAULTS.inlet_size, 6.5);
+  assert.equal(pkg.HERO_DEFAULTS.drain_size, 9);
+});
+
+const spriteAus = await mount(
+  Dashboard,
+  { hero: { shape: "rechteck", show_skimmer: false, show_inlet: false }, slots: [] },
+  makeHass()
+);
+const spriteAusHero = spriteAus.shadowRoot.querySelector("tomtut-pool-hero");
+await spriteAusHero.updateComplete;
+check("Becken: jedes Sprite einzeln abwaehlbar", () => {
+  assert.equal(spriteAusHero.shadowRoot.querySelectorAll("img.hero-sprite").length, 0);
+  assert.ok(spriteAusHero.shadowRoot.querySelector("img"), "Becken-Bild fehlt");
+});
+
+const spriteFrei = await mount(
+  Dashboard,
+  {
+    hero: {
+      shape: "oval",
+      show_drain: true,
+      drain_size: 14,
+      drain_top: 40,
+      drain_left: 55,
+      skimmer_size: 12,
+    },
+    slots: [],
+  },
+  makeHass()
+);
+const spriteFreiHero = spriteFrei.shadowRoot.querySelector("tomtut-pool-hero");
+await spriteFreiHero.updateComplete;
+check("Becken: Groesse und Lage der Sprites sind ueberschreibbar", () => {
+  const drain = spriteFreiHero.shadowRoot.querySelector("img.sprite-drain").getAttribute("style");
+  assert.match(drain, /top:40%/);
+  assert.match(drain, /left:55%/);
+  assert.match(drain, /width:14%/);
+  const skimmer = spriteFreiHero.shadowRoot
+    .querySelector("img.sprite-skimmer")
+    .getAttribute("style");
+  assert.match(skimmer, /width:12%/);
+  /* nicht gesetzte Werte bleiben beim Anker der Form */
+  assert.match(skimmer, new RegExp(`top:${pkg.SHAPES.oval.skimmer.top}%`));
+});
+
+check("Becken: jede Form hat Anker fuer Skimmer und Einlaufduese", () => {
+  for (const [name, form] of Object.entries(pkg.SHAPES)) {
+    assert.ok(form.skimmer && form.inlet, `${name}: Anker fehlt`);
+    assert.ok(form.skimmer.left < 30, `${name}: Skimmer nicht links hinten`);
+    assert.ok(form.inlet.left > 60, `${name}: Einlaufduese nicht rechts hinten`);
+    /* beide sitzen hoeher als das Thermometer, also am hinteren Rand */
+    assert.ok(form.inlet.top < form.thermo.top, `${name}: Einlaufduese nicht am hinteren Rand`);
+    assert.ok(form.skimmer.top < form.ph.top, `${name}: Skimmer nicht am hinteren Rand`);
+  }
+});
+
+/* ---- Editor: neue Slots und Sprite-Regler ---- */
+
+const ed5 = new Editor();
+ed5.setConfig({
+  hero: { enabled: true, shape: "oval" },
+  slots: [{ type: "solar" }, { type: "inlet" }],
+});
+ed5.hass = makeHass();
+document.body.appendChild(ed5);
+await ed5.updateComplete;
+let ed5Fired = null;
+ed5.addEventListener("config-changed", (e) => (ed5Fired = e.detail.config));
+
+check("Editor: kein Slot-Typ traegt noch '(folgt)'", () => {
+  assert.ok(!pkg.slotTypeOptions().some((o) => /folgt/.test(o.label)), "'(folgt)' lebt noch");
+  for (const [key, meta] of Object.entries(pkg.SLOT_TYPES)) {
+    assert.notEqual(meta.ready, false, `${key} ist noch reserviert`);
+  }
+});
+check("Editor: Solar-Slot hat Elemente, Entities und Regler", () => {
+  const txt = ed5.shadowRoot.textContent;
+  assert.match(txt, /Vorlauf/);
+  assert.match(txt, /Rücklauf/);
+  assert.match(txt, /Absorber/);
+  for (const key of ["temp_in_top", "temp_out_top", "power_btn_top"]) {
+    assert.ok(ed5.shadowRoot.querySelector(`input[data-key="${key}"]`), `${key} fehlt`);
+  }
+  const regler = ed5.shadowRoot.querySelector('input[data-key="temp_in_top"]');
+  assert.equal(regler.value, String(pkg.SOLAR_DEFAULTS.temp_in_top));
+});
+check("Editor: Einlauf-Slot hat nur das Thermometer", () => {
+  const karte = ed5.shadowRoot.querySelectorAll(".slot-card")[1];
+  const schalter = karte.querySelectorAll('.elements input[type="checkbox"]');
+  assert.equal(schalter.length, 1, "Einlaufduese hat mehr als ein Element");
+  assert.equal(schalter[0].dataset.key, "show_temp");
+});
+check("Editor: Becken bietet Skimmer, Einlaufduese und Bodenablauf", () => {
+  const txt = ed5.shadowRoot.textContent;
+  assert.match(txt, /Skimmer/);
+  assert.match(txt, /Einlaufdüse/);
+  assert.match(txt, /Bodenablauf/);
+  /* Skimmer und Einlaufduese sind an -> ihre Regler sind da, der Ablauf nicht */
+  assert.ok(ed5.shadowRoot.querySelector('input[data-key="skimmer_size"]'));
+  assert.ok(ed5.shadowRoot.querySelector('input[data-key="inlet_size"]'));
+  assert.equal(ed5.shadowRoot.querySelector('input[data-key="drain_size"]'), null);
+});
+check("Editor: Sprite-Regler starten auf dem Anker der Form", () => {
+  const top = ed5.shadowRoot.querySelector('input[data-key="skimmer_top"]');
+  assert.equal(top.value, String(pkg.SHAPES.oval.skimmer.top));
+  const groesse = ed5.shadowRoot.querySelector('input[data-key="skimmer_size"]');
+  assert.equal(groesse.value, String(pkg.HERO_SPRITES.skimmer.groesse));
+});
+
+ed5.shadowRoot.querySelector('.elements input[data-key="show_drain"]').click();
+await ed5.updateComplete;
+check("Editor: Bodenablauf anhaken bringt seine Regler", () => {
+  assert.equal(ed5Fired.hero.show_drain, true);
+  assert.ok(ed5.shadowRoot.querySelector('input[data-key="drain_size"]'));
+});
+ed5.shadowRoot.querySelector('.elements input[data-key="show_skimmer"]').click();
+await ed5.updateComplete;
+check("Editor: Skimmer abwaehlen raeumt seine Schluessel aus der Config", () => {
+  assert.equal(ed5Fired.hero.show_skimmer, false);
+  for (const key of ["skimmer_size", "skimmer_top", "skimmer_left"]) {
+    assert.ok(!(key in ed5Fired.hero), `${key} steht noch drin`);
+  }
+  assert.equal(ed5.shadowRoot.querySelector('input[data-key="skimmer_size"]'), null);
+});
+
+/* ---- eingefrorene v1-Config bleibt lesbar ---- */
+
+check("v1-Config: neue Slot-Typen aendern die alte Config nicht", () => {
+  const roh = readFileSync(join(here, "fixtures/v1-config.yaml"), "utf8");
+  assert.match(roh, /type: uv/);
+  assert.ok(!/type: solar/.test(roh), "Fixture wurde angefasst");
+  const nochmal = new Dashboard();
+  nochmal.setConfig(fixtureConfig);
+  assert.equal(nochmal._config.slots.length, 6);
+});
+check("v1-Config: Becken-Sprites kommen ab Werk dazu, ohne die Config zu aendern", () => {
+  /* Bewusste Entscheidung aus Iteration 5: ein Becken ohne Angabe zeigt
+     Skimmer und Einlaufduese (so sieht ein echtes Becken aus), der
+     Bodenablauf bleibt aus. In der Config steht davon nichts. */
+  assert.ok(frozenHero.shadowRoot.querySelector("img.sprite-skimmer"));
+  assert.ok(frozenHero.shadowRoot.querySelector("img.sprite-inlet"));
+  assert.equal(frozenHero.shadowRoot.querySelector("img.sprite-drain"), null);
+  assert.ok(!("show_skimmer" in frozen._config.hero));
 });
 
 /* ------------------------------------------------------------------ */

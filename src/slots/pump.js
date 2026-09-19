@@ -16,32 +16,37 @@ import { isOn, seit, numText } from "../shared/util.js";
  *     Beim Umschalten werden erst alle anderen Stufen ausgeschaltet, dann die
  *     gewählte eingeschaltet (Motorschutz). STOP schaltet alle Stufen aus.
  *
- * Die Positions-Defaults stammen aus Thomas' Testansicht (2026-09-19) und
- * sind im Editor frei verschiebbar.
+ * Die Positions-Defaults sind an Thomas' Zeichnung vermessen (Iteration 5,
+ * 2026-09-19) und im Editor frei verschiebbar:
+ *   Laufrad       mittig auf der Volute (dem runden Spiralgehäuse zwischen
+ *                 Vorfilter und Motor), klein genug, um darin zu bleiben
+ *   Powerbutton   auf dem Motorgehäuse rechts
+ *   Watt-Box      unten links unter dem Vorfilter
+ *   Thermometer   oben links neben dem Ausgangsstutzen
  */
 export const PUMP_DEFAULTS = {
   /* Laufrad — immer rund, nur Ort, Größe und Tempo sind einstellbar */
-  fan_top: 48.5,
-  fan_left: 35,
-  fan_size: 29.5,
+  fan_top: 52,
+  fan_left: 61,
+  fan_size: 19,
   fan_inactive: "gray",
   /* Tempo je Stufe auf der Skala 1 (langsam) bis 10 (schnell) */
   fan_speed_1: 3,
   fan_speed_2: 5,
   fan_speed_3: 8,
   /* Powerbutton (main_entity) */
-  power_btn_top: 47,
-  power_btn_left: 51,
-  power_btn_scale: 126,
+  power_btn_top: 43,
+  power_btn_left: 79,
+  power_btn_scale: 110,
   /* Watt-Box */
   power_bottom: 9,
-  power_left: 24,
+  power_left: 26,
   power_scale: 98,
   power_box: true,
   power_label: true,
   /* Thermometer */
-  temp_top: 9,
-  temp_left: 27,
+  temp_top: 10,
+  temp_left: 36,
   temp_scale: 119,
   /* Unter dieser Leistung gilt die Pumpe als stehend */
   idle_watt: 30,

@@ -49,6 +49,8 @@ const ZEICHEN = { [AUSSEN]: ".", [WASSER]: "w", [WAND]: "m" };
  *   Thermometer  links auf der Wasserfläche, im oberen Drittel der Spalte
  *   pH / RX      nebeneinander mittig auf der vorderen Beckenwand
  *   Bodenablauf  rechts unten auf dem Wasser, kurz vor der Wandkante
+ *   Skimmer      hinterer Beckenrand links, auf der oberen Wasserkante
+ *   Einlaufdüse  hinterer Beckenrand rechts, auf der oberen Wasserkante
  *   Freitext     oben mittig über dem Becken
  */
 export const REGELN = {
@@ -56,6 +58,10 @@ export const REGELN = {
   thermo: { x: 0.07, y: 0.3 },
   /* Bodenablauf: rechts unten auf dem Wasser, kurz vor der Wandkante */
   drain: { x: 0.86, y: 0.85 },
+  /* Skimmer: hinten links, direkt an der oberen Wasserkante */
+  skimmer: { x: 0.15, y: 0.06 },
+  /* Einlaufdüse: hinten rechts, dieselbe Kante */
+  inlet: { x: 0.7, y: 0.2 },
   /* pH und RX: nebeneinander auf der Wand, auf gemeinsamer Höhe */
   ph: { x: 0.3 },
   rx: { x: 0.68 },
@@ -209,7 +215,7 @@ export const ankerVon = (bild) => {
   const wand = breiteVon(zonen, w, h, WAND);
   const anker = {};
 
-  for (const name of ["thermo", "drain"]) {
+  for (const name of ["thermo", "drain", "skimmer", "inlet"]) {
     const r = REGELN[name];
     const s = spalteMit(zonen, w, h, Math.round(wasser.x0 + r.x * (wasser.x1 - wasser.x0)), WASSER);
     anker[name] = { left: pc(s.x, w), top: pc(s.oben + r.y * (s.unten - s.oben), h) };
@@ -308,12 +314,15 @@ const lauf = () => {
 
   if (modus === "--anker") {
     const feld = (v) => String(v).padStart(6);
-    console.log("Form        Thermo         pH             RX             Ablauf         Freitext");
+    console.log(
+      "Form        Thermo         pH             RX             Ablauf         " +
+      "Skimmer        Einlauf        Freitext"
+    );
     for (const e of ergebnisse) {
       const s = (a) => `${feld(a.left)}/${feld(a.top)}`;
       console.log(
         `${e.name.padEnd(11)} ${s(e.anker.thermo)}  ${s(e.anker.ph)}  ${s(e.anker.rx)}  ` +
-        `${s(e.anker.drain)}  ${s(e.anker.label)}`
+        `${s(e.anker.drain)}  ${s(e.anker.skimmer)}  ${s(e.anker.inlet)}  ${s(e.anker.label)}`
       );
     }
     return;

@@ -5,12 +5,16 @@ import { DEFAULT_SHAPE, slotTypeOptions } from "../shared/assets.js";
 import { HEATPUMP_DEFAULTS } from "../slots/heatpump.js";
 import { PUMP_DEFAULTS } from "../slots/pump.js";
 import { UV_DEFAULTS } from "../slots/uv.js";
+import { SOLAR_DEFAULTS } from "../slots/solar.js";
+import { INLET_DEFAULTS } from "../slots/inlet.js";
 import { heroDefaultsFor } from "../hero.js";
 import {
   heroFields,
   heatpumpFields,
   pumpFields,
   uvFields,
+  solarFields,
+  inletFields,
   customFields,
   customEntryFields,
   frameFields,
@@ -29,6 +33,8 @@ const SLOT_DEFAULTS = {
   heatpump: HEATPUMP_DEFAULTS,
   pump: PUMP_DEFAULTS,
   uv: UV_DEFAULTS,
+  solar: SOLAR_DEFAULTS,
+  inlet: INLET_DEFAULTS,
 };
 
 /* Patch anwenden; ein Wert `undefined` entfernt den Schlüssel aus der Config */
@@ -140,6 +146,10 @@ export class TomtutPoolDashboardEditor extends LitElement {
         return pumpFields(f);
       case "uv":
         return uvFields(f);
+      case "solar":
+        return solarFields(f);
+      case "inlet":
+        return inletFields(f);
       case "custom":
         return customFields(f, (entryIndex) =>
           customEntryFields(
