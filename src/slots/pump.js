@@ -1,0 +1,390 @@
+import { html, css, nothing } from "lit";
+import { SlotBase } from "../shared/slot-base.js";
+import { frameStyles, overlayStyles } from "../shared/styles.js";
+import { deviceImage } from "../shared/assets.js";
+import { isOn, seit, stateText } from "../shared/util.js";
+
+/*
+ * Slot "pump" — Poolpumpe mit 1–3 Stufen (N1..N3) und optionalem STOP.
+ *
+ * Zwei Schaltmodelle:
+ *   momentary (Default) — Impulstaster (z.B. Shelly 1 Mini Gen3), die selbst
+ *     auf "off" zurueckfallen. Aktiv ist die Entity mit dem juengsten
+ *     last_changed; ist STOP die juengste, gilt die Pumpe als gestoppt.
+ *     Ein Klick ruft immer turn_on (niemals toggle).
+ *   latching — je Stufe ein Dauerrelais. Aktiv ist die Entity mit state "on".
+ *     Beim Umschalten werden erst alle anderen Stufen ausgeschaltet, dann die
+ *     gewaehlte eingeschaltet (Motorschutz). STOP schaltet alle Stufen aus.
+ *
+ * Positions-Defaults sind auf das mitgelieferte Platzhalter-Artwork
+ * (poolpumpe_*.png) vermessen und im Editor frei verschiebbar.
+ */
+export const PUMP_DEFAULTS = {
+  /* Laufrad */
+  fan_top: 55,
+  fan_left: 60,
+  fan_size: 18,
+  fan_ratio: 2,
+  fan_color: "black",
+  fan_inactive: "gray",
+  /* Umlaufzeiten je Stufe in Sekunden (klein = schnell) */
+  fan_dur_1: 3,
+  fan_dur_2: 1.5,
+  fan_dur_3: 0.7,
+  /* Powerbutton (main_entity) */
+  power_btn_top: 45,
+  power_btn_left: 47,
+  power_btn_scale: 100,
+  /* Watt-Box */
+  power_bottom: 6,
+  power_left: 30,
+  power_scale: 95,
+  power_box: true,
+  power_color: "white",
+  power_label: true,
+  power_decimals: 0,
+  /* Thermometer */
+  temp_top: 16,
+  temp_left: 86,
+  temp_scale: 85,
+  /* Schwelle, ab der die Pumpe als "laeuft physisch" gilt */
+  idle_watt: 5,
+};
+
+export const pumpHasEntity = (c = {}) =>
+  !!((Array.isArray(c.stage_entities) && c.stage_entities.filter(Boolean).length) || c.main_entity);
+
+const OPTIMISTIC_MS = 6000;
+
+export class TomtutPoolSlotPump extends SlotBase {
+  static properties = {
+    ...SlotBase.properties,
+    _tick: { state: true },
+  };
+
+  constructor() {
+    super();
+    this._tick = 0;
+    this._optimistic = null;
+  }
+
+  get defaults() {
+    return PUMP_DEFAULTS;
+  }
+
+  /* "seit …" muss mitlaufen, auch wenn sich in HA nichts aendert */
+  connectedCallback() {
+    super.connectedCallback();
+    this._timer = setInterval(() => {
+      this._tick = Date.now();
+    }, 30000);
+    /* Im Browser ist das eine Zahl; unter Node (Tests) haelt der Timer sonst
+       den Prozess am Leben. */
+    if (this._timer && typeof this._timer.unref === "function") this._timer.unref();
+  }
+
+  disconnectedCallback() {
+    clearInterval(this._timer);
+    this._timer = undefined;
+    super.disconnectedCallback();
+  }
+
+  get powerEntityId() {
+    return this.config?.main_entity || null;
+  }
+
+  get powerConfirmText() {
+    return `Die Poolpumpe wird hart vom Netz getrennt. Laeuft sie gerade, sollte sie erst
+      ueber STOP bzw. die Stufensteuerung heruntergefahren werden — sonst kann die Anlage
+      Schaden nehmen (Druckschlag, trockenlaufende Gleitringdichtung).`;
+  }
+
+  get stages() {
+    const list = this.config?.stage_entities;
+    return (Array.isArray(list) ? list : []).filter(Boolean).slice(0, 3);
+  }
+
+  get stopEntity() {
+    return this.config?.stop_entity || "";
+  }
+
+  get mode() {
+    return this.config?.stage_mode === "latching" ? "latching" : "momentary";
+  }
+
+  get stageLabels() {
+    const custom = Array.isArray(this.config?.stage_labels) ? this.config.stage_labels : [];
+    return this.stages.map((_, i) => custom[i] || `N${i + 1}`);
+  }
+
+  /* Hauptschalter aus -> Pumpe kann gar nicht laufen */
+  get blockedByMain() {
+    return !!this.config?.main_entity && !this._isOn(this.config.main_entity);
+  }
+
+  /* Zustand aus den Entities ableiten */
+  _derive() {
+    const none = { active: null, stopped: false, since: null };
+    if (this.mode === "latching") {
+      let best = null;
+      this.stages.forEach((id, i) => {
+        const e = this._ent(id);
+        if (!e || !isOn(e.state)) return;
+        const t = Date.parse(e.last_changed || 0) || 0;
+        if (!best || t > best.t) best = { i, t, since: e.last_changed };
+      });
+      if (!best) {
+        const stopEnt = this._ent(this.stopEntity);
+        return { active: null, stopped: true, since: stopEnt?.last_changed || null };
+      }
+      return { active: best.i, stopped: false, since: best.since };
+    }
+
+    /* momentary: juengstes last_changed gewinnt */
+    const candidates = this.stages.map((id, i) => ({ id, i }));
+    if (this.stopEntity) candidates.push({ id: this.stopEntity, i: -1 });
+    let best = null;
+    for (const c of candidates) {
+      const e = this._ent(c.id);
+      if (!e || !e.last_changed) continue;
+      const t = Date.parse(e.last_changed);
+      if (isNaN(t)) continue;
+      if (!best || t > best.t) best = { ...c, t, since: e.last_changed };
+    }
+    if (!best) return none;
+    return best.i === -1
+      ? { active: null, stopped: true, since: best.since }
+      : { active: best.i, stopped: false, since: best.since };
+  }
+
+  /* Nach einem Klick sofort optimistisch anzeigen, bis HA nachzieht */
+  get state() {
+    const derived = this._derive();
+    const o = this._optimistic;
+    if (o && Date.now() - o.t < OPTIMISTIC_MS) {
+      if (o.i === -1 && !derived.stopped) return { active: null, stopped: true, since: null };
+      if (o.i >= 0 && derived.active !== o.i) return { active: o.i, stopped: false, since: null };
+    }
+    return derived;
+  }
+
+  get running() {
+    const st = this.state;
+    if (this.blockedByMain) return false;
+    if (st.stopped || st.active === null) return false;
+    const idle = Number(this._v("idle_watt"));
+    const w = this._watt(this.config?.power_entity);
+    if (w !== null && isFinite(idle) && w < idle) return false;
+    return true;
+  }
+
+  _clickStage(i) {
+    if (this.blockedByMain) return;
+    const id = this.stages[i];
+    if (!id) return;
+    this._optimistic = { i, t: Date.now() };
+    this.requestUpdate();
+    if (this.mode === "latching") {
+      this.stages.forEach((other, k) => {
+        if (k !== i) this._call(other, "turn_off");
+      });
+      this._call(id, "turn_on");
+    } else {
+      this._call(id, "turn_on");
+    }
+  }
+
+  _clickStop() {
+    if (this.blockedByMain) return;
+    this._optimistic = { i: -1, t: Date.now() };
+    this.requestUpdate();
+    if (this.mode === "latching") {
+      this.stages.forEach((id) => this._call(id, "turn_off"));
+    } else if (this.stopEntity) {
+      this._call(this.stopEntity, "turn_on");
+    }
+  }
+
+  get _showStop() {
+    return !!this.stopEntity || this.mode === "latching";
+  }
+
+  render() {
+    const c = this.config || {};
+    if (!this.hass) return this.renderSlot(nothing);
+    if (!pumpHasEntity(c)) {
+      return this.renderSlot(
+        html`<p class="slot-hint">
+          Poolpumpe: bitte mindestens eine Stufen-Entity oder den Hauptschalter waehlen.
+        </p>`
+      );
+    }
+
+    const st = this.state;
+    const running = this.running;
+    const durKey = ["fan_dur_1", "fan_dur_2", "fan_dur_3"][st.active ?? 0] || "fan_dur_1";
+    const tempEnt = this._ent(c.temp_entity);
+    const showPower = c.show_power !== false && !!c.power_entity;
+    const showTemp = c.show_temp !== false && !!c.temp_entity;
+    const showBtn = c.show_power_button !== false && !!c.main_entity;
+
+    return this.renderSlot(html`
+      ${c.label ? html`<h3 class="slot-title">${c.label}</h3>` : nothing}
+      <div class="pump">
+        <div class="img-wrap">
+          <img src="${deviceImage("pump", c)}" alt="Poolpumpe" />
+          ${c.show_fan === false
+            ? nothing
+            : this.renderFan({
+                active: running,
+                top: this._v("fan_top"),
+                left: this._v("fan_left"),
+                size: this._v("fan_size"),
+                ratio: this._v("fan_ratio"),
+                dur: Number(this._v(durKey)) || 1.5,
+                color: this._v("fan_color"),
+                inactive: this._v("fan_inactive"),
+              })}
+          ${showBtn
+            ? this.renderPowerButton({
+                on: this._isOn(c.main_entity),
+                top: this._v("power_btn_top"),
+                left: this._v("power_btn_left"),
+                scale: this._v("power_btn_scale"),
+              })
+            : nothing}
+          ${showPower
+            ? this.renderValueBox({
+                value: this.wattText(c.power_entity, Number(this._v("power_decimals")) || 0),
+                unit: this._v("power_label") === false ? "" : "Watt",
+                bottom: this._v("power_bottom"),
+                left: this._v("power_left"),
+                scale: this._v("power_scale"),
+                box: this._v("power_box"),
+                color: this._v("power_color"),
+                entity: c.power_entity,
+              })
+            : nothing}
+          ${showTemp
+            ? this.renderThermo({
+                value: stateText(tempEnt),
+                top: this._v("temp_top"),
+                left: this._v("temp_left"),
+                scale: this._v("temp_scale"),
+                entity: c.temp_entity,
+              })
+            : nothing}
+          ${this.renderConfirm("Poolpumpe stromlos schalten?")}
+        </div>
+
+        <div class="stages ${this.blockedByMain ? "disabled" : ""}">
+          ${this.stages.map(
+            (id, i) => html`
+              <button
+                class="stage-btn ${st.active === i && !st.stopped ? "active" : ""}"
+                @click="${() => this._clickStage(i)}"
+                title="${this.stageLabels[i]}"
+              >
+                <span class="stage-name">${this.stageLabels[i]}</span>
+                ${st.active === i && !st.stopped && st.since
+                  ? html`<span class="stage-since">${seit(st.since)}</span>`
+                  : nothing}
+              </button>
+            `
+          )}
+          ${this._showStop
+            ? html`
+                <button
+                  class="stage-btn stop ${st.stopped ? "active" : ""}"
+                  @click="${() => this._clickStop()}"
+                  title="Pumpe stoppen"
+                >
+                  <span class="stage-name">STOP</span>
+                  ${st.stopped && st.since
+                    ? html`<span class="stage-since">${seit(st.since)}</span>`
+                    : nothing}
+                </button>
+              `
+            : nothing}
+        </div>
+      </div>
+    `);
+  }
+
+  static styles = [
+    frameStyles,
+    overlayStyles,
+    css`
+      .pump {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .pump .img-wrap {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .stages {
+        flex: 0 0 clamp(72px, 30%, 124px);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .stages.disabled .stage-btn {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+      .stage-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 6px 8px;
+        border-radius: 22px;
+        border: 1px solid var(--tt-line);
+        background: var(--tt-soft);
+        color: var(--tt-fg);
+        font-family: inherit;
+        cursor: pointer;
+        transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+      }
+      .stage-btn:hover {
+        filter: brightness(1.06);
+      }
+      .stage-btn:active {
+        transform: scale(0.97);
+      }
+      .stage-btn.active {
+        background: linear-gradient(145deg, #00c878, #00a064);
+        color: #ffffff;
+        border-color: rgba(255, 255, 255, 0.28);
+        box-shadow: 0 0 10px rgba(0, 200, 120, 0.45);
+      }
+      .stage-btn.stop {
+        color: #c62828;
+        border-color: rgba(198, 40, 40, 0.5);
+      }
+      .stage-btn.stop.active {
+        background: linear-gradient(145deg, #ff5a5a, #c62828);
+        color: #ffffff;
+        border-color: rgba(255, 255, 255, 0.28);
+        box-shadow: 0 0 10px rgba(255, 60, 60, 0.4);
+      }
+      .stage-name {
+        font-size: 0.95em;
+        font-weight: 700;
+        line-height: 1.1;
+      }
+      .stage-since {
+        font-size: 0.68em;
+        opacity: 0.8;
+        margin-top: 2px;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+    `,
+  ];
+}
+
+customElements.define("tomtut-pool-slot-pump", TomtutPoolSlotPump);
