@@ -1,0 +1,52 @@
+# Eingefrorene Beispiel-Konfiguration der Config-Version 1.
+#
+# Diese Datei wird NICHT mehr geaendert. Jede kuenftige Version der Card muss
+# sie unveraendert entgegennehmen und identisch rendern — das ist der
+# Update-Schutz fuer bestehende Dashboards.
+type: custom:tomtut-pool-dashboard
+version: 1
+hero:
+  enabled: true
+  shape: freiform
+  temp_entity: sensor.pool_wassertemperatur
+  ph_entity: sensor.pool_ph
+  rx_entity: sensor.pool_redox
+  label_text: Pool
+frame:
+  enabled: true
+  fill: transparent
+slots:
+  - type: heatpump
+    label_text: Waermepumpe
+    switch_entity: switch.waermepumpe
+    power_entity: sensor.waermepumpe_power
+    target_entity: climate.waermepumpe
+    current_entity: climate.waermepumpe
+  - type: pump
+    label: Poolpumpe
+    stage_mode: momentary
+    stage_entities:
+      - switch.shelly_pumpe_n1
+      - switch.shelly_pumpe_n2
+      - switch.shelly_pumpe_n3
+    stop_entity: switch.shelly_pumpe_stopp
+    main_entity: input_boolean.poolpumpe_schalter
+    power_entity: sensor.poolpumpe_power
+    temp_entity: sensor.poolpumpe_druckseite_temperature
+  - type: custom
+    title: Werte
+    align: mitte
+    entries:
+      - kind: entity
+        entity: sensor.pool_lufttemperatur
+        label: Luft
+      - kind: button
+        entity: switch.poolbeleuchtung
+        label: Licht
+        icon: mdi:lightbulb
+      - kind: text
+        text: Sommerbetrieb
+  - type: uv
+  - type: hidden
+  - type: frame
+    title: Platz fuer spaeter
