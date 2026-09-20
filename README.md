@@ -47,11 +47,11 @@ eine Herstellerintegration in Home Assistant landen.
   beiden Rohrstutzen, optionalem Stromverbrauch und Powerbutton (Solarventil oder -pumpe)
   mit Rückfrage. Der Vergleich der beiden Temperaturen zeigt auf einen Blick, ob die Sonne
   gerade etwas bringt.
-- **Einlaufdüsen-Kasten** — bewusst minimal: ein Thermometer an der Düsenöffnung zeigt, wie
-  warm das Wasser ist, das gerade ins Becken läuft.
 - **Zubehör am Becken** — Skimmer, Einlaufdüse und Bodenablauf liegen als eigene kleine
   Bilder auf dem Becken, nicht in der Zeichnung. Jedes ist einzeln an- und abwählbar, in der
-  Größe verstellbar und sitzt auf jeder der sechs Formen richtig.
+  Größe verstellbar und sitzt auf jeder der sechs Formen richtig. Die Einlaufdüse zeigt auf
+  Wunsch in einem kleinen Kästchen daneben, wie warm das Wasser ist, das gerade ins Becken
+  läuft (`inlet_temp_entity`).
 - **Freifeld (benutzerdefiniert)** — freie Überschrift plus bis zu drei Einträge: Entity-Wert,
   Schalt-Button oder Freitext.
 - **Eine Optik-Einstellung für alles** — Rahmen an/aus und `fill: transparent | weiss | schwarz`.
@@ -102,7 +102,7 @@ liegen damit automatisch am richtigen Platz und müssen nicht separat kopiert we
 Im Dashboard-Editor: **Karte hinzufügen** → **TomTuT Pool Dashboard**. Der visuelle Editor
 öffnet sich automatisch; die folgenden Beispiele zeigen dasselbe in YAML.
 
-### 1. Alles — Becken, Wärmepumpe, Poolpumpe, UV-Lampe, Solar, Einlaufdüse, Freifeld
+### 1. Alles — Becken, Wärmepumpe, Poolpumpe, UV-Lampe, Solar, Freifeld
 
 ```yaml
 type: custom:tomtut-pool-dashboard
@@ -115,6 +115,8 @@ hero:
   label_text: Pool
   # Skimmer und Einlaufdüse sind ab Werk an, der Bodenablauf nicht
   show_drain: true
+  # Kästchen neben der Düse: was gerade ins Becken läuft
+  inlet_temp_entity: sensor.einlauf_temperatur
 frame:
   enabled: true
   fill: transparent
@@ -145,9 +147,6 @@ slots:
     switch_entity: switch.solarventil
     temp_in_entity: sensor.solar_vorlauf
     temp_out_entity: sensor.solar_ruecklauf
-  - type: inlet
-    label: Einlaufdüse
-    temp_entity: sensor.einlauf_temperatur
   - type: custom
     title: Werte
     align: mitte
@@ -243,6 +242,8 @@ slots:
 | `ph_top` / `ph_left` / `rx_top` / `rx_left` | aus der Formen-Tabelle | Position der Kästchen |
 | `skimmer_top` / `skimmer_left` / `skimmer_size` | aus der Formen-Tabelle / `10` | Lage und Breite des Skimmers |
 | `inlet_top` / `inlet_left` / `inlet_size` | aus der Formen-Tabelle / `6.5` | Lage und Breite der Einlaufdüse |
+| `inlet_temp_entity` | – | Temperatur des einströmenden Wassers → Kästchen neben der Düse (nur mit `show_inlet`) |
+| `inlet_temp_top` / `inlet_temp_left` | Düsen-Anker + 8 / + 11 | Position des Kästchens; ohne Angabe wandert es mit der Düse |
 | `drain_top` / `drain_left` / `drain_size` | aus der Formen-Tabelle / `9` | Lage und Breite des Bodenablaufs |
 
 Die Anker der Formen-Tabelle sind an den Bildern vermessen (siehe [Beckenformen](#beckenformen));
@@ -252,6 +253,9 @@ der Beckenbreite** — im Editor steht dafür je ein Regler „Größe".
 Skimmer und Einlaufdüse sind ab Werk **an**: so sieht ein Becken aus, das im Betrieb ist.
 Wer nur das nackte Becken will, schaltet beide ab. Der Bodenablauf ist ab Werk **aus**, weil
 ihn längst nicht jedes Becken hat.
+
+Die Einlauftemperatur hängt an der Düse: ohne `show_inlet` kein Kästchen. Es ist im selben
+Stil gezeichnet wie pH und RX und trägt die Beschriftung „Zulauf".
 
 ### `frame` — Optik aller Slots
 
@@ -275,11 +279,12 @@ bewusst keine Farbwahl pro Element und keine hellen/dunklen Bildvarianten mehr.
 | `hidden` | fertig | Slot ausblenden; die übrigen rücken nach |
 | `uv` | fertig | UV-C-Lampe im Rohrstrang |
 | `solar` | fertig | Solarheizung (Absorberfeld) |
-| `inlet` | fertig | Einlaufdüse |
+| `inlet` | entfällt | **Abgeschafft in Iteration 6.** Die Einlaufdüse lebt als Sprite am Becken weiter |
 
-Alle Typen sind fertig — es gibt keinen reservierten Typ mehr. Ein unbekannter `type` (etwa
-ein Tippfehler oder ein Typ aus einer neueren Version) rendert weiterhin als leerer Rahmen,
-statt die Card scheitern zu lassen.
+Alle wählbaren Typen sind fertig. Ein unbekannter `type` (etwa ein Tippfehler oder ein Typ
+aus einer neueren Version) rendert als leerer Rahmen, statt die Card scheitern zu lassen —
+und genau das macht auch ein bestehendes `type: inlet`, mit dem Hinweis „Einlaufdüse ist
+jetzt Teil des Beckens". Im Auswahlfeld des Editors taucht `inlet` nicht mehr auf.
 
 Im Editor stehen im Auswahlfeld zuerst die allgemeinen Slots (`custom`, `hidden`, `frame`),
 danach trennt eine nicht wählbare Zeile „— Geräte —“ die Gerätetypen ab. Die Schlüssel selbst
@@ -417,19 +422,6 @@ Entities sind optional; es reicht eine.
 Welcher Stutzen welcher ist, sagt die Position: die Defaults sitzen an den beiden Rohrstutzen
 rechts im Bild — unten Vorlauf, oben Rücklauf. Verschieben geht im Editor.
 
-### Slot `inlet` — Einlaufdüse
-
-Der schlankeste Slot der Sammlung: eine Einlaufdüse hat nichts zu schalten.
-
-| Option | Standard | Beschreibung |
-|---|---|---|
-| `label` | – | Überschrift über dem Bild |
-| `temp_entity` | – | Temperatur des einströmenden Wassers → Thermometer an der Düsenöffnung |
-| `show_temp` | `true` | Thermometer abschalten |
-| `temp_top` / `temp_left` / `temp_scale` | `50` / `28` / `115` | Thermometer |
-
-Dieselbe Zeichnung sitzt zusätzlich als kleines Bild am Becken selbst (`hero.show_inlet`).
-
 ### Slot `custom` — Freifeld (benutzerdefiniert)
 
 | Option | Standard | Beschreibung |
@@ -525,8 +517,15 @@ und muss in jeder künftigen Version identisch rendern — der Smoke-Test prüft
 
 Wird ein reservierter Slot-Typ fertig, ersetzt sein Artwork den Platzhalter-Rahmen — die
 Konfiguration bleibt dieselbe. Genau so kam in Iteration 4 die UV-Lampe zu einem `type: uv`
-und in Iteration 5 die Solarheizung (`type: solar`) und die Einlaufdüse (`type: inlet`) zu
-ihrem Bild; wer sie vorher schon eingetragen hatte, sieht sie jetzt einfach.
+und in Iteration 5 die Solarheizung (`type: solar`) zu ihrem Bild; wer sie vorher schon
+eingetragen hatte, sieht sie jetzt einfach.
+
+Umgekehrt geht es genauso schonend: der Einlaufdüsen-Slot (`type: inlet`) ist in Iteration 6
+**entfallen**, weil ein eigener Kasten für ein Stück Rohr nichts erklärt, was das Becken
+nicht besser zeigt. Der Schlüssel bleibt trotzdem gültig — eine bestehende Karte rendert ihn
+als leeren Rahmen mit dem Hinweis „Einlaufdüse ist jetzt Teil des Beckens" und bricht nicht.
+Die Temperatur des einströmenden Wassers zeigt jetzt `hero.inlet_temp_entity` direkt neben
+der Düse am Becken.
 
 Eine Ausnahme von „sieht aus wie vorher" ist bewusst gewählt: seit Iteration 5 zeigt ein
 Becken ohne weitere Angabe **Skimmer und Einlaufdüse**. Wer das nicht will, setzt

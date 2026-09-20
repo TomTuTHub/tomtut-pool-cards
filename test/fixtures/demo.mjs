@@ -97,6 +97,7 @@ export const allesConfig = (rotate = 0, mirror = false) => ({
     rx_entity: "sensor.pool_redox",
     label_text: "Pool",
     show_drain: true,
+    inlet_temp_entity: "sensor.einlauf_temperatur",
   },
   frame: { enabled: true, fill: "transparent" },
   slots: [
@@ -131,6 +132,8 @@ export const allesConfig = (rotate = 0, mirror = false) => ({
       temp_out_entity: "sensor.solar_ruecklauf",
       power_entity: "sensor.solar_power",
     },
+    /* Altlast-Probe: der Typ gibt es seit Iteration 6 nicht mehr, die Card
+       macht daraus einen Rahmen mit Hinweis statt zu brechen. */
     { type: "inlet", label: "Einlaufduese", temp_entity: "sensor.einlauf_temperatur" },
     {
       type: "custom",

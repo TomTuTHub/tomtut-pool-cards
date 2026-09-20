@@ -4,7 +4,6 @@ import "./slots/heatpump.js";
 import "./slots/pump.js";
 import "./slots/uv.js";
 import "./slots/solar.js";
-import "./slots/inlet.js";
 import "./slots/custom.js";
 import "./slots/placeholder.js";
 import { SLOT_TYPES, DEFAULT_SHAPE } from "./shared/assets.js";
@@ -33,7 +32,6 @@ const SLOT_TAGS = {
   pump: "tomtut-pool-slot-pump",
   uv: "tomtut-pool-slot-uv",
   solar: "tomtut-pool-slot-solar",
-  inlet: "tomtut-pool-slot-inlet",
   custom: "tomtut-pool-slot-custom",
   frame: "tomtut-pool-slot-frame",
 };
@@ -151,12 +149,6 @@ export class TomtutPoolDashboardCard extends LitElement {
           .config="${slot}"
           .frame="${frame}"
         ></tomtut-pool-slot-solar>`;
-      case "inlet":
-        return html`<tomtut-pool-slot-inlet
-          .hass="${this.hass}"
-          .config="${slot}"
-          .frame="${frame}"
-        ></tomtut-pool-slot-inlet>`;
       case "custom":
         return html`<tomtut-pool-slot-custom
           .hass="${this.hass}"

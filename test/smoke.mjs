@@ -809,7 +809,6 @@ check("Editor: Slot-Typen in der Reihenfolge mit Geraete-Trenner", () => {
       "Poolpumpe",
       "UV-C-Lampe",
       "Solarheizung",
-      "Einlaufdüse",
     ]
   );
   const trenner = opts[3];
@@ -828,11 +827,14 @@ check("slotTypeOptions liefert genau einen Trenner vor den Geraeten", () => {
   );
   assert.deepEqual(
     opts.slice(idx + 1).map((o) => o.value),
-    ["heatpump", "pump", "uv", "solar", "inlet"]
+    ["heatpump", "pump", "uv", "solar"]
   );
-  /* jeder Typ aus der Tabelle taucht genau einmal auf */
+  /* jeder waehlbare Typ aus der Tabelle taucht genau einmal auf */
   const werte = opts.filter((o) => !o.trenner).map((o) => o.value);
-  assert.deepEqual([...werte].sort(), Object.keys(pkg.SLOT_TYPES).sort());
+  const waehlbar = Object.keys(pkg.SLOT_TYPES).filter(
+    (k) => pkg.SLOT_TYPES[k].waehlbar !== false
+  );
+  assert.deepEqual([...werte].sort(), waehlbar.sort());
 });
 check("Editor bietet die Beckenformen an", () => {
   const sel = editor.shadowRoot.querySelector('select[data-key="shape"]');
@@ -1019,7 +1021,6 @@ check("nur noch transparente Geraetebilder", () => {
     pump: "poolpumpe_transparent.png",
     uv: "uv_lampe_transparent.png",
     solar: "solar_transparent.png",
-    inlet: "einlaufduese_transparent.png",
   });
   /* auch die Becken-Sprites gibt es nur transparent */
   for (const [name, sprite] of Object.entries(pkg.HERO_SPRITES)) {
@@ -1778,14 +1779,9 @@ check("Solar: einzelnes Element abwaehlbar", () =>
   assert.equal(solarOhneVorlauf.shadowRoot.querySelectorAll(".thermo").length, 1)
 );
 
-/* ---- Einlaufduese ---- */
+/* ---- Einlaufduese: Slot abgeschafft, lebt am Becken weiter (It. 6) ---- */
 
-const INLET_CONFIG = {
-  type: "inlet",
-  label: "Einlaufdüse",
-  temp_entity: "sensor.einlauf_temperatur",
-};
-const inletHass = () =>
+const einlaufHass = () =>
   makeHass({
     "sensor.einlauf_temperatur": {
       state: "26.9",
@@ -1793,41 +1789,105 @@ const inletHass = () =>
       last_changed: iso(60),
     },
   });
-const mountInlet = async (config = INLET_CONFIG, hass = inletHass()) => {
-  const card = await mount(Dashboard, { hero: { enabled: false }, slots: [config] }, hass);
-  const slot = card.shadowRoot.querySelector("tomtut-pool-slot-inlet");
-  await slot.updateComplete;
-  return slot;
-};
-const inlet = await mountInlet();
 
-check("Einlauf: eigener Slot statt Platzhalter", () => {
-  assert.equal(pkg.SLOT_TYPES.inlet.ready, true);
-  assert.equal(pkg.SLOT_TYPES.inlet.label, "Einlaufdüse");
-  assert.ok(!("hint" in pkg.SLOT_TYPES.inlet), "Platzhalter-Hinweis lebt noch");
-  assert.ok(customElements.get("tomtut-pool-slot-inlet"));
+const altInlet = await mount(
+  Dashboard,
+  { hero: { enabled: false }, slots: [{ type: "inlet", label: "Einlaufdüse", temp_entity: "sensor.einlauf_temperatur" }] },
+  einlaufHass()
+);
+check("Einlauf: alte Config mit type inlet bricht nicht, sondern erklaert sich", () => {
+  /* Update-Schutz: der Typ verschwindet nie aus SLOT_TYPES, er wird nur
+     unfertig gestellt und faellt damit auf den Rahmen-Slot zurueck. */
+  assert.equal(altInlet.shadowRoot.querySelector("tomtut-pool-slot-inlet"), null);
+  const rahmen = altInlet.shadowRoot.querySelector("tomtut-pool-slot-frame");
+  assert.ok(rahmen, "kein Rahmen-Fallback");
+  assert.match(rahmen.shadowRoot.textContent, /Einlaufdüse ist jetzt Teil des Beckens/);
+  assert.equal(altInlet._config.slots[0].type, "inlet", "Config wurde angefasst");
 });
-check("Einlauf: Artwork und ein Thermometer an der Duesenoeffnung", () => {
+check("Einlauf: kein eigener Slot-Typ mehr", () => {
+  assert.equal(pkg.SLOT_TYPES.inlet.ready, false);
+  assert.equal(pkg.SLOT_TYPES.inlet.waehlbar, false);
+  assert.equal(customElements.get("tomtut-pool-slot-inlet"), undefined);
+  assert.ok(!("inlet" in pkg.DEVICE_IMAGES), "Geraetebild lebt noch");
+  assert.ok(!("inlet" in pkg.DEVICE_RATIOS), "Ratio lebt noch");
+  assert.ok(!pkg.slotTypeOptions().some((o) => o.value === "inlet"), "steht noch im Picker");
+});
+check("Einlauf: das Sprite-Bild bleibt ausgeliefert", () =>
+  assert.equal(pkg.HERO_SPRITES.einlauf.file, "einlaufduese_transparent.png")
+);
+
+/* ---- Einlauftemperatur als Kaestchen am Becken ---- */
+
+const mountBecken = async (hero) => {
+  const card = await mount(Dashboard, { hero, slots: [] }, einlaufHass());
+  const becken = card.shadowRoot.querySelector("tomtut-pool-hero");
+  await becken.updateComplete;
+  return becken;
+};
+
+const beckenEinlauf = await mountBecken({
+  shape: "oval",
+  inlet_temp_entity: "sensor.einlauf_temperatur",
+});
+check("Becken: Einlauftemperatur sitzt als Kaestchen neben der Duese", () => {
+  const box = beckenEinlauf.shadowRoot.querySelector(".chem-box.inlet-temp");
+  assert.ok(box, "kein Kaestchen");
+  assert.match(box.textContent, /Zulauf/);
+  assert.match(box.textContent, /26,9 °C/);
+  const anker = pkg.SHAPES.oval.inlet;
+  const stil = box.getAttribute("style");
+  assert.match(stil, new RegExp(`top:${anker.top + pkg.INLET_TEMP_VERSATZ.top}%`));
+  assert.match(stil, new RegExp(`left:${anker.left + pkg.INLET_TEMP_VERSATZ.left}%`));
+});
+check("Becken: Kaestchen oeffnet die Entity (more-info)", () =>
   assert.equal(
-    inlet.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/einlaufduese_transparent.png"
-  );
-  const thermos = inlet.shadowRoot.querySelectorAll(".thermo");
-  assert.equal(thermos.length, 1);
-  assert.match(inlet.shadowRoot.textContent, /26,9 °C/);
-  const stil = thermos[0].getAttribute("style");
-  assert.match(stil, new RegExp(`top:${pkg.INLET_DEFAULTS.temp_top}%`));
-  assert.match(stil, new RegExp(`left:${pkg.INLET_DEFAULTS.temp_left}%`));
+    beckenEinlauf.shadowRoot.querySelector(".chem-box.inlet-temp").dataset.entity,
+    "sensor.einlauf_temperatur"
+  )
+);
+
+const beckenVerschoben = await mountBecken({
+  shape: "oval",
+  inlet_temp_entity: "sensor.einlauf_temperatur",
+  inlet_top: 30,
+  inlet_left: 40,
 });
-check("Einlauf: kein Schalter, keine Watt-Box, kein Laufrad", () => {
-  assert.equal(inlet.shadowRoot.querySelector(".power-badge"), null);
-  assert.equal(inlet.shadowRoot.querySelector(".value-box"), null);
-  assert.equal(inlet.shadowRoot.querySelector(".fan-overlay"), null);
+check("Becken: das Kaestchen wandert mit der verschobenen Duese", () => {
+  const stil = beckenVerschoben.shadowRoot
+    .querySelector(".chem-box.inlet-temp")
+    .getAttribute("style");
+  assert.match(stil, new RegExp(`top:${30 + pkg.INLET_TEMP_VERSATZ.top}%`));
+  assert.match(stil, new RegExp(`left:${40 + pkg.INLET_TEMP_VERSATZ.left}%`));
 });
-const inletLeer = await mountInlet({ type: "inlet" });
-check("Einlauf ohne Entity rendert trotzdem und zeigt den Hinweis", () => {
-  assert.ok(inletLeer.shadowRoot.querySelector("img"));
-  assert.match(inletLeer.shadowRoot.textContent, /Temperaturfühler/);
+
+const beckenEigenePos = await mountBecken({
+  shape: "oval",
+  inlet_temp_entity: "sensor.einlauf_temperatur",
+  inlet_temp_top: 55,
+  inlet_temp_left: 22,
+});
+check("Becken: eigene Position schlaegt den Versatz", () => {
+  const stil = beckenEigenePos.shadowRoot
+    .querySelector(".chem-box.inlet-temp")
+    .getAttribute("style");
+  assert.match(stil, /top:55%/);
+  assert.match(stil, /left:22%/);
+});
+
+const beckenOhneDuese = await mountBecken({
+  shape: "oval",
+  show_inlet: false,
+  inlet_temp_entity: "sensor.einlauf_temperatur",
+});
+check("Becken: ohne Duese auch kein Kaestchen", () => {
+  assert.equal(beckenOhneDuese.shadowRoot.querySelector("img.sprite-inlet"), null);
+  assert.equal(beckenOhneDuese.shadowRoot.querySelector(".chem-box.inlet-temp"), null);
+});
+
+const beckenOhneEntity = await mountBecken({ shape: "oval" });
+check("Becken: ohne Entity bleibt es beim blossen Sprite", () => {
+  assert.ok(beckenOhneEntity.shadowRoot.querySelector("img.sprite-inlet"));
+  assert.equal(beckenOhneEntity.shadowRoot.querySelector(".chem-box.inlet-temp"), null);
 });
 
 /* ---- Sprites auf dem Becken ---- */
@@ -1939,11 +1999,17 @@ await ed5.updateComplete;
 let ed5Fired = null;
 ed5.addEventListener("config-changed", (e) => (ed5Fired = e.detail.config));
 
-check("Editor: kein Slot-Typ traegt noch '(folgt)'", () => {
+check("Editor: kein waehlbarer Slot-Typ ist unfertig", () => {
   assert.ok(!pkg.slotTypeOptions().some((o) => /folgt/.test(o.label)), "'(folgt)' lebt noch");
   for (const [key, meta] of Object.entries(pkg.SLOT_TYPES)) {
+    if (meta.waehlbar === false) continue;
     assert.notEqual(meta.ready, false, `${key} ist noch reserviert`);
   }
+  /* genau ein abgeschaffter Typ: die Einlaufduese */
+  assert.deepEqual(
+    Object.keys(pkg.SLOT_TYPES).filter((k) => pkg.SLOT_TYPES[k].waehlbar === false),
+    ["inlet"]
+  );
 });
 check("Editor: Solar-Slot hat Elemente, Entities und Regler", () => {
   const txt = ed5.shadowRoot.textContent;
@@ -1956,11 +2022,15 @@ check("Editor: Solar-Slot hat Elemente, Entities und Regler", () => {
   const regler = ed5.shadowRoot.querySelector('input[data-key="temp_in_top"]');
   assert.equal(regler.value, String(pkg.SOLAR_DEFAULTS.temp_in_top));
 });
-check("Editor: Einlauf-Slot hat nur das Thermometer", () => {
+check("Editor: alter Einlauf-Slot zeigt sich als abgeschafft", () => {
   const karte = ed5.shadowRoot.querySelectorAll(".slot-card")[1];
-  const schalter = karte.querySelectorAll('.elements input[type="checkbox"]');
-  assert.equal(schalter.length, 1, "Einlaufduese hat mehr als ein Element");
-  assert.equal(schalter[0].dataset.key, "show_temp");
+  /* kein Gerätekasten mehr, sondern die Felder des leeren Rahmens */
+  assert.equal(karte.querySelectorAll('.elements input[type="checkbox"]').length, 0);
+  assert.ok(karte.querySelector('input[data-key="hint"]'), "Rahmen-Felder fehlen");
+  /* und im Auswahlfeld steht, was in der Config steht */
+  const sel = karte.querySelector('select[data-key="type"]');
+  assert.equal(sel.value, "inlet");
+  assert.match(sel.selectedOptions[0].textContent, /entfällt/);
 });
 check("Editor: Becken bietet Skimmer, Einlaufduese und Bodenablauf", () => {
   const txt = ed5.shadowRoot.textContent;
@@ -2020,7 +2090,6 @@ check("Alle Geraete-Slots bauen den Bildbereich aus shared/", () => {
     ["Poolpumpe", pump, "pump"],
     ["UV-Lampe", uv, "uv"],
     ["Solarheizung", solar, "solar"],
-    ["Einlaufduese", inlet, "inlet"],
   ]) {
     const flaeche = el.shadowRoot.querySelector(".img-wrap > .bild-flaeche");
     assert.ok(flaeche, `${name}: kein gemeinsamer Bildbereich`);

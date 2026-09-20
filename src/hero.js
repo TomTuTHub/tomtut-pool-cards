@@ -16,6 +16,10 @@ import { numText } from "./shared/util.js";
  * (HERO_SPRITES) statt Teil der Zeichnung: sie liegen auf der Wasserfläche,
  * bleiben einzeln abwählbar und gelten für alle Formen gleichermaßen.
  *
+ * Seit Iteration 6 kann die Einlaufdüse zusätzlich zeigen, was gerade ins
+ * Becken läuft: `inlet_temp_entity` rendert ein Kästchen im Stil von pH/RX
+ * direkt neben dem Sprite. Den eigenen Einlaufdüsen-Slot gibt es nicht mehr.
+ *
  * Auch der Freitext hängt seit Iteration 4 an der Form (`label_anker`): sein
  * Platz ist oben mittig über der Wasserfläche, und die liegt je nach Becken
  * unterschiedlich hoch im Bild.
@@ -23,6 +27,14 @@ import { numText } from "./shared/util.js";
  * Farben kommen ausschließlich aus `frame.fill` (siehe shared/styles.js);
  * ein früheres `box_color` in einer alten Config wird ignoriert.
  */
+/*
+ * Versatz des Einlauf-Kästchens gegenüber dem Düsen-Sprite (Prozentpunkte
+ * des Bildes): rechts daneben und ein Stück tiefer, damit es weder die Düse
+ * noch die hintere Beckenkante verdeckt. Wird die Düse verschoben, wandert
+ * das Kästchen mit — es sei denn, es hat eigene Werte in der Config.
+ */
+export const INLET_TEMP_VERSATZ = { top: 8, left: 11 };
+
 export const HERO_DEFAULTS = {
   thermo_scale: 133,
   label_scale: 100,
@@ -54,6 +66,10 @@ export const heroDefaultsFor = (shapeName) => {
     rx_top: s.rx.top,
     rx_left: s.rx.left,
     ...anker,
+    /* Startwerte der Regler im Editor; beim Rendern folgt das Kästchen der
+       tatsächlichen Düsenposition (siehe defaults-Getter unten). */
+    inlet_temp_top: (s.inlet?.top ?? 12) + INLET_TEMP_VERSATZ.top,
+    inlet_temp_left: (s.inlet?.left ?? 66) + INLET_TEMP_VERSATZ.left,
     label_top: s.label_anker?.top ?? HERO_DEFAULTS.label_top,
     label_left: s.label_anker?.left ?? HERO_DEFAULTS.label_left,
   };
@@ -61,7 +77,23 @@ export const heroDefaultsFor = (shapeName) => {
 
 export class TomtutPoolHero extends SlotBase {
   get defaults() {
-    return heroDefaultsFor(this.config?.shape);
+    return {
+      ...heroDefaultsFor(this.config?.shape),
+      /* an der Düse festgemacht, nicht an der Form: wer das Sprite
+         verschiebt, nimmt das Kästchen mit */
+      inlet_temp_top: this._anchor("inlet", "top") + INLET_TEMP_VERSATZ.top,
+      inlet_temp_left: this._anchor("inlet", "left") + INLET_TEMP_VERSATZ.left,
+    };
+  }
+
+  /*
+   * Ist ein Becken-Sprite eingeschaltet? Ohne Angabe gilt sein Standard
+   * (Skimmer und Einlaufdüse an, Bodenablauf aus).
+   */
+  _spriteAn(anker) {
+    const sprite = Object.values(HERO_SPRITES).find((x) => x.anker === anker);
+    const gesetzt = this.config?.[`show_${anker}`];
+    return gesetzt === undefined || gesetzt === null ? !!sprite?.standard : gesetzt !== false;
   }
 
   get shape() {
@@ -83,6 +115,8 @@ export class TomtutPoolHero extends SlotBase {
     const showThermo = c.show_thermo !== false && !!c.temp_entity;
     const showPh = c.show_ph !== false && !!c.ph_entity;
     const showRx = c.show_rx !== false && !!c.rx_entity;
+    /* Die Einlauftemperatur hängt am Sprite: keine Düse, kein Kästchen. */
+    const showInletTemp = !!c.inlet_temp_entity && this._spriteAn("inlet");
 
     const body = html`
       <div class="img-wrap">
@@ -103,6 +137,15 @@ export class TomtutPoolHero extends SlotBase {
           : nothing}
         ${showRx
           ? this._chemBox("RX", c.rx_entity, this._anchor("rx", "top"), this._anchor("rx", "left"))
+          : nothing}
+        ${showInletTemp
+          ? this._chemBox(
+              "Zulauf",
+              c.inlet_temp_entity,
+              this._v("inlet_temp_top"),
+              this._v("inlet_temp_left"),
+              "inlet-temp"
+            )
           : nothing}
         ${c.label_text
           ? html`<div
@@ -131,11 +174,8 @@ export class TomtutPoolHero extends SlotBase {
    * Wasserfläche, aber unter Thermometer, pH/RX und Freitext.
    */
   _sprites() {
-    const c = this.config || {};
     return Object.values(HERO_SPRITES).map((sprite) => {
-      const gesetzt = c[`show_${sprite.anker}`];
-      const an = gesetzt === undefined || gesetzt === null ? sprite.standard : gesetzt !== false;
-      if (!an) return nothing;
+      if (!this._spriteAn(sprite.anker)) return nothing;
       const groesse = Number(this._v(`${sprite.anker}_size`));
       const breite = groesse > 0 ? groesse : sprite.groesse;
       return html`<img
@@ -150,11 +190,11 @@ export class TomtutPoolHero extends SlotBase {
     });
   }
 
-  _chemBox(key, entity, top, left) {
+  _chemBox(key, entity, top, left, extra = "") {
     const ent = this._ent(entity);
     return html`
       <div
-        class="chem-box"
+        class="chem-box ${extra}"
         style="top:${top}%; left:${left}%;"
         data-entity="${entity}"
         @click="${this._moreInfo}"

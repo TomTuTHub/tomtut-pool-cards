@@ -5,9 +5,11 @@ import { SLOT_TYPES } from "../shared/assets.js";
 
 /*
  * Slot "frame" — ein leerer Rahmen, der das Raster symmetrisch hält.
- * Zugleich der Platzhalter für reservierte Typen (uv / solar / inlet):
- * Die rendern bis zu ihrer Iteration als Rahmen mit kurzem Hinweis,
- * damit eine Config von heute später unverändert weiterläuft.
+ *
+ * Zugleich der Auffang für jeden Typ mit `ready: false` in SLOT_TYPES: für
+ * einen noch nicht gebauten genauso wie für einen abgeschafften (seit
+ * Iteration 6 die Einlaufdüse). Beide rendern als Rahmen mit kurzem Hinweis,
+ * damit eine bestehende Config nie bricht, sondern erklärt wird.
  */
 export class TomtutPoolSlotFrame extends SlotBase {
   static properties = {

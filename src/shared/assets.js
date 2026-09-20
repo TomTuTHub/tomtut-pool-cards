@@ -107,7 +107,6 @@ export const DEVICE_IMAGES = {
   pump: "poolpumpe_transparent.png",
   uv: "uv_lampe_transparent.png",
   solar: "solar_transparent.png",
-  inlet: "einlaufduese_transparent.png",
 };
 
 /*
@@ -155,7 +154,6 @@ export const DEVICE_RATIOS = {
   pump: 1191 / 889,
   uv: 947 / 384,
   solar: 1188 / 888,
-  inlet: 1192 / 889,
 };
 
 export const imagePath = (file) => IMAGE_BASE + file;
@@ -168,10 +166,11 @@ export const deviceImage = (kind, variante) =>
 export const deviceRatio = (kind) => DEVICE_RATIOS[kind] || 1;
 
 /*
- * Slot-Typen. `ready: false` wäre ein für eine spätere Iteration reservierter
- * Typ (Artwork fehlt noch) — der rendert dann als leerer Rahmen mit Hinweis.
- * Seit Iteration 5 gibt es keinen solchen Typ mehr; das Feld bleibt, weil die
- * Mechanik für künftige Geräte gebraucht wird.
+ * Slot-Typen.
+ *
+ * `ready: false` = der Typ rendert als leerer Rahmen mit kurzem Hinweis. Das
+ * gilt für reservierte Typen (Artwork fehlt noch) genauso wie für einen
+ * abgeschafften: `waehlbar: false` nimmt ihn zusätzlich aus dem Editor.
  * Die Schlüssel sind Teil der Config und ändern sich nie (Update-Sicherheit),
  * nur die Beschriftung im Editor.
  */
@@ -183,7 +182,19 @@ export const SLOT_TYPES = {
   hidden: { label: "Ausgeblendet", ready: true },
   uv: { label: "UV-C-Lampe", ready: true },
   solar: { label: "Solarheizung", ready: true },
-  inlet: { label: "Einlaufdüse", ready: true },
+  /*
+   * Abgeschafft in Iteration 6: eine Einlaufdüse als eigener Kasten sagt
+   * nichts, was das Becken nicht besser zeigt. Sie lebt weiter als Sprite auf
+   * dem Becken (hero: `show_inlet`) samt optionalem Temperatur-Kästchen
+   * (`inlet_temp_entity`). Der Eintrag bleibt stehen, damit eine bestehende
+   * Config nicht bricht — sie rendert als Rahmen mit diesem Hinweis.
+   */
+  inlet: {
+    label: "Einlaufdüse (entfällt)",
+    ready: false,
+    waehlbar: false,
+    hint: "Einlaufdüse ist jetzt Teil des Beckens",
+  },
 };
 
 /*
@@ -194,7 +205,7 @@ export const SLOT_TYPES = {
  */
 export const SLOT_TYPE_GROUPS = [
   { trenner: null, keys: ["custom", "hidden", "frame"] },
-  { trenner: "— Geräte —", keys: ["heatpump", "pump", "uv", "solar", "inlet"] },
+  { trenner: "— Geräte —", keys: ["heatpump", "pump", "uv", "solar"] },
 ];
 
 /*
@@ -206,7 +217,11 @@ export const SLOT_TYPE_GROUPS = [
  */
 export const slotTypeOptions = () => {
   const genannt = new Set(SLOT_TYPE_GROUPS.flatMap((g) => g.keys));
-  const rest = Object.keys(SLOT_TYPES).filter((k) => !genannt.has(k));
+  /* Abgeschaffte Typen (waehlbar: false) sind in keiner Gruppe und duerfen
+     auch nicht hinten angehaengt werden — sie sollen niemand mehr waehlen. */
+  const rest = Object.keys(SLOT_TYPES).filter(
+    (k) => !genannt.has(k) && SLOT_TYPES[k].waehlbar !== false
+  );
   const opt = (key) => ({
     value: key,
     label: SLOT_TYPES[key].label + (SLOT_TYPES[key].ready === false ? " (folgt)" : ""),

@@ -306,6 +306,59 @@ check("UV: 90 Grad dreht wirklich (Bild wird hochkant)", () => {
   assert.ok(hoch.bild[1] > hoch.bild[0], "90 Grad ist nicht hochkant");
 });
 
+/* ---- Becken: Einlauf-Kaestchen und die Altlast aus Iteration 6 ---- */
+
+let becken = null;
+await checkAsync("Becken: Einlauf-Kaestchen und Alt-Slot sind messbar", async () => {
+  becken = await page.evaluate(async () => {
+    document.body.innerHTML = "";
+    const buehne = document.createElement("div");
+    buehne.style.width = "900px";
+    document.body.appendChild(buehne);
+    const card = document.createElement("tomtut-pool-dashboard");
+    card.setConfig(window.demo.allesConfig(0, false));
+    card.hass = window.demo.DEMO_HASS;
+    buehne.appendChild(card);
+    await card.updateComplete;
+    const kinder = [...card.shadowRoot.querySelector(".grid").children];
+    await Promise.all(kinder.map((el) => el.updateComplete));
+    const hero = card.shadowRoot.querySelector("tomtut-pool-hero");
+    const masse = (el) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { links: r.left, oben: r.top, rechts: r.right, unten: r.bottom, breit: r.width, hoch: r.height };
+    };
+    const rahmen = kinder.find(
+      (el) => el.tagName.toLowerCase() === "tomtut-pool-slot-frame" &&
+        /Einlaufdüse/.test(el.shadowRoot.textContent)
+    );
+    return {
+      bild: masse(hero.shadowRoot.querySelector(".img-wrap > img")),
+      sprite: masse(hero.shadowRoot.querySelector("img.sprite-inlet")),
+      kasten: masse(hero.shadowRoot.querySelector(".chem-box.inlet-temp")),
+      kastenText: hero.shadowRoot.querySelector(".chem-box.inlet-temp")?.textContent.trim(),
+      altText: rahmen ? rahmen.shadowRoot.textContent.replace(/\s+/g, " ").trim() : null,
+      slotUv: !!card.shadowRoot.querySelector("tomtut-pool-slot-uv"),
+    };
+  });
+  assert.ok(becken.bild && becken.sprite && becken.kasten, "Becken unvollstaendig gerendert");
+});
+
+check("Becken: das Einlauf-Kaestchen liegt im Bild, neben der Duese", () => {
+  const { bild, sprite, kasten } = becken;
+  assert.ok(kasten.links >= bild.links - 1 && kasten.rechts <= bild.rechts + 1, "ragt seitlich raus");
+  assert.ok(kasten.oben >= bild.oben - 1 && kasten.unten <= bild.unten + 1, "ragt oben/unten raus");
+  assert.ok(kasten.links > sprite.links, "sitzt nicht rechts von der Duese");
+  const abstand = kasten.links - sprite.rechts;
+  assert.ok(abstand > -sprite.breit && abstand < bild.breit * 0.2, `Abstand ${Math.round(abstand)} px`);
+  assert.match(becken.kastenText, /Zulauf/);
+  assert.match(becken.kastenText, /26,9/);
+});
+
+check("Alte Config: type inlet wird zum Rahmen mit Hinweis", () =>
+  assert.match(String(becken.altText), /Einlaufdüse ist jetzt Teil des Beckens/)
+);
+
 check("keine Fehler in der Browser-Konsole", () =>
   assert.deepEqual(konsolenfehler, [], konsolenfehler.join(" | "))
 );

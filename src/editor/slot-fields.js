@@ -49,7 +49,14 @@ export const heroFields = (f) => html`
     ${f.element("🧪 pH-Kästchen", "show_ph", ["ph_entity", "ph_top", "ph_left"])}
     ${f.element("⚗ Redox / RX-Kästchen", "show_rx", ["rx_entity", "rx_top", "rx_left"])}
     ${f.element("🛟 Skimmer", "show_skimmer", ["skimmer_size", "skimmer_top", "skimmer_left"])}
-    ${f.element("💦 Einlaufdüse", "show_inlet", ["inlet_size", "inlet_top", "inlet_left"])}
+    ${f.element("💦 Einlaufdüse", "show_inlet", [
+      "inlet_size",
+      "inlet_top",
+      "inlet_left",
+      "inlet_temp_entity",
+      "inlet_temp_top",
+      "inlet_temp_left",
+    ])}
     ${f.element("⚓ Bodenablauf", "show_drain", ["drain_size", "drain_top", "drain_left"], false)}
   `)}
   ${f.select(
@@ -97,6 +104,26 @@ export const heroFields = (f) => html`
     : nothing}
   ${spriteFelder(f, "Skimmer", "skimmer", "show_skimmer", true)}
   ${spriteFelder(f, "Einlaufdüse", "inlet", "show_inlet", true)}
+  ${f.shown("show_inlet", true)
+    ? html`
+        ${f.entity(
+          "Temperatur am Einlauf (optional)",
+          "inlet_temp_entity",
+          "Kleines Kästchen neben der Düse — zeigt, was gerade ins Becken läuft.",
+          ...MESSWERT
+        )}
+        ${f.raw("inlet_temp_entity")
+          ? section(
+              "Einlauf-Temperatur — Position",
+              html`
+                ${f.slider("Von oben", "inlet_temp_top", 0, 100, "%", 0.5)}
+                ${f.slider("Von links", "inlet_temp_left", 0, 100, "%", 0.5)}
+                <small>Ohne eigene Werte sitzt das Kästchen automatisch neben der Düse.</small>
+              `
+            )
+          : nothing}
+      `
+    : nothing}
   ${spriteFelder(f, "Bodenablauf", "drain", "show_drain", false)}
   ${f.text("Freitext auf dem Becken (optional)", "label_text", "", "z.B. Pool")}
   ${f.raw("label_text")
@@ -670,42 +697,6 @@ export const solarFields = (f) => html`
             ${f.slider("Größe", "power_scale", 50, 150)}
             ${f.toggle("Box anzeigen", "power_box", true)}
             ${f.toggle("Einheit anzeigen", "power_label", true)}
-          `
-        )}
-      `
-    : nothing}
-`;
-
-/* ---------------- Einlaufdüse ---------------- */
-
-export const inletFields = (f) => html`
-  ${elementsGroup(html`
-    ${f.element("🌡 Temperatur", "show_temp", [
-      "temp_entity",
-      "temp_top",
-      "temp_left",
-      "temp_scale",
-    ])}
-  `)}
-  <small>
-    Die Einlaufdüse hat nichts zu schalten — sie zeigt, was gerade ins Becken läuft. Als
-    kleines Bild sitzt sie zusätzlich am Becken selbst (Schritt 1).
-  </small>
-  ${f.text("Überschrift (optional)", "label", "", "z.B. Einlaufdüse")}
-  ${f.shown("show_temp")
-    ? html`
-        ${f.entity(
-          "Temperatur des einströmenden Wassers",
-          "temp_entity",
-          "Zeigt das Thermometer an der Düsenöffnung.",
-          ...MESSWERT
-        )}
-        ${section(
-          "Thermometer — Position",
-          html`
-            ${f.slider("Von oben", "temp_top", 0, 100, "%", 0.5)}
-            ${f.slider("Von links", "temp_left", 0, 100, "%", 0.5)}
-            ${f.slider("Größe", "temp_scale", 50, 200)}
           `
         )}
       `
