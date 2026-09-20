@@ -1,7 +1,6 @@
 import { html, css, nothing } from "lit";
 import { SlotBase } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
-import { deviceImage } from "../shared/assets.js";
 import { isOn, seit, numText } from "../shared/util.js";
 
 /*
@@ -246,7 +245,7 @@ export class TomtutPoolSlotPump extends SlotBase {
       ${c.label ? html`<h3 class="slot-title">${c.label}</h3>` : nothing}
       <div class="pump">
         <div class="img-wrap">
-          <img src="${deviceImage("pump")}" alt="Poolpumpe" />
+          ${this.renderGeraeteBild({ kind: "pump", alt: "Poolpumpe" })}
           ${c.show_fan === false
             ? nothing
             : this.renderFan({

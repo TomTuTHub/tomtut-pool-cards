@@ -7,14 +7,18 @@
   "scripts": {
     "build": "rollup -c rollup.config.js",
     "dev": "rollup -c rollup.config.js --watch",
-    "test": "node test/smoke.mjs"
+    "test": "node test/smoke.mjs && node test/render.spec.mjs",
+    "test:jsdom": "node test/smoke.mjs",
+    "test:render": "node test/render.spec.mjs",
+    "test:browser-setup": "playwright install chromium"
   },
   "license": "MIT",
   "devDependencies": {
-    "rollup": "^4.0.0",
     "@rollup/plugin-node-resolve": "^15.0.0",
     "@rollup/plugin-terser": "^0.4.4",
-    "jsdom": "^24.0.0"
+    "jsdom": "^24.0.0",
+    "playwright": "^1.63.0",
+    "rollup": "^4.0.0"
   },
   "dependencies": {
     "lit": "^3.0.0"

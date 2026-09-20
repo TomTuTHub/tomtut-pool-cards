@@ -47,7 +47,8 @@ export {
 /* Für den Smoke-Test (und alles, was gegen das Bundle prüfen will) */
 export { PUMP_DEFAULTS, fanDuration } from "./slots/pump.js";
 export { HEATPUMP_DEFAULTS } from "./slots/heatpump.js";
-export { UV_DEFAULTS, passFaktor, normGrad } from "./slots/uv.js";
+export { UV_DEFAULTS } from "./slots/uv.js";
+export { passFaktor, normGrad, bildTransform } from "./shared/bild.js";
 export { SOLAR_DEFAULTS } from "./slots/solar.js";
 export { INLET_DEFAULTS } from "./slots/inlet.js";
 export { HERO_DEFAULTS, heroDefaultsFor } from "./hero.js";

@@ -98,6 +98,35 @@ export const overlayStyles = css`
   }
 
   /*
+   * Bildbereich eines Geräte-Slots (shared/slot-base.js: renderGeraeteBild).
+   *
+   * Die Höhe kommt aus der Regel aspect-ratio im Inline-Stil, nicht aus dem Bild:
+   * der Kasten steht schon vor dem Laden und ist für jeden Slot-Typ nach
+   * derselben Regel gebaut. overflow:hidden ist die harte Grenze — der
+   * innere Wrapper .bild darf gedreht und gespiegelt werden, hinaus kommt
+   * er nie. Gedreht wird um die Mitte.
+   */
+  .bild-flaeche {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+  }
+  .bild-flaeche > .bild {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    line-height: 0;
+    transform-origin: center center;
+  }
+  .bild-flaeche > .bild > img {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /*
    * Zubehör-Sprites auf dem Becken (Skimmer, Einlaufdüse, Bodenablauf).
    * Die Breite steht im Inline-Stil (Prozent der Beckenbreite) und schlägt
    * die 100 % der Regel darüber; die Höhe folgt dem Seitenverhältnis.

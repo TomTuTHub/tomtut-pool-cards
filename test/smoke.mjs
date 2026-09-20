@@ -1380,15 +1380,40 @@ check("UV: unbekannte Variante faellt auf das Standardbild zurueck", () =>
   )
 );
 
-check("UV: ungedreht bleibt der Kasten wie bei den anderen Geraeten", () => {
+/*
+ * Iteration 6: Der Bildkasten hat IMMER das Seitenverhaeltnis des PNGs und
+ * aendert seine Groesse beim Drehen nicht. Vorher wurde er quadratisch --
+ * damit wuchs der Slot und das Bild legte sich ueber die Nachbar-Cards.
+ */
+const kastenStil = (el) => el.shadowRoot.querySelector(".bild-flaeche").getAttribute("style");
+const UV_KASTEN = `aspect-ratio:${Math.round(pkg.DEVICE_RATIOS.uv * 10000) / 10000};`;
+const bildStil = (el) => el.shadowRoot.querySelector(".bild").getAttribute("style");
+const skala = (grad) => Math.round(pkg.passFaktor(grad, pkg.DEVICE_RATIOS.uv) * 1000) / 1000;
+
+check("UV: ungedreht ohne Transform, Kasten im Bildverhaeltnis", () => {
+  assert.equal(bildStil(uv), "");
+  assert.equal(kastenStil(uv), UV_KASTEN);
   assert.equal(uv.shadowRoot.querySelector(".img-wrap.quadrat"), null);
-  assert.equal(uv.shadowRoot.querySelector(".bild").getAttribute("style"), "");
 });
 
 const uvGedreht = await mountUv({ ...UV_CONFIG, rotate: 90 });
-check("UV: gedrehtes Bild sitzt in einem quadratischen Kasten", () => {
-  assert.ok(uvGedreht.shadowRoot.querySelector(".img-wrap.quadrat"));
-  assert.match(uvGedreht.shadowRoot.querySelector(".bild").getAttribute("style"), /rotate\(90deg\)/);
+check("UV: 90 Grad dreht nur das Bild, der Kasten bleibt gleich", () => {
+  assert.match(bildStil(uvGedreht), /rotate\(90deg\)/);
+  assert.equal(kastenStil(uvGedreht), UV_KASTEN);
+});
+check("UV: gedrehtes Bild wird passend verkleinert", () => {
+  /* quer liegendes Bild hochkant gedreht -> passt nur auf 1/ratio */
+  const f = skala(90);
+  assert.ok(Math.abs(f - 1 / pkg.DEVICE_RATIOS.uv) < 0.001, `Faktor ${f}`);
+  assert.ok(bildStil(uvGedreht).includes(`scale(${f})`), bildStil(uvGedreht));
+});
+const uv45 = await mountUv({ ...UV_CONFIG, rotate: 45 });
+check("UV: schraeg gedreht wird ebenfalls verkleinert", () => {
+  const stil = bildStil(uv45);
+  assert.match(stil, /rotate\(45deg\)/);
+  assert.ok(skala(45) < 1 && skala(45) > 0, `Faktor ${skala(45)}`);
+  assert.ok(stil.includes(`scale(${skala(45)})`), stil);
+  assert.equal(kastenStil(uv45), UV_KASTEN);
 });
 check("UV: Gluehen dreht mit, die Bedienelemente nicht", () => {
   assert.ok(uvGedreht.shadowRoot.querySelector(".bild .glow"), "Gluehen dreht nicht mit");
@@ -1399,33 +1424,49 @@ check("UV: Gluehen dreht mit, die Bedienelemente nicht", () => {
   assert.ok(uvGedreht.shadowRoot.querySelector(".power-badge"));
 });
 const uv180 = await mountUv({ ...UV_CONFIG, rotate: 180 });
-check("UV: 180° braucht keinen quadratischen Kasten", () => {
-  assert.equal(uv180.shadowRoot.querySelector(".img-wrap.quadrat"), null);
-  assert.match(uv180.shadowRoot.querySelector(".bild").getAttribute("style"), /rotate\(180deg\)/);
+check("UV: 180 Grad dreht ohne zu verkleinern", () => {
+  const stil = bildStil(uv180);
+  assert.match(stil, /rotate\(180deg\)/);
+  assert.ok(!/scale\(/.test(stil), stil);
+  assert.equal(kastenStil(uv180), UV_KASTEN);
 });
 const uvGespiegelt = await mountUv({ ...UV_CONFIG, mirror: true });
 check("UV: Spiegeln ohne Drehung", () => {
-  const stil = uvGespiegelt.shadowRoot.querySelector(".bild").getAttribute("style");
+  const stil = bildStil(uvGespiegelt);
   assert.match(stil, /scaleX\(-1\)/);
   assert.ok(!/rotate/.test(stil));
-  assert.equal(uvGespiegelt.shadowRoot.querySelector(".img-wrap.quadrat"), null);
+  assert.equal(kastenStil(uvGespiegelt), UV_KASTEN);
+});
+const uvGedrehtGespiegelt = await mountUv({ ...UV_CONFIG, rotate: 90, mirror: true });
+check("UV: gedreht UND gespiegelt bleibt im selben Kasten", () => {
+  const stil = bildStil(uvGedrehtGespiegelt);
+  assert.match(stil, /rotate\(90deg\)/);
+  assert.match(stil, /scaleX\(-1\)/);
+  assert.ok(stil.includes(`scale(${skala(90)})`), stil);
+  assert.equal(kastenStil(uvGedrehtGespiegelt), UV_KASTEN);
 });
 
 check("UV: Passfaktor haelt das gedrehte Bild im Kasten", () => {
-  const r = pkg.DEVICE_RATIOS.uv;
-  assert.equal(pkg.passFaktor(0, r), 1);
-  assert.equal(pkg.passFaktor(180, r), 1);
-  assert.equal(pkg.passFaktor(90, r), 1);
-  for (let grad = 0; grad < 360; grad += 5) {
-    const f = pkg.passFaktor(grad, r);
-    const rad = (grad * Math.PI) / 180;
-    const c = Math.abs(Math.cos(rad)), si = Math.abs(Math.sin(rad));
-    const huelleBreit = f * (c + si / r);
-    const huelleHoch = f * (si + c / r);
-    assert.ok(f > 0 && f <= 1, `Faktor ${f} bei ${grad}°`);
-    assert.ok(huelleBreit <= 1.0001 && huelleHoch <= 1.0001, `ragt raus bei ${grad}°`);
+  /* Kasten = ratio breit, 1 hoch (dieselbe Form wie das Bild). */
+  for (const r of [pkg.DEVICE_RATIOS.uv, pkg.DEVICE_RATIOS.pump, 1, 0.5]) {
+    assert.equal(pkg.passFaktor(0, r), 1, `0 Grad bei ratio ${r}`);
+    assert.equal(pkg.passFaktor(180, r), 1, `180 Grad bei ratio ${r}`);
+    for (let grad = 0; grad < 360; grad += 5) {
+      const f = pkg.passFaktor(grad, r);
+      const rad = (grad * Math.PI) / 180;
+      const c = Math.abs(Math.cos(rad)), si = Math.abs(Math.sin(rad));
+      const huelleBreit = f * (r * c + si);
+      const huelleHoch = f * (r * si + c);
+      assert.ok(f > 0 && f <= 1, `Faktor ${f} bei ${grad} Grad`);
+      assert.ok(
+        huelleBreit <= r * 1.0001 && huelleHoch <= 1.0001,
+        `ragt raus bei ${grad} Grad (ratio ${r})`
+      );
+    }
   }
-  /* ein hochkantes Bild muesste verkleinert werden */
+  /* quer liegendes Bild hochkant -> genau 1/ratio; quadratisch -> 1 */
+  assert.ok(Math.abs(pkg.passFaktor(90, 2) - 0.5) < 1e-9);
+  assert.equal(pkg.passFaktor(90, 1), 1);
   assert.ok(pkg.passFaktor(45, 1) < 1);
 });
 check("UV: Drehwinkel wird normalisiert", () => {
@@ -1952,6 +1993,46 @@ check("Editor: Skimmer abwaehlen raeumt seine Schluessel aus der Config", () => 
     assert.ok(!(key in ed5Fired.hero), `${key} steht noch drin`);
   }
   assert.equal(ed5.shadowRoot.querySelector('input[data-key="skimmer_size"]'), null);
+});
+
+/* ---- Bildbereich: eine Regel fuer alle Geraete-Slots ---- */
+
+check("Geraete-Ratios stimmen mit den ausgelieferten PNGs ueberein", () => {
+  /* Seit Iteration 6 bestimmt DEVICE_RATIOS die Kastenhoehe (aspect-ratio).
+     Passt eine Zahl nicht zum Bild, wird das Artwork verzerrt. */
+  for (const [kind, datei] of Object.entries(pkg.DEVICE_IMAGES)) {
+    const png = readFileSync(join(here, "../dist", datei));
+    assert.equal(png.readUInt32BE(12), 0x49484452, `${datei}: kein PNG-Header`);
+    const breit = png.readUInt32BE(16);
+    const hoch = png.readUInt32BE(20);
+    assert.ok(
+      Math.abs(breit / hoch - pkg.DEVICE_RATIOS[kind]) < 1e-6,
+      `${kind}: PNG ist ${breit}x${hoch}, Tabelle sagt ${pkg.DEVICE_RATIOS[kind]}`
+    );
+  }
+});
+
+
+
+check("Alle Geraete-Slots bauen den Bildbereich aus shared/", () => {
+  for (const [name, el, kind] of [
+    ["Waermepumpe", hp, "heatpump"],
+    ["Poolpumpe", pump, "pump"],
+    ["UV-Lampe", uv, "uv"],
+    ["Solarheizung", solar, "solar"],
+    ["Einlaufduese", inlet, "inlet"],
+  ]) {
+    const flaeche = el.shadowRoot.querySelector(".img-wrap > .bild-flaeche");
+    assert.ok(flaeche, `${name}: kein gemeinsamer Bildbereich`);
+    assert.equal(
+      flaeche.getAttribute("style"),
+      `aspect-ratio:${Math.round(pkg.DEVICE_RATIOS[kind] * 10000) / 10000};`,
+      `${name}: falsches Seitenverhaeltnis`
+    );
+    const bild = flaeche.querySelector(":scope > .bild");
+    assert.ok(bild, `${name}: kein Dreh-Wrapper`);
+    assert.ok(bild.querySelector(":scope > img"), `${name}: Bild sitzt nicht im Wrapper`);
+  }
 });
 
 /* ---- eingefrorene v1-Config bleibt lesbar ---- */

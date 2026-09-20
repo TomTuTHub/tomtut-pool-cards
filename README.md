@@ -386,9 +386,11 @@ Rohrkörper — **statisch, ohne Animation**. Bei `off`, unbekanntem Zustand ode
 Schalter bleibt das Bild ruhig. Ohne `switch_entity` gibt es kein Glühen.
 
 **Drehen und Spiegeln:** gedreht wird das Bild **samt Glühen**; Thermometer, Watt-Box und
-Powerbutton bleiben aufrecht und lesbar. Bei einer Drehung, die nicht 0° oder 180° ist, wird
-der Kasten quadratisch und das Bild so weit verkleinert, dass nichts heraussteht — die
-Overlays sitzen dann anders und wollen im Editor neu gesetzt werden.
+Powerbutton bleiben aufrecht und lesbar. Der Kasten ändert dabei seine Größe **nicht** — er
+hat in jeder Lage das Seitenverhältnis des Artworks. Stattdessen wird das gedrehte Bild so
+weit verkleinert, dass seine Hülle hineinpasst (bei 90°/270° einer quer liegenden Lampe also
+auf gut 40 %). Nichts kann über den Kasten hinausragen, die Nachbar-Cards bleiben unberührt.
+Nach dem Drehen sitzen die Overlays anders und wollen im Editor neu gesetzt werden.
 
 > Eine UV-Lampe kann nichts regeln, darum hat der Slot bewusst weder Durchflussfeld noch
 > Stufen. In den meisten Anlagen hängt sie ohnehin an einer Zeitschaltuhr parallel zur
@@ -541,9 +543,23 @@ Alte Karten laufen also unverändert weiter, sie holen sich ihre Farben jetzt nu
 
 ```bash
 npm install
-npm run build     # src/ -> dist/tomtut-pool-cards.js
-npm test          # Smoke-Test gegen dist/ (jsdom, ohne Home Assistant)
+npx playwright install chromium   # einmalig, fuer den Render-Test
+npm run build      # src/ -> dist/tomtut-pool-cards.js
+npm test           # beide Tests: jsdom-Smoke + Render im Browser
+npm run test:jsdom # nur der Smoke-Test (schnell, ohne Browser)
+npm run test:render
 ```
+
+**Zwei Tests, zwei Fragen.** Der Smoke-Test (`test/smoke.mjs`, jsdom) prüft Logik und
+Markup — er kennt kein Layout. Der Render-Test (`test/render.spec.mjs`, Chromium über
+Playwright) prüft, was man sieht: er baut die Card in drei Breiten (360/768/1200 px) mit der
+UV-Lampe in zehn Lagen und misst, dass Bild und Overlays jedes Slots vollständig in ihrer
+Box liegen und kein Slot höher wird als das 1,6-fache seiner Breite. Die Screenshots landen
+in `test/render-out/` (nicht versioniert), ein Kontaktbogen zusätzlich unter dem Pfad aus
+`RENDER_BELEG`. Ohne Chromium: `SKIP_RENDER_TEST=1 npm test`.
+
+> Anlass war Iteration 6: die gedrehte UV-Lampe wurde riesig gerendert und legte sich über
+> die Nachbar-Cards — im jsdom-Test sah alles grün aus. Layout prüft man im Browser.
 
 Aufbau:
 
@@ -554,8 +570,11 @@ src/
   alias-heatpump.js      Alias auf die alte Heatpump-Card
   hero.js                Becken mit Overlays
   slots/                 ein Modul je Slot-Typ
-  shared/                Formen-/Asset-Tabelle, Styles, Slot-Basis, Editor-Felder
+  shared/                Formen-/Asset-Tabelle, Styles, Slot-Basis, Bild-Geometrie, Editor-Felder
   editor/                visueller Editor
+test/smoke.mjs           Logik/Markup in jsdom
+test/render.spec.mjs     Layout in Chromium (Playwright)
+test/fixtures/demo.mjs   Beispiel-Anlage fuer den Render-Test (hass + Alles-Config)
 tools/prepare-assets.py  erzeugt die optimierten PNGs in dist/ (Becken, Geräte, Sprites)
 tools/becken-zonen.mjs   vermisst die Becken-Bilder (Anker + Zonen-Fixture)
 tools/png-lesen.mjs      minimaler PNG-Leser für das Messwerkzeug

@@ -1,5 +1,7 @@
 import { LitElement, html, nothing } from "lit";
 import { isOn, toWatt, fmt, domainOf } from "./util.js";
+import { deviceImage, deviceRatio } from "./assets.js";
+import { bildTransform } from "./bild.js";
 
 /* Lüfter-/Laufrad-Grafik — übernommen aus der Vigipool-Card (pump_style "fan") */
 export const FAN_SVG =
@@ -82,6 +84,29 @@ export class SlotBase extends LitElement {
   }
 
   /* ---------- Bausteine ---------- */
+
+  /*
+   * Bildbereich eines Geräte-Slots — die EINE Stelle für alle Slots.
+   *
+   * Der Kasten bekommt seine Höhe über `aspect-ratio` aus der Maßtabelle
+   * (shared/assets.js), nicht aus dem geladenen Bild: er steht damit sofort
+   * und bleibt in jeder Lage gleich groß. Gedreht/gespiegelt wird nur der
+   * innere Wrapper `.bild`, passend verkleinert (shared/bild.js); alles, was
+   * mitdrehen soll (z.B. das Glühen der UV-Lampe), kommt als `inhalt` in
+   * denselben Wrapper. `overflow:hidden` auf dem Kasten ist die harte
+   * Grenze — aus dem Bildbereich ragt nie etwas heraus.
+   */
+  renderGeraeteBild({ kind, variante, alt, rotate = 0, mirror = false, inhalt = nothing }) {
+    const ratio = deviceRatio(kind);
+    return html`
+      <div class="bild-flaeche" style="aspect-ratio:${Math.round(ratio * 10000) / 10000};">
+        <div class="bild" style="${bildTransform(rotate, mirror, ratio)}">
+          <img src="${deviceImage(kind, variante)}" alt="${alt}" />
+          ${inhalt}
+        </div>
+      </div>
+    `;
+  }
 
   /*
    * round: true  -> starre 1:1-Box, Grafik wird nie gestaucht oder geschert

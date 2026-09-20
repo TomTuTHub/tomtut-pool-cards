@@ -1,7 +1,6 @@
 import { html, nothing } from "lit";
 import { SlotBase } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
-import { deviceImage } from "../shared/assets.js";
 import { numText } from "../shared/util.js";
 
 /*
@@ -39,7 +38,7 @@ export class TomtutPoolSlotInlet extends SlotBase {
     return this.renderSlot(html`
       ${c.label ? html`<h3 class="slot-title">${c.label}</h3>` : nothing}
       <div class="img-wrap">
-        <img src="${deviceImage("inlet")}" alt="Einlaufdüse" />
+        ${this.renderGeraeteBild({ kind: "inlet", alt: "Einlaufdüse" })}
         ${showTemp
           ? this.renderThermo({
               value: numText(this._ent(c.temp_entity)),

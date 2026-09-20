@@ -1,8 +1,12 @@
 import { html, css, nothing } from "lit";
 import { SlotBase } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
-import { deviceImage, deviceRatio } from "../shared/assets.js";
+import { deviceRatio } from "../shared/assets.js";
 import { numText } from "../shared/util.js";
+
+/* Weiterhin hier exportiert, damit die Paket-Oberfläche gleich bleibt;
+   gerechnet wird in shared/bild.js (gilt für alle Slots). */
+export { normGrad, passFaktor } from "../shared/bild.js";
 
 /*
  * Slot "uv" — UV-C-Lampe im Rohrstrang.
@@ -20,6 +24,10 @@ import { numText } from "../shared/util.js";
  *   2. Drehen/Spiegeln — die Lampe sitzt je nach Anlage andersherum im
  *      Strang. Gedreht wird das Bild samt Glühen; Thermometer, Watt-Box und
  *      Powerbutton bleiben aufrecht und damit lesbar.
+ *
+ * Der Bildkasten ist dabei derselbe wie bei jedem anderen Geräte-Slot und
+ * ändert seine Größe durch das Drehen NICHT (shared: renderGeraeteBild) —
+ * das gedrehte Bild wird stattdessen so weit verkleinert, dass es hineinpasst.
  *
  * Die Positions-Defaults sind am Artwork vermessen (Rohrmitte, Neigung des
  * Rohrs ≈ −15°) und im Editor frei verschiebbar.
@@ -54,30 +62,6 @@ export const UV_DEFAULTS = {
 
 export const uvHasEntity = (c = {}) => !!(c.switch_entity || c.power_entity || c.temp_entity);
 
-/* Drehwinkel aus der Config: ganze Grad, immer 0..359 */
-export const normGrad = (wert) => {
-  const n = Number(wert);
-  if (!isFinite(n)) return 0;
-  return ((Math.round(n) % 360) + 360) % 360;
-};
-
-/*
- * Maßstab, damit ein gedrehtes Bild nicht aus seinem Kasten ragt.
- *
- * Gerechnet wird in Vielfachen der Kastenbreite: der Kasten ist bei einer
- * Drehung quadratisch, das Bild darin `1 : ratio`. Zurück kommt der Faktor,
- * mit dem die gedrehte Hülle gerade noch hineinpasst (nie über 1 — kleiner
- * als nötig wird nie skaliert).
- */
-export const passFaktor = (grad, ratio) => {
-  const r = Number(ratio) > 0 ? Number(ratio) : 1;
-  const rad = (normGrad(grad) * Math.PI) / 180;
-  const c = Math.abs(Math.cos(rad));
-  const s = Math.abs(Math.sin(rad));
-  const h = 1 / r;
-  return Math.min(1, 1 / (c + h * s), 1 / (s + h * c));
-};
-
 export class TomtutPoolSlotUv extends SlotBase {
   get defaults() {
     return UV_DEFAULTS;
@@ -97,21 +81,11 @@ export class TomtutPoolSlotUv extends SlotBase {
     return this._isOn(this.config?.switch_entity);
   }
 
-  /* Bild + Glühen drehen sich, die Bedienelemente nicht */
-  get _bildStil() {
-    const grad = normGrad(this._v("rotate"));
-    const faktor = passFaktor(grad, deviceRatio("uv"));
-    const teile = [];
-    if (grad) teile.push(`rotate(${grad}deg)`);
-    if (faktor < 1) teile.push(`scale(${Math.round(faktor * 1000) / 1000})`);
-    if (this._v("mirror") === true) teile.push("scaleX(-1)");
-    return teile.length ? `transform:${teile.join(" ")};` : "";
-  }
-
   /*
    * Der Glühbereich ist eine liegende Ellipse auf dem Rohr. Seine Höhe steht
    * in Prozent der Bildhöhe, gesetzt wird sie aber über `aspect-ratio`:
-   * prozentuale Höhen hätten im automatisch hohen Bildkasten keinen Bezug.
+   * prozentuale Höhen würden sich auf den Wrapper beziehen und beim Drehen
+   * mitwandern.
    */
   renderGlow() {
     const laenge = Number(this._v("glow_size")) || 0;
@@ -135,7 +109,6 @@ export class TomtutPoolSlotUv extends SlotBase {
   render() {
     const c = this.config || {};
     const configured = uvHasEntity(c);
-    const gedreht = normGrad(this._v("rotate")) % 180 !== 0;
 
     const showGlow = c.show_glow !== false;
     const showPowerBtn = c.show_power_button !== false && !!c.switch_entity;
@@ -144,11 +117,15 @@ export class TomtutPoolSlotUv extends SlotBase {
 
     return this.renderSlot(html`
       ${c.label ? html`<h3 class="slot-title">${c.label}</h3>` : nothing}
-      <div class="img-wrap ${gedreht ? "quadrat" : ""}">
-        <div class="bild" style="${this._bildStil}">
-          <img src="${deviceImage("uv", this._v("anschluss"))}" alt="UV-C-Lampe" />
-          ${showGlow && configured && this.leuchtet ? this.renderGlow() : nothing}
-        </div>
+      <div class="img-wrap">
+        ${this.renderGeraeteBild({
+          kind: "uv",
+          variante: this._v("anschluss"),
+          alt: "UV-C-Lampe",
+          rotate: this._v("rotate"),
+          mirror: this._v("mirror") === true,
+          inhalt: showGlow && configured && this.leuchtet ? this.renderGlow() : nothing,
+        })}
 
         ${showPowerBtn
           ? this.renderPowerButton({
@@ -192,20 +169,6 @@ export class TomtutPoolSlotUv extends SlotBase {
     frameStyles,
     overlayStyles,
     css`
-      /* Ungedreht bleibt alles wie bei den anderen Geräten: der Kasten ist so
-         hoch wie das Bild. Erst beim Drehen wird er quadratisch, damit die
-         Ecken des gedrehten Bildes Platz haben. */
-      .bild {
-        position: relative;
-        width: 100%;
-        line-height: 0;
-        transform-origin: center center;
-      }
-      .img-wrap.quadrat {
-        aspect-ratio: 1 / 1;
-        display: flex;
-        align-items: center;
-      }
       .glow {
         position: absolute;
         border-radius: 50%;

@@ -12,3 +12,6 @@ Thumbs.db
 node_modules/
 package-lock.json
 *.log
+
+# Screenshots des Render-Tests (Beweisbilder, nicht versioniert)
+test/render-out/

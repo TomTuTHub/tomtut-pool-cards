@@ -1,7 +1,6 @@
 import { html, css, nothing } from "lit";
 import { SlotBase } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
-import { deviceImage } from "../shared/assets.js";
 import { fmt, isOn, numOf } from "../shared/util.js";
 
 /*
@@ -174,7 +173,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
 
     return this.renderSlot(html`
       <div class="img-wrap">
-        <img src="${deviceImage("heatpump")}" alt="Wärmepumpe" />
+        ${this.renderGeraeteBild({ kind: "heatpump", alt: "Wärmepumpe" })}
 
         ${showFan
           ? this.renderFan({
