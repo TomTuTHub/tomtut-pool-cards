@@ -28,7 +28,6 @@ eine Herstellerintegration in Home Assistant landen.
 | Card | Zweck |
 |---|---|
 | `custom:tomtut-pool-dashboard` | Die Card der Sammlung: Becken + beliebig viele Geräte-Kästen. Darf mehrfach im Dashboard liegen. |
-| `custom:tomtut-pool-heatpump-card` | Alias für bestehende Karten der alten *TomTuT Pool Heatpump Card*. Gleiche Optionen, gleiche Darstellung, neues Artwork. |
 
 ### Features
 
@@ -540,30 +539,6 @@ vermessen sind.
 
 ---
 
-## Umstieg von der alten Heatpump-Card
-
-Bestehende Karten laufen unverändert weiter — `custom:tomtut-pool-heatpump-card` gibt es
-weiterhin, mit denselben Optionen. Sie rendert intern das Dashboard mit genau einem
-Wärmepumpen-Kasten, ohne Becken und ohne Rahmen. Neu ist nur das Artwork.
-
-```yaml
-type: custom:tomtut-pool-heatpump-card
-label_text: Pool-Wärmepumpe
-target_entity: climate.pool_waermepumpe
-current_entity: climate.pool_waermepumpe
-power_entity: sensor.shelly_waermepumpe_power
-switch_entity: switch.shelly_waermepumpe
-```
-
-Wer möchte, stellt später auf `custom:tomtut-pool-dashboard` mit einem `heatpump`-Slot um —
-die Feldnamen sind dieselben. Ein Zwang dazu besteht nicht.
-
-**Wichtig:** die alte Card kam aus einem eigenen Repository. Läuft beides parallel, gibt es
-zwei Ressourcen mit demselben Card-Namen. Deinstalliere die alte *TomTuT Pool Heatpump Card*
-in HACS, wenn du diese Sammlung nutzt.
-
----
-
 ## Update-Sicherheit
 
 Die Konfiguration trägt `version: 1`. Neue Optionen kommen ausschließlich als **optionale
@@ -620,9 +595,8 @@ Aufbau:
 
 ```
 src/
-  tomtut-pool-cards.js   Einstieg, registriert beide Cards
+  tomtut-pool-cards.js   Einstieg, registriert die Card
   dashboard-card.js      Raster aus Hero + Slots
-  alias-heatpump.js      Alias auf die alte Heatpump-Card
   hero.js                Becken mit Overlays
   slots/                 ein Modul je Slot-Typ
   shared/                Formen-/Asset-Tabelle, Styles, Slot-Basis, Bild-Geometrie, Editor-Felder

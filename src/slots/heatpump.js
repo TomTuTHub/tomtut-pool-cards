@@ -4,12 +4,11 @@ import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { fmt, isOn, numOf } from "../shared/util.js";
 
 /*
- * Slot "heatpump" — die komplette Logik der bisherigen
- * tomtut-pool-heatpump-card, nur als Slot-Modul.
+ * Slot "heatpump" — Wärmepumpe mit Soll-/Ist-Temperatur, Verbrauch,
+ * Powerbutton und Lüfter.
  *
- * Die Feldnamen sind unverändert, damit alte YAML 1:1 weiterläuft
- * (siehe alias-heatpump.js). `image_variant` und `image_url` gibt es nicht
- * mehr; stehen sie in einer alten Config, werden sie einfach ignoriert.
+ * `image_variant` und `image_url` gibt es nicht mehr; stehen sie in einer
+ * alten Config, werden sie einfach ignoriert.
  *
  * Die Positions-Defaults stammen aus Thomas' Testansicht (2026-09-19).
  * Der Lüfter bleibt bewusst elliptisch (fan_ratio): das Gitter ist im

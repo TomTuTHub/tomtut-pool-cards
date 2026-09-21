@@ -51,19 +51,14 @@ const check = (name, fn) => {
 const pkg = await import("../dist/tomtut-pool-cards.js");
 
 const Dashboard = customElements.get("tomtut-pool-dashboard");
-const Alias = customElements.get("tomtut-pool-heatpump-card");
 
 /* ------------------------------------------------------------------ */
 /* Registrierung                                                       */
 /* ------------------------------------------------------------------ */
 
 check("Dashboard-Card registriert", () => assert.ok(Dashboard));
-check("Alias-Card registriert", () => assert.ok(Alias));
 check("Dashboard-Editor registriert", () =>
   assert.ok(customElements.get("tomtut-pool-dashboard-editor"))
-);
-check("Heatpump-Editor registriert", () =>
-  assert.ok(customElements.get("tomtut-pool-heatpump-card-editor"))
 );
 check("Slot-Elemente registriert", () => {
   for (const tag of [
@@ -77,10 +72,9 @@ check("Slot-Elemente registriert", () => {
     assert.ok(customElements.get(tag), `${tag} fehlt`);
   }
 });
-check("beide Cards in window.customCards", () => {
+check("Dashboard-Card in window.customCards", () => {
   const types = window.customCards.map((c) => c.type);
-  assert.ok(types.includes("tomtut-pool-dashboard"));
-  assert.ok(types.includes("tomtut-pool-heatpump-card"));
+  assert.deepEqual(types, ["tomtut-pool-dashboard"]);
 });
 
 /* ------------------------------------------------------------------ */
@@ -676,62 +670,6 @@ check("Werte-Slot: Button schaltet die Entity", () =>
 );
 
 /* ------------------------------------------------------------------ */
-/* Alias — alte Heatpump-YAML                                          */
-/* ------------------------------------------------------------------ */
-
-/* genau so steht es in bestehenden Dashboards (README der alten Card) */
-const ALT_YAML = {
-  type: "custom:tomtut-pool-heatpump-card",
-  label_text: "Pool-Waermepumpe",
-  image_variant: "transparent",
-  target_entity: "climate.waermepumpe",
-  current_entity: "climate.waermepumpe",
-  power_entity: "sensor.waermepumpe_power",
-  switch_entity: "switch.waermepumpe",
-  fan_power_threshold: 150,
-};
-
-const alias = await mount(Alias, ALT_YAML, makeHass());
-const aliasSlot = alias.shadowRoot.querySelector("tomtut-pool-slot-heatpump");
-await aliasSlot.updateComplete;
-
-check("Alias: alte YAML wird angenommen", () => {
-  assert.equal(alias._config.slots.length, 1);
-  assert.equal(alias._config.slots[0].type, "heatpump");
-  assert.equal(alias._config.slots[0].switch_entity, "switch.waermepumpe");
-  assert.equal(alias._config.slots[0].type === "custom:tomtut-pool-heatpump-card", false);
-});
-check("Alias: kein Hero, kein Rahmen", () => {
-  assert.equal(alias.shadowRoot.querySelector("tomtut-pool-hero"), null);
-  assert.ok(!aliasSlot.shadowRoot.querySelector(".slot").className.includes("framed"));
-});
-check("Alias: rendert dieselben Werte wie frueher", () => {
-  const txt = aliasSlot.shadowRoot.textContent;
-  assert.match(txt, /Pool-Waermepumpe/);
-  assert.match(txt, /820/);
-  assert.match(txt, /26,4 °C/);
-  assert.match(txt, /28,0 °C/);
-});
-check("Alias: neues Artwork", () =>
-  assert.equal(
-    aliasSlot.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/waermepumpe_transparent.png"
-  )
-);
-check("Alias: eigene Schwelle wird uebernommen", () =>
-  assert.equal(alias._config.slots[0].fan_power_threshold, 150)
-);
-check("Alias: setConfig ohne Entity wirft (wie bisher)", () =>
-  assert.throws(() => new Alias().setConfig({}), /Mindestens eine Entity/)
-);
-check("Alias: getConfigElement liefert den alten Editor", () =>
-  assert.equal(
-    Alias.getConfigElement().tagName.toLowerCase(),
-    "tomtut-pool-heatpump-card-editor"
-  )
-);
-
-/* ------------------------------------------------------------------ */
 /* Eingefrorene v1-Config                                              */
 /* ------------------------------------------------------------------ */
 
@@ -881,29 +819,6 @@ editor.shadowRoot.querySelectorAll(".icon-btn.danger")[0].click();
 await editor.updateComplete;
 check("Editor: Slot entfernen", () => assert.equal(fired.slots.length, 6));
 
-const HpEditor = customElements.get("tomtut-pool-heatpump-card-editor");
-const hpEditor = new HpEditor();
-hpEditor.setConfig(ALT_YAML);
-hpEditor.hass = makeHass();
-document.body.appendChild(hpEditor);
-await hpEditor.updateComplete;
-check("Alias-Editor rendert die alten Felder", () =>
-  assert.ok(hpEditor.shadowRoot.querySelector('input[data-key="switch_entity"]'))
-);
-check("Alias-Editor fuehrt mit 'Elemente anzeigen' an", () => {
-  const first = hpEditor.shadowRoot.querySelector(".section");
-  assert.ok(first.classList.contains("elements"));
-  assert.match(first.textContent, /Elemente anzeigen/);
-});
-let hpFired = null;
-hpEditor.addEventListener("config-changed", (e) => (hpFired = e.detail.config));
-const labelInput = Array.from(hpEditor.shadowRoot.querySelectorAll('input[type="text"]')).find(
-  (i) => i.value === "Pool-Waermepumpe"
-);
-labelInput.value = "Neue WP";
-labelInput.dispatchEvent(new dom.window.Event("input"));
-check("Alias-Editor feuert config-changed", () => assert.equal(hpFired.label_text, "Neue WP"));
-
 /* ================================================================== */
 /* Iteration 2 — Thomas' Korrekturen                                   */
 /* ================================================================== */
@@ -930,7 +845,6 @@ const alleZIndex = (css) => [...css.matchAll(/z-index:\s*(-?\d+)/g)].map((m) => 
 
 const ALLE_BAUSTEINE = [
   "tomtut-pool-dashboard",
-  "tomtut-pool-heatpump-card",
   "tomtut-pool-hero",
   "tomtut-pool-slot-heatpump",
   "tomtut-pool-slot-pump",
@@ -2437,9 +2351,6 @@ check("Stapel: jede Card und jeder Slot bildet einen eigenen Stacking-Context", 
     assert.match(block, /z-index:\s*0/, `${tag}: :host ohne z-index 0`);
   }
 });
-check("Stapel: der Alias erbt den Riegel der Dashboard-Card", () =>
-  assert.equal(cssOf("tomtut-pool-heatpump-card"), cssOf("tomtut-pool-dashboard"))
-);
 check("Stapel: die ha-card der Dashboard-Card sperrt ebenfalls ein", () => {
   const css = cssOf("tomtut-pool-dashboard");
   const i = css.indexOf("ha-card {");

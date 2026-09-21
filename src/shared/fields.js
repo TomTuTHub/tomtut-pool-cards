@@ -6,7 +6,7 @@ import { hasHaElement } from "./ha-elements.js";
  *
  * Eine Fields-Instanz hängt an genau einem Config-Objekt (Card, Hero oder
  * einem Slot) und meldet jede Änderung über `update(patch)` zurück. Dadurch
- * benutzen Dashboard-Editor und Alias-Editor exakt dieselben Eingabefelder.
+ * benutzen alle Kästen des Dashboard-Editors exakt dieselben Eingabefelder.
  *
  * Ein Patch-Wert `undefined` heißt: Schlüssel aus der Config entfernen. So
  * bleibt die YAML sauber, wenn ein Element abgewählt wird.
