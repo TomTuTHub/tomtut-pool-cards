@@ -2,6 +2,7 @@ import { html, css, nothing } from "lit";
 import { SlotBase } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { fmt, isOn, numOf } from "../shared/util.js";
+import { fanDuration } from "./pump.js";
 
 /*
  * Slot "heatpump" — Wärmepumpe mit Soll-/Ist-Temperatur, Verbrauch,
@@ -23,6 +24,18 @@ export const HEATPUMP_DEFAULTS = {
   fan_speed: 60,
   fan_inactive: "gray",
   fan_power_threshold: 100,
+  /* Blatt-Design (shared/slot-base.js: FAN_DESIGNS) und Färbung */
+  fan_design: "klassisch",
+  fan_color_mode: "neutral",
+  /* Betriebsmodus -> Tempo (Skala 1..10 wie bei der Poolpumpe) */
+  mode_speed_heiz_silent: 3,
+  mode_speed_heiz_smart: 5,
+  mode_speed_heiz_auto: 6,
+  mode_speed_heiz_boost: 9,
+  mode_speed_kuehl_silent: 3,
+  mode_speed_kuehl_smart: 5,
+  mode_speed_kuehl_auto: 6,
+  mode_speed_kuehl_boost: 9,
   /* Powerbutton */
   power_btn_top: 5,
   power_btn_left: 3,
@@ -51,6 +64,50 @@ export const HEATPUMP_DEFAULTS = {
   label_left: 50,
   label_scale: 180,
   label_box: true,
+};
+
+/*
+ * Betriebsmodi (Iteration 9). Die Schlüssel sind Teil der Config und
+ * bleiben fest; `zustaende` ist die Default-Zuordnung "Gerätezustand ->
+ * Modus" (Vergleich ohne Groß-/Kleinschreibung, Leerzeichen/_/- egal).
+ * Echte Geräte liefern sehr verschiedene Strings — deshalb ist jede
+ * Zuordnung im Editor überschreibbar (`mode_map_<schlüssel>`, Kommaliste).
+ */
+export const HP_MODES = [
+  { key: "heiz_silent", label: "Heizen Silent", art: "heizen", zustaende: ["Heizen Silent", "heat_silent", "heating_silent", "silent_heat"] },
+  { key: "heiz_smart", label: "Heizen Smart", art: "heizen", zustaende: ["Heizen Smart", "heat_smart", "heating_smart", "smart_heat"] },
+  { key: "heiz_auto", label: "Heizen Auto", art: "heizen", zustaende: ["Heizen Auto", "heat_auto", "heating_auto", "auto_heat"] },
+  { key: "heiz_boost", label: "Heizen Boost", art: "heizen", zustaende: ["Heizen Boost", "heat_boost", "heating_boost", "boost_heat", "heat_turbo", "heat_powerful"] },
+  { key: "kuehl_silent", label: "Kühlen Silent", art: "kuehlen", zustaende: ["Kühlen Silent", "cool_silent", "cooling_silent", "silent_cool"] },
+  { key: "kuehl_smart", label: "Kühlen Smart", art: "kuehlen", zustaende: ["Kühlen Smart", "cool_smart", "cooling_smart", "smart_cool"] },
+  { key: "kuehl_auto", label: "Kühlen Auto", art: "kuehlen", zustaende: ["Kühlen Auto", "cool_auto", "cooling_auto", "auto_cool"] },
+  { key: "kuehl_boost", label: "Kühlen Boost", art: "kuehlen", zustaende: ["Kühlen Boost", "cool_boost", "cooling_boost", "boost_cool", "cool_turbo", "cool_powerful"] },
+];
+
+/* Farben für "Rad nach Modus einfärben" */
+export const MODE_FARBEN = { heizen: "#e0452c", kuehlen: "#2f7fd0" };
+
+const normZustand = (s) =>
+  String(s ?? "")
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ")
+    .trim();
+
+/* Zuordnungsliste eines Modus: aus der Config (Kommaliste) oder Default */
+export const modeZustaende = (c = {}, mode) => {
+  const eigen = c[`mode_map_${mode.key}`];
+  if (typeof eigen === "string" && eigen.trim()) {
+    return eigen.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  if (Array.isArray(eigen) && eigen.length) return eigen.map(String);
+  return mode.zustaende;
+};
+
+/* Gerätezustand -> Modus-Eintrag aus HP_MODES (oder null) */
+export const modeFromState = (state, c = {}) => {
+  const s = normZustand(state);
+  if (!s) return null;
+  return HP_MODES.find((m) => modeZustaende(c, m).some((z) => normZustand(z) === s)) || null;
 };
 
 export const heatpumpHasEntity = (c = {}) =>
@@ -108,7 +165,41 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     };
   }
 
+  /*
+   * Erkannter Betriebsmodus oder null. Quelle ist der Zustand der
+   * Modus-Entity oder — wenn `mode_attribute` gesetzt ist (z.B. bei
+   * climate.* "preset_mode") — dieses Attribut.
+   */
+  get _modus() {
+    const c = this.config || {};
+    if (c.show_mode === false || !c.mode_entity) return null;
+    const e = this._ent(c.mode_entity);
+    if (!e) return null;
+    const attr = String(c.mode_attribute || "").trim();
+    const roh = attr ? e.attributes?.[attr] : e.state;
+    return modeFromState(roh, c);
+  }
+
+  /* Umlaufzeit des Rads: aus dem Modus, sonst der alte 0..100-Regler */
+  get _fanDur() {
+    const modus = this._modus;
+    if (modus) return fanDuration(this._v(`mode_speed_${modus.key}`));
+    const fanSpeed = Number(this._v("fan_speed")) || 0;
+    return fanSpeed <= 0 ? 0 : Math.max(0.2, 4 - (fanSpeed / 100) * 3.6);
+  }
+
+  /* Farbe des Rads: nur bei "nach Modus" und erkanntem Modus */
+  get _fanFarbe() {
+    if (this._v("fan_color_mode") !== "modus") return "";
+    const modus = this._modus;
+    return modus ? MODE_FARBEN[modus.art] : "";
+  }
+
   get _fanActive() {
+    /* Schalter aus = das Rad steht. Immer — egal, was die Watt sagen
+       (Nachlauf, träger Sensor, Standby-Verbrauch). */
+    const sw = this.config.switch_entity;
+    if (sw && this._ent(sw) && !this._isOn(sw)) return false;
     const mode = this.config.fan_source ?? "auto";
     const fanEnt = this._ent(this.config.fan_entity);
     if (mode !== "power" && fanEnt) {
@@ -165,8 +256,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     const showCurrent = c.show_current !== false && !!c.current_entity;
     const labelText = c.label_text || "";
 
-    const fanSpeed = Number(this._v("fan_speed")) || 0;
-    const fanDur = fanSpeed <= 0 ? 0 : Math.max(0.2, 4 - (fanSpeed / 100) * 3.6);
+    const fanDur = this._fanDur;
     const target = this._target;
     const current = this._current;
 
@@ -183,6 +273,8 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
               ratio: this._v("fan_ratio"),
               dur: fanDur,
               inactive: this._v("fan_inactive"),
+              design: this._v("fan_design"),
+              farbe: this._fanFarbe,
             })
           : nothing}
         ${showPowerBtn

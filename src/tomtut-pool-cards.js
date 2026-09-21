@@ -25,8 +25,9 @@ window.customCards.push({
 export { TomtutPoolDashboardCard, TomtutPoolDashboardEditor };
 
 /* Für den Smoke-Test (und alles, was gegen das Bundle prüfen will) */
-export { PUMP_DEFAULTS, fanDuration } from "./slots/pump.js";
-export { HEATPUMP_DEFAULTS } from "./slots/heatpump.js";
+export { PUMP_DEFAULTS, fanDuration, stageFromWatt } from "./slots/pump.js";
+export { HEATPUMP_DEFAULTS, HP_MODES, MODE_FARBEN, modeFromState } from "./slots/heatpump.js";
+export { FAN_DESIGNS, FAN_DESIGN_DEFAULT } from "./shared/slot-base.js";
 export { UV_DEFAULTS } from "./slots/uv.js";
 export {
   passFaktor,

@@ -71,6 +71,9 @@ export const DEMO_HASS = {
     "sensor.solar_power": watt(58),
     /* Einlaufdüse */
     "sensor.einlauf_temperatur": grad(26.9),
+    /* Betriebsmodus der Wärmepumpe (Iteration 9) */
+    "input_select.wp_modus_heizen": { state: "Heizen Boost", attributes: {}, last_changed: iso(60) },
+    "input_select.wp_modus_kuehlen": { state: "Kühlen Smart", attributes: {}, last_changed: iso(60) },
   },
 };
 
@@ -111,7 +114,7 @@ export const allesConfig = (rotate = 0, mirror = false) => ({
   slots: [
     {
       type: "heatpump",
-      label_text: "Waermepumpe",
+      label_text: "Wärmepumpe",
       switch_entity: "switch.waermepumpe",
       power_entity: "sensor.waermepumpe_power",
       target_entity: "climate.waermepumpe",
@@ -142,7 +145,7 @@ export const allesConfig = (rotate = 0, mirror = false) => ({
     },
     /* Altlast-Probe: der Typ gibt es seit Iteration 6 nicht mehr, die Card
        macht daraus einen Rahmen mit Hinweis statt zu brechen. */
-    { type: "inlet", label: "Einlaufduese", temp_entity: "sensor.einlauf_temperatur" },
+    { type: "inlet", label: "Einlaufdüse", temp_entity: "sensor.einlauf_temperatur" },
     {
       type: "custom",
       title: "Werte",
@@ -153,7 +156,7 @@ export const allesConfig = (rotate = 0, mirror = false) => ({
         { kind: "text", text: "Sommerbetrieb" },
       ],
     },
-    { type: "frame", title: "Platz fuer spaeter" },
+    { type: "frame", title: "Platz für später" },
   ],
 });
 

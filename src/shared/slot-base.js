@@ -12,6 +12,61 @@ export const FAN_SVG =
   '<path d="M17,20 Q6,20 6,28 Q6,36 14,34 Q17,32 17,20 Z" fill="currentColor" opacity="0.85"/>';
 
 /*
+ * Blatt-Designs des Wärmepumpen-Lüfters (Iteration 9, im Editor wählbar).
+ *
+ * Alle im viewBox 0 0 40 40, gedreht wird um die Nabe (20/20). Gezeichnet im
+ * Skizzenstil des Artworks: halbtransparente Fläche plus eine Kontur in
+ * derselben Farbe, leicht unregelmäßig. Die Blätter werden über ein
+ * transform-ATTRIBUT am <path> verteilt — nie über ein inneres <g>, denn
+ * jedes <g> im Lüfter bekommt per CSS die Drehanimation (die würde ein
+ * transform-Attribut am <g> überschreiben).
+ */
+const SKIZZE = 'fill="currentColor" fill-opacity="0.8" stroke="currentColor" stroke-width="0.7" stroke-linejoin="round"';
+const verteilt = (d, anzahl, extra = "") =>
+  Array.from({ length: anzahl }, (_, i) => {
+    const grad = Math.round((360 / anzahl) * i * 100) / 100;
+    return `<path d="${d}" ${SKIZZE}${extra}${grad ? ` transform="rotate(${grad} 20 20)"` : ""}/>`;
+  }).join("");
+const nabe = (r = 3.2) =>
+  `<circle cx="20" cy="20" r="${r}" fill="currentColor" stroke="currentColor" stroke-width="0.7"/>`;
+
+export const FAN_DESIGNS = {
+  klassisch: { label: "Klassisch (4 Blätter)", svg: FAN_SVG },
+  drei: {
+    label: "3 Blätter, breit",
+    svg: verteilt("M20,20 C21.5,14.5 25,7 31.5,7.2 C36.5,7.6 35.2,13.5 30.5,16.2 C27,18.2 23,19.4 20,20 Z", 3) + nabe(3.6),
+  },
+  fuenf: {
+    label: "5 Blätter, schlank",
+    svg: verteilt("M20,20 C20.6,14.2 22.8,6.4 27.2,5.6 C31.2,5.2 30.6,10.6 27.6,14 C25.4,16.6 22.4,18.6 20,20 Z", 5) + nabe(3),
+  },
+  sichel: {
+    label: "Sichel / Turbine",
+    svg:
+      verteilt("M20.6,17.2 Q29.5,15.2 33.6,5.8 Q35.2,14.8 22.4,20.8 Z", 7) +
+      '<circle cx="20" cy="20" r="17.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="7 1.2 11 0.9"/>' +
+      nabe(3.4),
+  },
+  propeller: {
+    label: "Propeller",
+    svg:
+      verteilt("M20,20 C17.6,14.4 17.4,6.2 19.4,2.6 C20.3,1.9 21.4,2.2 22,3.4 C23.4,7.4 22.6,14.6 20,20 Z", 2) +
+      '<ellipse cx="20" cy="20" rx="3.4" ry="4.2" fill="currentColor" stroke="currentColor" stroke-width="0.7"/>',
+  },
+  batman: {
+    label: "Batman",
+    svg:
+      '<path d="M20,27.5 Q23,22 26,26 Q29,21.5 32,24.5 Q39,20 37.5,11 Q31,15.5 24,14.5 Q23,16 22.5,16 ' +
+      "L21.7,12.3 L21,15.6 L19,15.6 L18.3,12.3 L17.5,16 Q17,16 16,14.5 Q9,15.5 2.5,11 " +
+      'Q1,20 8,24.5 Q11,21.5 14,26 Q17,22 20,27.5 Z" ' +
+      SKIZZE +
+      "/>",
+  },
+};
+export const FAN_DESIGN_DEFAULT = "klassisch";
+export const fanDesignSvg = (key) => (FAN_DESIGNS[key] || FAN_DESIGNS[FAN_DESIGN_DEFAULT]).svg;
+
+/*
  * Gemeinsame Basis aller Slots.
  *
  * Eigenschaften von außen (die Dashboard-Card setzt sie):
@@ -125,16 +180,24 @@ export class SlotBase extends LitElement {
    * ratio        -> nur für den perspektivisch elliptischen Lüfter der
    *                 Wärmepumpe; das SVG darf dort mitverzerren.
    */
-  renderFan({ active, top, left, size, ratio, dur, inactive, round = false }) {
+  /*
+   * design  -> Schlüssel aus FAN_DESIGNS (unbekannt = klassisch)
+   * farbe   -> optionale Farbe des Rads (CSS-Wert); ohne = Schriftfarbe
+   */
+  renderFan({ active, top, left, size, ratio, dur, inactive, round = false, design, farbe }) {
     const cls = active ? "spinning" : inactive === "hidden" ? "hidden" : "idle";
     const r = round ? 1 : Number(ratio) || 1;
+    const svg = design ? fanDesignSvg(design) : FAN_SVG;
+    const key = design && FAN_DESIGNS[design] ? design : FAN_DESIGN_DEFAULT;
     return html`
       <div
-        class="fan-overlay ${cls} ${round ? "round" : ""}"
-        style="top:${top}%; left:${left}%; width:${size}%; --fan-dur:${dur}s; --fan-ratio:${r};"
+        class="fan-overlay ${cls} ${round ? "round" : ""} design-${key}"
+        style="top:${top}%; left:${left}%; width:${size}%; --fan-dur:${dur}s; --fan-ratio:${r};${farbe
+          ? ` --tt-fan-color:${farbe};`
+          : ""}"
       >
         <svg viewBox="0 0 40 40" preserveAspectRatio="${round ? "xMidYMid meet" : "none"}">
-          <g .innerHTML="${FAN_SVG}"></g>
+          <g .innerHTML="${svg}"></g>
         </svg>
       </div>
     `;
@@ -204,12 +267,27 @@ export class SlotBase extends LitElement {
     return "Das Gerät wird hart vom Netz getrennt. Wirklich ausschalten?";
   }
 
+  /*
+   * "Vor dem Ausschalten nachfragen" (`confirm_off`, seit Iteration 9) —
+   * pro Kasten abwählbar. Default ist, was der Slot-Typ vorgibt: Geräte
+   * mit Powerbutton fragen ab Werk nach (confirmDefault true).
+   */
+  get confirmDefault() {
+    return true;
+  }
+
+  get fragtNach() {
+    const v = this.config?.confirm_off;
+    return v === undefined || v === null || v === "" ? this.confirmDefault : v !== false;
+  }
+
   _onPowerClick(ev) {
     ev?.stopPropagation();
     const id = this.powerEntityId;
     if (!id) return;
     if (this._isOn(id)) {
-      this._confirmOpen = true;
+      if (this.fragtNach) this._confirmOpen = true;
+      else this._call(id, "turn_off");
     } else {
       this._call(id, "turn_on");
     }

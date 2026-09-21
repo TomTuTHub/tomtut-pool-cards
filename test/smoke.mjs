@@ -468,6 +468,9 @@ const PUMP_CONFIG = {
   main_entity: "input_boolean.poolpumpe_schalter",
   power_entity: "sensor.poolpumpe_power",
   temp_entity: "sensor.poolpumpe_druckseite_temperature",
+  /* Hier wird die Schalter-Logik geprueft; die Erkennung aus der Leistung
+     (Iteration 9, ab Werk an) hat ihre eigenen Tests weiter unten. */
+  stage_from_power: false,
 };
 
 const mountPump = async (config = PUMP_CONFIG, hass = makeHass()) => {
@@ -1243,10 +1246,16 @@ check("UV: Lampe an -> statisches Gluehen auf dem Rohr", () => {
   assert.match(stil, /rotate\(-15deg\)/);
   assert.match(stil, /aspect-ratio:/);
 });
-check("UV: das Gluehen ist nicht animiert", () => {
+check("UV: der Kern des Gluehens bleibt statisch (Wabern nur obendrauf)", () => {
+  /* Iteration 9: Thomas' Einstellung (Gluehen max, schwarzer Grund) darf
+     nicht schlechter werden — der Kern ist unveraendert und unanimiert,
+     das Wabern kommt nur ueber ::before/::after dazu. */
   const css = cssOf("tomtut-pool-slot-uv");
-  assert.match(css, /\.glow\s*\{/);
-  assert.ok(!/\.glow[^}]*animation/.test(css), "Gluehen animiert");
+  const i = css.indexOf(".glow {");
+  assert.ok(i >= 0);
+  const kern = css.slice(i, css.indexOf("}", i));
+  assert.ok(!/animation/.test(kern), "Kern animiert");
+  assert.match(kern, /radial-gradient/);
 });
 check("UV: Gluehbereich haengt am Seitenverhaeltnis des Bildes", () => {
   const stil = uv.shadowRoot.querySelector(".glow").getAttribute("style");
@@ -2134,7 +2143,8 @@ const komposition = JSON.parse(
 );
 
 check("Solar: das Feld ist die Komposition aus drei OKU-Panels", () => {
-  assert.equal(komposition.quelle, "OKU_Panel.png");
+  /* seit Iteration 9 Thomas' eigenes Foto statt Selinas Zeichnung */
+  assert.equal(komposition.quelle, "OKU.png");
   assert.equal(komposition.panels, 3);
   assert.equal(komposition.datei, pkg.DEVICE_IMAGES.solar);
   const [breit, hoch] = komposition.panel_groesse;
@@ -2376,6 +2386,571 @@ check("Stapel: die Leiter der Overlays stimmt (Glimmen unten, Dialog oben)", () 
   assert.equal(zIndexVon(hero, ".chem-box"), 4);
   assert.equal(zIndexVon(hero, ".power-badge"), 5);
   assert.equal(zIndexVon(hero, ".confirm-overlay"), 10);
+});
+
+/* ================================================================== */
+/* Iteration 9 — Thomas' Feedback von der Dev-HA                       */
+/* ================================================================== */
+
+const mountSlotTyp = async (config, hass = makeHass()) => {
+  const card = await mount(Dashboard, { hero: { enabled: false }, slots: [config] }, hass);
+  const slot = card.shadowRoot.querySelector(`tomtut-pool-slot-${config.type}`);
+  await slot.updateComplete;
+  return slot;
+};
+const wattZustand = (w) => ({
+  state: String(w),
+  attributes: { unit_of_measurement: "W" },
+  last_changed: iso(20),
+});
+const aktiveTaste = (slot) =>
+  [...slot.shadowRoot.querySelectorAll(".stage-btn")].findIndex((b) =>
+    b.classList.contains("active")
+  );
+
+/* ---- 1. Poolpumpe: Stufe aus der Leistung ---- */
+
+check("Watt->Stufe: Default-Schwellen 20/300/500, Erkennung ab Werk an", () => {
+  assert.equal(pkg.PUMP_DEFAULTS.stage_from_power, true);
+  assert.equal(pkg.PUMP_DEFAULTS.stage_watt_1, 20);
+  assert.equal(pkg.PUMP_DEFAULTS.stage_watt_2, 300);
+  assert.equal(pkg.PUMP_DEFAULTS.stage_watt_3, 500);
+});
+check("Watt->Stufe: Schwellen sind strikt groesser, darunter aus", () => {
+  const s = [20, 300, 500];
+  assert.equal(pkg.stageFromWatt(0, s), null);
+  assert.equal(pkg.stageFromWatt(20, s), null);
+  assert.equal(pkg.stageFromWatt(20.1, s), 0);
+  assert.equal(pkg.stageFromWatt(47, s), 0);
+  assert.equal(pkg.stageFromWatt(300, s), 0);
+  assert.equal(pkg.stageFromWatt(301, s), 1);
+  assert.equal(pkg.stageFromWatt(735, s), 2);
+  assert.equal(pkg.stageFromWatt(null, s), null);
+  assert.equal(pkg.stageFromWatt("x", s), null);
+});
+check("Watt->Stufe: Thomas' Pumpe (47/271/735 W) mit N2-Schwelle 150", () => {
+  const s = [20, 150, 500];
+  assert.deepEqual([47, 271, 735].map((w) => pkg.stageFromWatt(w, s)), [0, 1, 2]);
+});
+check("Watt->Stufe: weniger Stufen als erkannt -> hoechste vorhandene", () => {
+  assert.equal(pkg.stageFromWatt(735, [20, 300, 500], 2), 1);
+  assert.equal(pkg.stageFromWatt(735, [20, 300, 500], 1), 0);
+});
+
+const PUMP_WATT = { ...PUMP_CONFIG, stage_from_power: undefined };
+delete PUMP_WATT.stage_from_power;
+
+/* Schalter sagen N2 (juengstes last_changed), die Leistung sagt N1 */
+const pumpN1 = await mountPump(
+  PUMP_WATT,
+  makeHass({ "sensor.poolpumpe_power": wattZustand(47) })
+);
+check("Pumpe: 47 W -> N1 leuchtet, obwohl zuletzt N2 gedrueckt wurde", () =>
+  assert.equal(aktiveTaste(pumpN1), 0)
+);
+check("Pumpe: erkannte Stufe steuert das Laufrad-Tempo (N1 -> Tempo 3)", () => {
+  const f = pumpN1.shadowRoot.querySelector(".fan-overlay");
+  assert.ok(f.classList.contains("spinning"));
+  assert.match(f.getAttribute("style"), new RegExp(`--fan-dur:${pkg.fanDuration(3)}s`));
+});
+check("Pumpe: bei abweichender Stufe kein falsches 'seit …'", () =>
+  assert.ok(!/seit/.test(pumpN1.shadowRoot.querySelectorAll(".stage-btn")[0].textContent))
+);
+const pumpN3 = await mountPump(PUMP_WATT, makeHass({ "sensor.poolpumpe_power": wattZustand(735) }));
+check("Pumpe: 735 W -> N3 leuchtet, Tempo 8", () => {
+  assert.equal(aktiveTaste(pumpN3), 2);
+  assert.match(
+    pumpN3.shadowRoot.querySelector(".fan-overlay").getAttribute("style"),
+    new RegExp(`--fan-dur:${pkg.fanDuration(8)}s`)
+  );
+});
+const pumpAusW = await mountPump(PUMP_WATT, makeHass({ "sensor.poolpumpe_power": wattZustand(4) }));
+check("Pumpe: 4 W -> aus: STOP leuchtet, Laufrad steht", () => {
+  assert.equal(aktiveTaste(pumpAusW), 3);
+  assert.ok(pumpAusW.shadowRoot.querySelector(".fan-overlay.idle"));
+});
+const pumpEigen = await mountPump(
+  { ...PUMP_WATT, stage_watt_2: 150 },
+  makeHass({ "sensor.poolpumpe_power": wattZustand(271) })
+);
+check("Pumpe: eigene Schwelle aus der Config (N2 > 150 W, 271 W -> N2)", () =>
+  assert.equal(aktiveTaste(pumpEigen), 1)
+);
+const pumpAbgewaehlt = await mountPump(
+  { ...PUMP_WATT, stage_from_power: false },
+  makeHass({ "sensor.poolpumpe_power": wattZustand(47) })
+);
+check("Pumpe: Erkennung abgewaehlt -> es zaehlen wieder die Schalter (N2)", () =>
+  assert.equal(aktiveTaste(pumpAbgewaehlt), 1)
+);
+const pumpOhneWatt = await mountPump({ ...PUMP_WATT, power_entity: undefined });
+check("Pumpe: ohne Leistungssensor aendert sich nichts (N2)", () =>
+  assert.equal(aktiveTaste(pumpOhneWatt), 1)
+);
+calls.length = 0;
+pumpN1.shadowRoot.querySelectorAll(".stage-btn")[2].click();
+await pumpN1.updateComplete;
+check("Pumpe: N-Taster bleiben bei Erkennung tippbar", () => {
+  assert.deepEqual(calls, [
+    { domain: "switch", service: "turn_on", data: { entity_id: "switch.shelly_pumpe_n3" } },
+  ]);
+  assert.equal(aktiveTaste(pumpN1), 2, "Klick wird nicht optimistisch angezeigt");
+});
+
+/* ---- 2b. Waermepumpe: Schalter aus -> Rad steht ---- */
+
+const hpAus = await mountSlotTyp(
+  HP_CONFIG,
+  makeHass({ "switch.waermepumpe": { state: "off", attributes: {}, last_changed: iso(60) } })
+);
+check("Waermepumpe: Schalter aus -> Rad steht trotz 820 W", () => {
+  const f = hpAus.shadowRoot.querySelector(".fan-overlay");
+  assert.ok(!f.classList.contains("spinning"));
+  assert.ok(f.classList.contains("idle"));
+});
+const hpAusEntity = await mountSlotTyp(
+  { ...HP_CONFIG, fan_entity: "switch.poolbeleuchtung", fan_source: "entity" },
+  makeHass({
+    "switch.waermepumpe": { state: "off", attributes: {}, last_changed: iso(60) },
+    "switch.poolbeleuchtung": { state: "on", attributes: {}, last_changed: iso(60) },
+  })
+);
+check("Waermepumpe: Schalter aus schlaegt auch die Luefter-Entity", () =>
+  assert.ok(!hpAusEntity.shadowRoot.querySelector(".fan-overlay.spinning"))
+);
+
+/* ---- 2c. Blatt-Designs ---- */
+
+check("Luefter: mindestens sechs Designs, klassisch ist Default, Batman ist dabei", () => {
+  const keys = Object.keys(pkg.FAN_DESIGNS);
+  assert.ok(keys.length >= 6, keys.join(","));
+  for (const k of ["klassisch", "drei", "fuenf", "sichel", "propeller", "batman"]) {
+    assert.ok(keys.includes(k), `${k} fehlt`);
+  }
+  assert.equal(pkg.FAN_DESIGN_DEFAULT, "klassisch");
+  assert.equal(pkg.HEATPUMP_DEFAULTS.fan_design, "klassisch");
+});
+check("Luefter: jedes Design ist leichtes SVG ohne inneres <g>", () => {
+  for (const [k, d] of Object.entries(pkg.FAN_DESIGNS)) {
+    assert.ok(d.svg.length < 2500, `${k} ist ${d.svg.length} Zeichen`);
+    assert.ok(!/<g[\s>]/.test(d.svg), `${k} hat ein <g> (wuerde die Drehung erben)`);
+    assert.ok(/<(path|circle|ellipse)/.test(d.svg), `${k} zeichnet nichts`);
+    assert.ok(d.label && !/ae|oe|ue/.test(d.label.replace(/Blue|Turbine/g, "")), `${k}: Label`);
+  }
+});
+const hpBat = await mountSlotTyp({ ...HP_CONFIG, fan_design: "batman" });
+check("Luefter: Design 'batman' wird gezeichnet", () => {
+  const f = hpBat.shadowRoot.querySelector(".fan-overlay");
+  assert.ok(f.classList.contains("design-batman"));
+  assert.equal(f.querySelectorAll("svg g path").length, 1);
+});
+const hpDrei = await mountSlotTyp({ ...HP_CONFIG, fan_design: "drei" });
+check("Luefter: Design 'drei' hat drei Blaetter", () =>
+  assert.equal(hpDrei.shadowRoot.querySelectorAll(".fan-overlay svg g path").length, 3)
+);
+const hpUnbekannt = await mountSlotTyp({ ...HP_CONFIG, fan_design: "gibtsnicht" });
+check("Luefter: unbekanntes Design faellt auf klassisch zurueck", () =>
+  assert.ok(hpUnbekannt.shadowRoot.querySelector(".fan-overlay.design-klassisch"))
+);
+check("Luefter: ohne Angabe klassisch — Pumpen-Laufrad bleibt unveraendert", () => {
+  assert.ok(hp.shadowRoot.querySelector(".fan-overlay.design-klassisch"));
+  assert.ok(pump.shadowRoot.querySelector(".fan-overlay.design-klassisch"));
+});
+
+/* ---- 2d/e. Betriebsmodus -> Tempo und Farbe ---- */
+
+check("Modus: acht Modi, je vier fuer Heizen und Kuehlen", () => {
+  assert.equal(pkg.HP_MODES.length, 8);
+  assert.equal(pkg.HP_MODES.filter((m) => m.art === "heizen").length, 4);
+  assert.equal(pkg.HP_MODES.filter((m) => m.art === "kuehlen").length, 4);
+  assert.deepEqual(
+    pkg.HP_MODES.map((m) => m.label),
+    [
+      "Heizen Silent", "Heizen Smart", "Heizen Auto", "Heizen Boost",
+      "Kühlen Silent", "Kühlen Smart", "Kühlen Auto", "Kühlen Boost",
+    ]
+  );
+});
+check("Modus: Zuordnung ist tolerant (Gross/klein, _ und Leerzeichen)", () => {
+  assert.equal(pkg.modeFromState("Kühlen Boost").key, "kuehl_boost");
+  assert.equal(pkg.modeFromState("heat_silent").key, "heiz_silent");
+  assert.equal(pkg.modeFromState("HEAT-SMART").key, "heiz_smart");
+  assert.equal(pkg.modeFromState("irgendwas"), null);
+  assert.equal(pkg.modeFromState(""), null);
+});
+check("Modus: eigene Zuordnung ersetzt die Vorgabe", () => {
+  const c = { mode_map_heiz_smart: "ECO, sparen" };
+  assert.equal(pkg.modeFromState("eco", c).key, "heiz_smart");
+  assert.equal(pkg.modeFromState("Heizen Smart", c), null, "Vorgabe gilt nicht mehr");
+});
+
+const HP_MODUS = {
+  ...HP_CONFIG,
+  show_mode: true,
+  mode_entity: "input_select.wp_modus",
+};
+const modusHass = (zustand, extra = {}) =>
+  makeHass({
+    "input_select.wp_modus": { state: zustand, attributes: {}, last_changed: iso(60) },
+    ...extra,
+  });
+const durVon = (slot) =>
+  slot.shadowRoot.querySelector(".fan-overlay").getAttribute("style").match(/--fan-dur:([\d.]+)s/)[1];
+
+const hpBoost = await mountSlotTyp(HP_MODUS, modusHass("Kühlen Boost"));
+const hpSilent = await mountSlotTyp(HP_MODUS, modusHass("Heizen Silent"));
+check("Modus -> Tempo: Boost 9, Silent 3 (Defaults)", () => {
+  assert.equal(Number(durVon(hpBoost)), pkg.fanDuration(9));
+  assert.equal(Number(durVon(hpSilent)), pkg.fanDuration(3));
+});
+const hpEigenTempo = await mountSlotTyp(
+  { ...HP_MODUS, mode_speed_heiz_silent: 7 },
+  modusHass("Heizen Silent")
+);
+check("Modus -> Tempo: pro Modus einstellbar", () =>
+  assert.equal(Number(durVon(hpEigenTempo)), pkg.fanDuration(7))
+);
+const hpUnbekannterModus = await mountSlotTyp(HP_MODUS, modusHass("Abtauen"));
+check("Modus -> Tempo: unbekannter Zustand = alte Drehgeschwindigkeit", () =>
+  assert.equal(durVon(hpUnbekannterModus), durVon(hp))
+);
+const hpModusAus = await mountSlotTyp({ ...HP_MODUS, show_mode: false }, modusHass("Kühlen Boost"));
+check("Modus -> Tempo: abgewaehlt = alte Drehgeschwindigkeit", () =>
+  assert.equal(durVon(hpModusAus), durVon(hp))
+);
+const hpPreset = await mountSlotTyp(
+  { ...HP_CONFIG, show_mode: true, mode_entity: "climate.waermepumpe", mode_attribute: "preset_mode" },
+  makeHass({
+    "climate.waermepumpe": {
+      state: "heat",
+      attributes: { temperature: 28, current_temperature: 26.4, preset_mode: "boost_heat" },
+      last_changed: iso(60),
+    },
+  })
+);
+check("Modus: climate-Attribut (preset_mode) als Quelle", () =>
+  assert.equal(Number(durVon(hpPreset)), pkg.fanDuration(9))
+);
+
+const farbeVon = (slot) =>
+  (slot.shadowRoot.querySelector(".fan-overlay").getAttribute("style").match(/--tt-fan-color:([^;]+);/) ||
+    [])[1] || null;
+check("Farbe: Default schwarz/weiss — keine Modusfarbe", () => {
+  assert.equal(pkg.HEATPUMP_DEFAULTS.fan_color_mode, "neutral");
+  assert.equal(farbeVon(hpBoost), null);
+});
+const hpBlau = await mountSlotTyp({ ...HP_MODUS, fan_color_mode: "modus" }, modusHass("Kühlen Smart"));
+const hpRot = await mountSlotTyp({ ...HP_MODUS, fan_color_mode: "modus" }, modusHass("Heizen Auto"));
+const hpOhneModus = await mountSlotTyp({ ...HP_MODUS, fan_color_mode: "modus" }, modusHass("Abtauen"));
+check("Farbe nach Modus: Kuehlen blau, Heizen rot, unbekannt neutral", () => {
+  assert.equal(farbeVon(hpBlau), pkg.MODE_FARBEN.kuehlen);
+  assert.equal(farbeVon(hpRot), pkg.MODE_FARBEN.heizen);
+  assert.equal(farbeVon(hpOhneModus), null);
+});
+const hpModusSchalterAus = await mountSlotTyp(
+  { ...HP_MODUS, fan_color_mode: "modus" },
+  modusHass("Kühlen Boost", {
+    "switch.waermepumpe": { state: "off", attributes: {}, last_changed: iso(60) },
+  })
+);
+check("Modus: Schalter aus -> Rad steht auch bei Boost", () =>
+  assert.ok(!hpModusSchalterAus.shadowRoot.querySelector(".fan-overlay.spinning"))
+);
+
+/* ---- 3. UV: Wabern ---- */
+
+check("UV: Wabern ab Werk an (40), per Regler bis 0 abschaltbar", () => {
+  assert.equal(pkg.UV_DEFAULTS.glow_pulse, 40);
+  const g = uv.shadowRoot.querySelector(".glow");
+  assert.ok(g.classList.contains("wabert"));
+  assert.match(g.getAttribute("style"), /--glow-pulse:0\.4/);
+});
+const uvRuhig = await mountUv({ ...UV_CONFIG, glow_pulse: 0 });
+check("UV: Wabern 0 -> ruhig, statisch wie frueher", () => {
+  const g = uvRuhig.shadowRoot.querySelector(".glow");
+  assert.ok(g.classList.contains("ruhig"));
+  assert.ok(!g.classList.contains("wabert"));
+});
+const uvMax = await mountUv({ ...UV_CONFIG, glow_pulse: 250, glow_intensity: 100 });
+check("UV: Wabern wird auf 0..100 geklemmt, Leuchtstaerke bleibt am Kern", () => {
+  const stil = uvMax.shadowRoot.querySelector(".glow").getAttribute("style");
+  assert.match(stil, /--glow-pulse:1(;|$)/);
+  assert.match(stil, /opacity:1(;|$)/);
+});
+check("UV: Wabern ist sanft — ungleiche Perioden, kein Blinken, reduced-motion", () => {
+  const css = cssOf("tomtut-pool-slot-uv");
+  assert.match(css, /\.glow\.wabert::before[^}]*animation:\s*uvGlimmen\s+5\.3s ease-in-out/);
+  assert.match(css, /\.glow\.wabert::after[^}]*animation:\s*uvWabern\s+3\.7s ease-in-out/);
+  assert.ok(!/steps\(/.test(css), "Stufen-Animation = Blinken");
+  assert.match(css, /prefers-reduced-motion:\s*reduce[\s\S]*animation:\s*none/);
+});
+
+/* ---- 5. Vor dem Ausschalten nachfragen ---- */
+
+const GERAETE_MIT_SCHALTER = [
+  { type: "heatpump", schalter: "switch_entity", entity: "switch.waermepumpe" },
+  { type: "pump", schalter: "main_entity", entity: "input_boolean.poolpumpe_schalter" },
+  { type: "uv", schalter: "switch_entity", entity: "switch.uv_lampe" },
+  { type: "solar", schalter: "switch_entity", entity: "switch.solarventil" },
+];
+const geraeteHass = () =>
+  makeHass({ "switch.solarventil": { state: "on", attributes: {}, last_changed: iso(60) } });
+for (const g of GERAETE_MIT_SCHALTER) {
+  const mit = await mountSlotTyp({ type: g.type, [g.schalter]: g.entity }, geraeteHass());
+  calls.length = 0;
+  mit.shadowRoot.querySelector(".power-badge").click();
+  await mit.updateComplete;
+  check(`Nachfragen ${g.type}: ab Werk an -> Dialog, kein Schaltbefehl`, () => {
+    assert.equal(calls.length, 0);
+    assert.ok(mit.shadowRoot.querySelector(".confirm-overlay"));
+  });
+  const ohne = await mountSlotTyp(
+    { type: g.type, [g.schalter]: g.entity, confirm_off: false },
+    geraeteHass()
+  );
+  calls.length = 0;
+  ohne.shadowRoot.querySelector(".power-badge").click();
+  await ohne.updateComplete;
+  check(`Nachfragen ${g.type}: abgewaehlt -> schaltet direkt aus`, () => {
+    assert.equal(ohne.shadowRoot.querySelector(".confirm-overlay"), null);
+    assert.deepEqual(calls, [
+      { domain: g.entity.split(".")[0], service: "turn_off", data: { entity_id: g.entity } },
+    ]);
+  });
+}
+
+const CUSTOM_BTN = (extra = {}) => ({
+  type: "custom",
+  title: "Licht",
+  entries: [{ kind: "button", entity: "switch.poolbeleuchtung", label: "Licht", ...extra }],
+});
+const lichtAn = () =>
+  makeHass({ "switch.poolbeleuchtung": { state: "on", attributes: {}, last_changed: iso(60) } });
+const customDirekt = await mountSlotTyp(CUSTOM_BTN(), lichtAn());
+calls.length = 0;
+customDirekt.shadowRoot.querySelector(".btn-entry").click();
+await customDirekt.updateComplete;
+check("Nachfragen Freifeld-Button: ab Werk aus -> toggle wie bisher", () => {
+  assert.equal(customDirekt.shadowRoot.querySelector(".confirm-overlay"), null);
+  assert.deepEqual(calls, [
+    { domain: "switch", service: "toggle", data: { entity_id: "switch.poolbeleuchtung" } },
+  ]);
+});
+const customFrag = await mountSlotTyp(CUSTOM_BTN({ confirm_off: true }), lichtAn());
+calls.length = 0;
+customFrag.shadowRoot.querySelector(".btn-entry").click();
+await customFrag.updateComplete;
+check("Nachfragen Freifeld-Button: an -> Dialog vor dem Ausschalten", () => {
+  assert.equal(calls.length, 0);
+  const d = customFrag.shadowRoot.querySelector(".confirm-overlay");
+  assert.ok(d);
+  assert.match(d.textContent, /„Licht" wird ausgeschaltet/);
+});
+customFrag.shadowRoot.querySelector(".btn.danger").click();
+await customFrag.updateComplete;
+check("Nachfragen Freifeld-Button: Bestaetigen schaltet aus", () =>
+  assert.deepEqual(calls, [
+    { domain: "switch", service: "turn_off", data: { entity_id: "switch.poolbeleuchtung" } },
+  ])
+);
+const customAusFrag = await mountSlotTyp(CUSTOM_BTN({ confirm_off: true }));
+calls.length = 0;
+customAusFrag.shadowRoot.querySelector(".btn-entry").click();
+await customAusFrag.updateComplete;
+check("Nachfragen Freifeld-Button: Einschalten fragt nie", () =>
+  assert.deepEqual(calls, [
+    { domain: "switch", service: "toggle", data: { entity_id: "switch.poolbeleuchtung" } },
+  ])
+);
+
+/* ---- Editor: die neuen Felder ---- */
+
+const ed9 = new Editor();
+ed9.setConfig({
+  hero: { enabled: false },
+  slots: [
+    { type: "heatpump", switch_entity: "switch.waermepumpe", show_mode: true },
+    { type: "pump", main_entity: "input_boolean.poolpumpe_schalter", power_entity: "sensor.poolpumpe_power" },
+    { type: "uv", switch_entity: "switch.uv_lampe", confirm_off: false },
+    { type: "solar", switch_entity: "switch.solarventil" },
+    CUSTOM_BTN(),
+    { type: "pump" },
+  ],
+});
+ed9.hass = makeHass();
+document.body.appendChild(ed9);
+await ed9.updateComplete;
+const slotKarten9 = () => [...ed9.shadowRoot.querySelectorAll(".slot-card")];
+const feld9 = (i, key) => slotKarten9()[i].querySelector(`[data-key="${key}"]`);
+
+check("Editor: 'Vor dem Ausschalten nachfragen' in jedem Geraet, Default an", () => {
+  for (const i of [0, 1, 3]) {
+    const t = feld9(i, "confirm_off");
+    assert.ok(t, `Kasten ${i + 1} ohne Schalter`);
+    assert.equal(t.checked, true);
+  }
+  assert.equal(feld9(2, "confirm_off").checked, false, "UV: Config false nicht uebernommen");
+  assert.match(ed9.shadowRoot.textContent, /Vor dem Ausschalten nachfragen/);
+});
+check("Editor: Freifeld-Button hat die Rueckfrage, ab Werk aus", () => {
+  const t = feld9(4, "confirm_off");
+  assert.ok(t);
+  assert.equal(t.checked, false);
+});
+check("Editor: Poolpumpe mit Leistung -> 'Stufe aus Leistung erkennen' + 3 Schwellen", () => {
+  assert.equal(feld9(1, "stage_from_power").checked, true);
+  assert.equal(feld9(1, "stage_watt_1").value, "20");
+  assert.equal(feld9(1, "stage_watt_2").value, "300");
+  assert.equal(feld9(1, "stage_watt_3").value, "500");
+});
+check("Editor: Poolpumpe ohne Leistungssensor -> keine Schwellen", () =>
+  assert.equal(feld9(5, "stage_watt_1"), null)
+);
+check("Editor: Waermepumpe — Blatt-Design, Farbe, Modus-Entity, 8 Tempi, 8 Zuordnungen", () => {
+  const design = feld9(0, "fan_design");
+  assert.ok(design);
+  assert.ok([...design.options].some((o) => o.value === "batman"));
+  assert.equal(design.value, "klassisch");
+  assert.equal(feld9(0, "fan_color_mode").value, "neutral");
+  assert.ok(feld9(0, "mode_entity"));
+  for (const m of pkg.HP_MODES) {
+    assert.ok(feld9(0, `mode_speed_${m.key}`), `Tempo ${m.key} fehlt`);
+    assert.ok(feld9(0, `mode_map_${m.key}`), `Zuordnung ${m.key} fehlt`);
+  }
+});
+check("Editor: UV — Regler 'Wabern / Glimmen' 0..100", () => {
+  const r = feld9(2, "glow_pulse");
+  assert.ok(r);
+  assert.equal(r.getAttribute("min"), "0");
+  assert.equal(r.getAttribute("max"), "100");
+  assert.equal(r.value, "40");
+});
+let ed9Fired = null;
+ed9.addEventListener("config-changed", (e) => (ed9Fired = e.detail.config));
+const modusBox = feld9(0, "show_mode");
+modusBox.checked = false;
+modusBox.dispatchEvent(new dom.window.Event("change"));
+await ed9.updateComplete;
+check("Editor: Betriebsmodus abwaehlen raeumt die Modus-Felder", () => {
+  assert.equal(ed9Fired.slots[0].show_mode, false);
+  assert.equal(feld9(0, "mode_entity"), null);
+  assert.equal(feld9(0, "mode_speed_heiz_boost"), null);
+});
+
+/* ---- 2a. Umlaute in allem, was man sieht ---- */
+
+/*
+ * Alles Sichtbare sammeln (Text, Titel, Platzhalter, Alt-Texte) — aus einer
+ * Card mit jedem Slot-Typ und jedem Element, allen Dialogen und dem Editor
+ * mit allen Abschnitten — und nach Ersatzschreibweisen suchen. Entity-IDs
+ * und Config-Schluessel sind keine UI-Texte und werden vorher entfernt.
+ */
+const ERSATZ =
+  /(Waerme|waerme|Rueck|rueck|Groess|groess|Hoehe|hoehe|Laenge|laenge|Staerke|staerke|Kaestchen|Duese|duese|Luefter|luefter|Glueh|glueh|\bfuer\b|\bFuer\b|ueber|Ueber|koenn|muess|waehl|Waehl|Schluessel|oeffn|Oeffn|aender|Aender|laeuft|Fuell|fuell|Bestaetig|bestaetig|zurueck|Pruef|pruef|Kuehl|kuehl|\bheiss|\bweiss\b|\bWeiss\b|spaeter|Spaeter|Blaetter|Taetig|Stroem|stroem|Aussen|aussen|fliess|Fliess|Schliess|schliess|Waehrend|waehrend)/;
+const sichtbar = (root, sammel = []) => {
+  const walk = (n) => {
+    if (n.nodeType === 3) sammel.push(n.textContent);
+    if (n.nodeType === 1) {
+      if (["STYLE", "SCRIPT"].includes(n.tagName)) return;
+      for (const a of ["title", "placeholder", "alt", "label", "aria-label"]) {
+        if (n.getAttribute(a)) sammel.push(n.getAttribute(a));
+      }
+      if (n.label && typeof n.label === "string") sammel.push(n.label);
+      if (n.helper && typeof n.helper === "string") sammel.push(n.helper);
+      if (n.shadowRoot) walk(n.shadowRoot);
+    }
+    for (const k of n.childNodes || []) walk(k);
+  };
+  walk(root);
+  return sammel;
+};
+const ohneIds = (t) => t.replace(/\b[a-z_]+\.[a-z0-9_]+\b/g, " ");
+
+const vollCard = await mount(
+  Dashboard,
+  {
+    hero: {
+      shape: "oval",
+      temp_entity: "sensor.pool_wassertemperatur",
+      ph_entity: "sensor.pool_ph",
+      rx_entity: "sensor.pool_redox",
+      show_drain: true,
+      inlet_temp_entity: "sensor.pool_wassertemperatur",
+      label_text: "Pool",
+    },
+    slots: [
+      { ...HP_MODUS, label_text: "Wärmepumpe" },
+      { ...PUMP_WATT },
+      { ...UV_CONFIG },
+      {
+        type: "solar",
+        label: "Solarheizung",
+        switch_entity: "switch.solarventil",
+        temp_in_entity: "sensor.pool_wassertemperatur",
+        temp_out_entity: "sensor.pool_wassertemperatur",
+        power_entity: "sensor.poolpumpe_power",
+      },
+      CUSTOM_BTN({ confirm_off: true }),
+      { type: "frame" },
+      { type: "inlet" },
+      { type: "heatpump" },
+      { type: "pump" },
+      { type: "uv" },
+      { type: "solar" },
+      { type: "custom" },
+    ],
+  },
+  modusHass("Heizen Boost", {
+    "switch.solarventil": { state: "on", attributes: {}, last_changed: iso(60) },
+    "switch.poolbeleuchtung": { state: "on", attributes: {}, last_changed: iso(60) },
+  })
+);
+/* Alle Rueckfrage-Dialoge oeffnen, damit ihre Texte mitgeprueft werden */
+for (const el of vollCard.shadowRoot.querySelector(".grid").children) {
+  await el.updateComplete;
+  const knopf = el.shadowRoot?.querySelector(".power-badge.on, .btn-entry.on");
+  if (knopf) {
+    knopf.click();
+    await el.updateComplete;
+  }
+}
+const edVoll = new Editor();
+edVoll.setConfig({
+  hero: { enabled: true, shape: "oval", show_drain: true, label_text: "Pool", inlet_temp_entity: "sensor.x" },
+  slots: [
+    { type: "heatpump", show_mode: true, label_text: "x" },
+    { type: "pump", power_entity: "sensor.poolpumpe_power" },
+    { type: "uv" },
+    { type: "solar" },
+    { type: "custom", entries: [{ kind: "button", entity: "switch.a" }, { kind: "entity" }, { kind: "text" }] },
+    { type: "frame" },
+    { type: "hidden" },
+    { type: "inlet" },
+  ],
+});
+edVoll.hass = makeHass();
+document.body.appendChild(edVoll);
+await edVoll.updateComplete;
+
+check("Umlaute: kein ae/oe/ue/ss-Ersatz in Card, Dialogen und Editor", () => {
+  const texte = [...sichtbar(vollCard), ...sichtbar(edVoll)].map(ohneIds);
+  const treffer = texte.filter((t) => ERSATZ.test(t)).map((t) => t.trim().slice(0, 80));
+  assert.deepEqual([...new Set(treffer)], []);
+  const alles = texte.join(" ");
+  assert.match(alles, /Wärmepumpe/);
+  assert.match(alles, /Größe/);
+  assert.match(alles, /Kühlen Boost/);
+  assert.match(alles, /Rückfrage|Rücklauf/);
+});
+check("Umlaute: die Pruefung selbst schlaegt an", () => {
+  assert.ok(ERSATZ.test("Waermepumpe"));
+  assert.ok(ERSATZ.test("Groesse"));
+  assert.ok(ERSATZ.test("Kuehlen"));
+  assert.ok(!ERSATZ.test("Wärmepumpe · Größe · Kühlen · Rücklauf · weiß"));
+});
+check("Umlaute: auch die Card-Beschreibung im Kartenwaehler", () => {
+  const eintrag = window.customCards.find((c) => c.type === "tomtut-pool-dashboard");
+  assert.ok(!ERSATZ.test(eintrag.name + " " + eintrag.description));
 });
 
 /* ------------------------------------------------------------------ */

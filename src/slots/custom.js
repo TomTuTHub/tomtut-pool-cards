@@ -13,6 +13,24 @@ export const CUSTOM_MAX_ENTRIES = 3;
 const TOGGLE_DOMAINS = ["switch", "light", "input_boolean", "fan", "siren"];
 
 export class TomtutPoolSlotCustom extends SlotBase {
+  /*
+   * Buttons fragen ab Werk NICHT nach (so war es immer). Pro Eintrag
+   * einschaltbar: `confirm_off: true` — dann kommt vor dem Ausschalten
+   * derselbe Dialog wie beim Powerbutton der Geräte.
+   */
+  get confirmDefault() {
+    return false;
+  }
+
+  get powerEntityId() {
+    return this._wartet?.entity || null;
+  }
+
+  get powerConfirmText() {
+    const name = this._wartet?.label || nameOf(this._ent(this._wartet?.entity), this._wartet?.entity);
+    return `„${name}" wird ausgeschaltet.`;
+  }
+
   get _entries() {
     const list = Array.isArray(this.config?.entries) ? this.config.entries : [];
     return list.slice(0, CUSTOM_MAX_ENTRIES).filter((e) => e && (e.entity || e.text || e.label));
@@ -28,6 +46,11 @@ export class TomtutPoolSlotCustom extends SlotBase {
     if (!id) return;
     /* toggle gibt es in allen schaltbaren Domains gleichermaßen */
     if (!TOGGLE_DOMAINS.includes(domainOf(id))) return;
+    if (entry.confirm_off === true && this._isOn(id)) {
+      this._wartet = entry;
+      this._confirmOpen = true;
+      return;
+    }
     this._call(id, "toggle");
   }
 
@@ -64,6 +87,7 @@ export class TomtutPoolSlotCustom extends SlotBase {
           ? entries.map((e) => this._renderEntry(e))
           : html`<p class="slot-hint">Noch keine Einträge — im Editor bis zu drei hinzufügen.</p>`}
       </div>
+      ${this.renderConfirm("Wirklich ausschalten?")}
     `);
   }
 

@@ -18,9 +18,12 @@ export { normGrad, passFaktor } from "../shared/bild.js";
  *   temp_entity    Temperaturfühler — Thermometer
  *
  * Zwei Besonderheiten gegenüber den anderen Geräte-Slots:
- *   1. Glüheffekt — läuft die Lampe, liegt ein statischer blau-violetter
- *      Schein über dem Rohrkörper. Statisch ist Absicht: ein UV-Strahler
- *      flackert nicht, und eine Animation würde im Dashboard nur nerven.
+ *   1. Glüheffekt — läuft die Lampe, liegt ein blau-violetter Schein über
+ *      dem Rohrkörper. Seit Iteration 9 "atmet" er sanft (`glow_pulse`,
+ *      0 = aus): der Kern glimmt leicht auf und ab, darüber wabert ein
+ *      weicher Hof mit anderer Periode — dadurch wirkt es organisch statt
+ *      getaktet. Kein Blinken: der Kern fällt höchstens um ein Fünftel ab,
+ *      der Hof kommt nur dazu. Bei prefers-reduced-motion steht alles.
  *   2. Drehen/Spiegeln/Größe — die Lampe sitzt je nach Anlage andersherum
  *      im Strang und darf im Kasten kleiner stehen (`uv_size`, 30–100 %).
  *      Gedreht wird das Bild samt Glühen; Thermometer, Watt-Box und
@@ -61,6 +64,8 @@ export const UV_DEFAULTS = {
   glow_thickness: 13,
   glow_angle: -15,
   glow_intensity: 80,
+  /* Wabern/Glimmen, 0 = aus (statisch wie vor Iteration 9) */
+  glow_pulse: 40,
 };
 
 export const uvHasEntity = (c = {}) => !!(c.switch_entity || c.power_entity || c.temp_entity);
@@ -97,6 +102,8 @@ export class TomtutPoolSlotUv extends SlotBase {
     const verhaeltnis = Math.round(((laenge * deviceRatio("uv")) / dicke) * 1000) / 1000;
     const roh = Number(this._v("glow_intensity"));
     const staerke = Math.min(100, Math.max(0, isFinite(roh) ? roh : 80)) / 100;
+    const pulsRoh = Number(this._v("glow_pulse"));
+    const puls = Math.min(100, Math.max(0, isFinite(pulsRoh) ? pulsRoh : 0)) / 100;
     const stil = [
       `top:${this._v("glow_top")}%`,
       `left:${this._v("glow_left")}%`,
@@ -104,8 +111,9 @@ export class TomtutPoolSlotUv extends SlotBase {
       `aspect-ratio:${verhaeltnis}`,
       `opacity:${staerke}`,
       `transform:translate(-50%, -50%) rotate(${Number(this._v("glow_angle")) || 0}deg)`,
+      `--glow-pulse:${Math.round(puls * 100) / 100}`,
     ].join("; ");
-    return html`<div class="glow" style="${stil};"></div>`;
+    return html`<div class="glow ${puls > 0 ? "wabert" : "ruhig"}" style="${stil};"></div>`;
   }
 
   /* Rendert immer — auch ohne hass und ohne eine einzige Entity. */
@@ -173,6 +181,16 @@ export class TomtutPoolSlotUv extends SlotBase {
     frameStyles,
     overlayStyles,
     css`
+      /*
+       * Der Schein besteht aus drei Lagen:
+       *   .glow         Kern — exakt der Verlauf von vorher (Deckkraft über
+       *                 den Inline-Stil = Leuchtstärke)
+       *   .glow::before derselbe Kern noch einmal, glimmt auf und ab
+       *   .glow::after  weicher Hof, größer, wabert mit anderer Periode
+       * Zwei ungleiche Perioden (5,3 s / 3,7 s) überlagern sich zu einem
+       * Muster, das sich erst nach Minuten wiederholt — organisch statt
+       * Metronom. Die Stärke kommt aus --glow-pulse (0..1).
+       */
       .glow {
         position: absolute;
         border-radius: 50%;
@@ -186,6 +204,71 @@ export class TomtutPoolSlotUv extends SlotBase {
           rgba(104, 128, 255, 0) 100%
         );
         filter: blur(0.35em);
+      }
+      .glow.wabert::before,
+      .glow.wabert::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        pointer-events: none;
+      }
+      .glow.wabert::before {
+        background: inherit;
+        opacity: 0;
+        animation: uvGlimmen 5.3s ease-in-out infinite;
+      }
+      .glow.wabert::after {
+        inset: -18% -8%;
+        background: radial-gradient(
+          ellipse at center,
+          rgba(190, 160, 255, 0.75) 0%,
+          rgba(130, 120, 255, 0.35) 45%,
+          rgba(104, 128, 255, 0) 100%
+        );
+        filter: blur(0.5em);
+        opacity: 0;
+        animation: uvWabern 3.7s ease-in-out infinite alternate;
+      }
+      @keyframes uvGlimmen {
+        0% {
+          opacity: calc(var(--glow-pulse, 0) * 0.55);
+        }
+        23% {
+          opacity: calc(var(--glow-pulse, 0) * 0.15);
+        }
+        41% {
+          opacity: calc(var(--glow-pulse, 0) * 0.45);
+        }
+        67% {
+          opacity: 0;
+        }
+        84% {
+          opacity: calc(var(--glow-pulse, 0) * 0.35);
+        }
+        100% {
+          opacity: calc(var(--glow-pulse, 0) * 0.55);
+        }
+      }
+      @keyframes uvWabern {
+        0% {
+          opacity: calc(var(--glow-pulse, 0) * 0.2);
+          transform: scale(0.97, 0.94);
+        }
+        55% {
+          opacity: calc(var(--glow-pulse, 0) * 0.7);
+          transform: scale(1.03, 1.08);
+        }
+        100% {
+          opacity: calc(var(--glow-pulse, 0) * 0.95);
+          transform: scale(1.06, 1.14);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .glow.wabert::before,
+        .glow.wabert::after {
+          animation: none;
+        }
       }
     `,
   ];

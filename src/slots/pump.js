@@ -49,6 +49,35 @@ export const PUMP_DEFAULTS = {
   temp_scale: 119,
   /* Unter dieser Leistung gilt die Pumpe als stehend */
   idle_watt: 30,
+  /*
+   * Stufe aus Leistung erkennen (Iteration 9). Wird die Stufe direkt an der
+   * Pumpe umgestellt, erfährt Home Assistant davon nichts — die Leistung
+   * verrät sie trotzdem. Ab der jeweiligen Schwelle (Watt, strikt größer)
+   * gilt die Stufe; unter der N1-Schwelle steht die Pumpe.
+   * Thomas' Pumpe zum Vergleich: N1 47 W, N2 271 W, N3 735 W.
+   */
+  stage_from_power: true,
+  stage_watt_1: 20,
+  stage_watt_2: 300,
+  stage_watt_3: 500,
+};
+
+/*
+ * Leistung -> Stufe. Rückgabe: Index 0..anzahl-1 oder null (= steht).
+ * Schwellen sind "strikt größer": 20 W bei Schwelle 20 ist noch aus.
+ * Hat die Anlage weniger Stufen als erkannt, gilt die höchste vorhandene.
+ * Unsinnige Schwellen (nicht aufsteigend) werden nicht korrigiert — es
+ * zählt die höchste überschrittene.
+ */
+export const stageFromWatt = (w, schwellen = [20, 300, 500], anzahl = 3) => {
+  const n = Number(w);
+  if (w === null || w === undefined || !isFinite(n) || anzahl < 1) return null;
+  let stufe = null;
+  schwellen.slice(0, 3).forEach((s, i) => {
+    const grenze = Number(s);
+    if (isFinite(grenze) && n > grenze) stufe = i;
+  });
+  return stufe === null ? null : Math.min(stufe, anzahl - 1);
 };
 
 export const FAN_SPEED_MIN = 1;
@@ -139,8 +168,39 @@ export class TomtutPoolSlotPump extends SlotBase {
     return !!this.config?.main_entity && !this._isOn(this.config.main_entity);
   }
 
-  /* Zustand aus den Entities ableiten */
+  /*
+   * Ist die Erkennung aus der Leistung aktiv? Nur mit Leistungssensor, und
+   * nur wenn der einen Zahlenwert liefert — sonst zählen wie bisher die
+   * Schalter.
+   */
+  get _wattStufeAktiv() {
+    return this._v("stage_from_power") !== false && !!this.config?.power_entity;
+  }
+
+  _wattStufe() {
+    if (!this._wattStufeAktiv) return undefined;
+    const w = this._watt(this.config.power_entity);
+    if (w === null) return undefined;
+    const schwellen = [1, 2, 3].map((i) => this._v(`stage_watt_${i}`));
+    return stageFromWatt(w, schwellen, Math.max(1, this.stages.length));
+  }
+
+  /* Zustand: Schalter, bei aktiver Erkennung überstimmt von der Leistung */
   _derive() {
+    const schalter = this._deriveSchalter();
+    const stufe = this._wattStufe();
+    if (stufe === undefined) return schalter;
+    if (stufe === null) {
+      return { active: null, stopped: true, since: schalter.stopped ? schalter.since : null };
+    }
+    /* "seit …" nur, wenn die Schalter dieselbe Stufe meinen — sonst wissen
+       wir nicht, wann an der Pumpe umgestellt wurde. */
+    const since = schalter.active === stufe && !schalter.stopped ? schalter.since : null;
+    return { active: stufe, stopped: false, since, ausLeistung: true };
+  }
+
+  /* Zustand aus den Schalter-Entities ableiten */
+  _deriveSchalter() {
     const none = { active: null, stopped: false, since: null };
     if (this.mode === "latching") {
       let best = null;
@@ -189,6 +249,8 @@ export class TomtutPoolSlotPump extends SlotBase {
     const st = this.state;
     if (this.blockedByMain) return false;
     if (st.stopped || st.active === null) return false;
+    /* Bei Erkennung aus der Leistung ist die N1-Schwelle die Ruhegrenze */
+    if (st.ausLeistung) return true;
     const idle = Number(this._v("idle_watt"));
     const w = this._watt(this.config?.power_entity);
     if (w !== null && isFinite(idle) && w < idle) return false;

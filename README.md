@@ -34,13 +34,18 @@ eine Herstellerintegration in Home Assistant landen.
 - **Becken-Hero** — sechs Formen (Oval, Rechteck, Achtform, Rund, Nierenform, Freiform) mit
   Thermometer für die Wassertemperatur sowie optionalen pH- und RX-Kästchen auf der Beckenwand.
 - **Wärmepumpen-Kasten** — Soll-/Ist-Temperatur mit **+/−** direkt auf der Card, Stromverbrauch,
-  Powerbutton mit Sicherheitsabfrage, animierter Lüfter.
+  Powerbutton mit Sicherheitsabfrage, animierter Lüfter in sechs Blatt-Designs (vom
+  klassischen Vierblatt bis Batman). Optional mit **Betriebsmodus** (Heizen/Kühlen ×
+  Silent/Smart/Auto/Boost): jeder Modus dreht das Rad in seinem eigenen Tempo, auf Wunsch
+  rot beim Heizen und blau beim Kühlen.
 - **Poolpumpen-Kasten** — Stufen **N1 · N2 · N3** und **STOP** als Taster mit „seit …"-Anzeige,
   drehendes Laufrad mit eigenem Tempo je Stufe, Watt-Anzeige, optionaler Temperaturfühler,
-  Hauptschalter mit Rückfrage. Funktioniert mit Impulstastern **und** mit Dauerrelais.
+  Hauptschalter mit Rückfrage. Funktioniert mit Impulstastern **und** mit Dauerrelais. Mit
+  Leistungssensor erkennt der Kasten die Stufe auch dann, wenn sie direkt an der Pumpe
+  umgestellt wurde.
 - **UV-C-Lampen-Kasten** — Powerbutton mit Rückfrage, Watt-Anzeige, optionaler
-  Temperaturfühler und ein ruhiges blau-violettes Glühen über dem Rohr, solange die Lampe
-  läuft. Das Bild lässt sich frei drehen, spiegeln und **in der Größe einstellen**, damit die
+  Temperaturfühler und ein sanft waberndes blau-violettes Glühen über dem Rohr, solange die
+  Lampe läuft (Stärke einstellbar, 0 = ruhig). Das Bild lässt sich frei drehen, spiegeln und **in der Größe einstellen**, damit die
   Lampe so im Kasten liegt wie in der Anlage.
 - **Solarheizungs-Kasten** — ein **Feld aus drei Absorbern** mit Vorlauf- und
   Rücklauf-Thermometer, optionalem Stromverbrauch und Powerbutton (Solarventil oder -pumpe)
@@ -62,8 +67,12 @@ eine Herstellerintegration in Home Assistant landen.
   Gerät hat, dann erscheinen dessen Felder. Jeder Kasten trägt eine große Überschrift
   („Kasten 3 · Poolpumpe · Filterpumpe") und die Kennfarbe seines Typs, damit man bei sechs
   Kästen nicht den Faden verliert. YAML ist möglich, aber nie nötig.
+- **Rückfrage pro Kasten** — die Warnung vor dem Ausschalten ist in jedem Kasten mit
+  Schalter einzeln abwählbar („Vor dem Ausschalten nachfragen"); Freifeld-Buttons können sie
+  auf Wunsch bekommen.
 - **Handgezeichnetes Artwork** — jedes Gerät, jedes Becken und jedes Zubehörteil ist eine
-  Zeichnung, kein Foto und kein KI-Bild (© TomTuT).
+  Zeichnung (© TomTuT). Einzige Ausnahme: das Solarfeld zeigt Thomas' eigenes Foto eines
+  schwarzen Absorbers.
 
 ---
 
@@ -298,7 +307,8 @@ sind davon unberührt — die Reihenfolge ist reine Anzeige.
 
 | Option | Standard | Beschreibung |
 |---|---|---|
-| `switch_entity` | – | Schalter für den Powerbutton. **Ausschalten fragt immer nach.** |
+| `switch_entity` | – | Schalter für den Powerbutton. **Ist er aus, steht der Lüfter immer** — egal, was die Watt sagen. |
+| `confirm_off` | `true` | Vor dem Ausschalten nachfragen (Editor: „Vor dem Ausschalten nachfragen"). `false` = sofort aus |
 | `power_entity` | – | Leistungssensor in W oder kW |
 | `target_entity` | – | Soll-Temperatur: `climate.*` oder `number.*` |
 | `current_entity` | – | Ist-Temperatur: `climate.*` (`current_temperature`) oder `sensor.*` |
@@ -307,6 +317,13 @@ sind davon unberührt — die Reihenfolge ist reine Anzeige.
 | `fan_speed` | `60` | Drehgeschwindigkeit `0`–`100` |
 | `fan_inactive` | `gray` | Im Stillstand: `gray` oder `hidden` |
 | `fan_top` / `fan_left` / `fan_size` / `fan_ratio` | `49.5` / `26` / `42` / `1.14` | Lage des Lüfterrads in % des Bildes |
+| `fan_design` | `klassisch` | Blatt-Design: `klassisch` (4 Blätter), `drei`, `fuenf`, `sichel` (Turbine), `propeller`, `batman` |
+| `fan_color_mode` | `neutral` | `neutral` = schwarz/weiß wie die Schrift · `modus` = Heizen rot, Kühlen blau (braucht einen erkannten Betriebsmodus) |
+| `show_mode` | `false` im Editor | Betriebsmodus auswerten. In YAML reicht `mode_entity`; `show_mode: false` schaltet ab |
+| `mode_entity` | – | Modus-Quelle: `sensor`, `select`, `input_select` oder `climate` |
+| `mode_attribute` | – | Statt des Zustands ein Attribut lesen, z.B. `preset_mode` bei `climate.*` |
+| `mode_speed_<modus>` | Silent `3` · Smart `5` · Auto `6` · Boost `9` | Tempo je Modus auf der Skala 1–10 (wie die Poolpumpe). `<modus>` = `heiz_silent`, `heiz_smart`, `heiz_auto`, `heiz_boost`, `kuehl_silent`, `kuehl_smart`, `kuehl_auto`, `kuehl_boost` |
+| `mode_map_<modus>` | z.B. `Heizen Silent, heat_silent, …` | Welche Gerätezustände dieser Modus heißt — Kommaliste, Groß-/Kleinschreibung, Leerzeichen, `_` und `-` egal. Leer = Vorgabe |
 | `label_text` | – | Freitext-Badge auf dem Bild |
 | `show_power_button` / `show_power` / `show_current` / `show_target` / `show_fan` | `true` | Einzelne Elemente abwählen — abgewählt heißt: keine Felder im Editor und keine Schlüssel in der Config |
 | Positionsfelder | – | `power_*`, `current_*`, `target_*`, `label_*`, `power_btn_*` — im Editor je Element per Schieberegler |
@@ -321,10 +338,13 @@ Mindestens **eine** der vier Entities sollte gesetzt sein; sonst zeigt der Kaste
 | `stop_entity` | – | STOP-Kanal (bei Impulstastern ein eigener Shelly-Ausgang) |
 | `stage_mode` | `momentary` | `momentary` (Impulstaster) oder `latching` (Dauerrelais) |
 | `stage_labels` | `[N1, N2, N3]` | Eigene Beschriftung der Taster |
-| `main_entity` | – | Hauptschalter/Steckdose → Powerbutton **mit Rückfrage** |
+| `main_entity` | – | Hauptschalter/Steckdose → Powerbutton |
+| `confirm_off` | `true` | Vor dem Ausschalten nachfragen. `false` = sofort aus |
 | `power_entity` | – | Leistungssensor in W oder kW |
 | `temp_entity` | – | Temperaturfühler → Thermometer auf dem Bild |
-| `idle_watt` | `30` | Ruhewatt: unter diesem Verbrauch gilt die Pumpe als stehend (Laufrad grau) |
+| `idle_watt` | `30` | Ruhewatt: unter diesem Verbrauch gilt die Pumpe als stehend (Laufrad grau). Gilt nur ohne Stufen-Erkennung |
+| `stage_from_power` | `true` | **Stufe aus Leistung erkennen** (nur mit `power_entity`). Wird die Stufe direkt an der Pumpe umgestellt, weiß HA das nicht — die Leistung schon. Die erkannte Stufe leuchtet und bestimmt das Laufrad-Tempo; die Taster bleiben tippbar |
+| `stage_watt_1` / `stage_watt_2` / `stage_watt_3` | `20` / `300` / `500` | Schwellen in W (strikt größer): über `stage_watt_1` = N1 usw., darunter = aus. Beispiel einer Pumpe mit N1 47 W, N2 271 W, N3 735 W: `stage_watt_2` auf ca. `150` stellen |
 | `label` | – | Überschrift über dem Kasten |
 | `fan_speed_1` / `fan_speed_2` / `fan_speed_3` | `3` / `5` / `8` | Tempo des Laufrads je Stufe auf der Skala **1–10** (links langsam, rechts schnell) |
 | `fan_top` / `fan_left` / `fan_size` | `60` / `61` / `18` | Lage des Laufrads in % des Bildes — ab Werk mittig auf der Volute (dem Spiralgehäuse). Die Box ist immer quadratisch, das Rad bleibt kreisrund |
@@ -367,7 +387,8 @@ Alle drei Entities sind optional; es reicht eine.
 | Option | Standard | Beschreibung |
 |---|---|---|
 | `label` | – | Überschrift über dem Bild |
-| `switch_entity` | – | Steckdose/Relais der Lampe → Powerbutton mit Rückfrage (`switch`, `input_boolean`, `light`) |
+| `switch_entity` | – | Steckdose/Relais der Lampe → Powerbutton (`switch`, `input_boolean`, `light`) |
+| `confirm_off` | `true` | Vor dem Ausschalten nachfragen. `false` = sofort aus |
 | `power_entity` | – | Leistung in W oder kW → Watt-Box |
 | `temp_entity` | – | Temperaturfühler → Thermometer |
 | `show_power_button` / `show_power` / `show_temp` / `show_glow` | `true` | Einzelne Elemente abschalten |
@@ -379,6 +400,7 @@ Alle drei Entities sind optional; es reicht eine.
 | `glow_size` / `glow_thickness` | `40` / `13` | Länge und Dicke des Glühbereichs in % |
 | `glow_angle` | `-15` | Neigung des Glühbereichs in ° (Neigung des Rohrs im Artwork) |
 | `glow_intensity` | `80` | Leuchtstärke in % |
+| `glow_pulse` | `40` | Wabern/Glimmen `0`–`100`; `0` = ruhig und statisch |
 | `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `9` / `76` / `100` / `true` / `true` | Watt-Box |
 | `temp_top` / `temp_left` / `temp_scale` | `19` / `40` / `110` | Thermometer |
 | `power_btn_top` / `power_btn_left` / `power_btn_scale` | `30` / `11` / `120` | Powerbutton |
@@ -392,8 +414,12 @@ Alle drei Entities sind optional; es reicht eine.
 ```
 
 **Glühen:** steht `switch_entity` auf `on`, liegt ein weiches blau-violettes Licht über dem
-Rohrkörper — **statisch, ohne Animation**. Bei `off`, unbekanntem Zustand oder fehlendem
-Schalter bleibt das Bild ruhig. Ohne `switch_entity` gibt es kein Glühen.
+Rohrkörper. Seit Iteration 9 **atmet** es sanft (`glow_pulse`): der Kern glimmt leicht auf
+und ab, darüber wabert ein weicher Hof mit anderer Periode — organisch, kein Blinken. Der Kern
+selbst ist unverändert, das Wabern kommt nur obendrauf; `glow_pulse: 0` ist der alte statische
+Schein. Wer im Betriebssystem „Bewegung reduzieren" eingestellt hat, sieht es immer ruhig.
+Bei `off`, unbekanntem Zustand oder fehlendem Schalter bleibt das Bild ruhig. Ohne
+`switch_entity` gibt es kein Glühen.
 
 **Drehen, Spiegeln, Größe:** gedreht wird das Bild **samt Glühen**; Thermometer, Watt-Box und
 Powerbutton bleiben aufrecht und lesbar. Der Kasten ändert dabei seine Größe **nicht** — er
@@ -416,7 +442,8 @@ Entities sind optional; es reicht eine.
 | Option | Standard | Beschreibung |
 |---|---|---|
 | `label` | – | Überschrift über dem Bild |
-| `switch_entity` | – | Solarventil oder Solarpumpe → Powerbutton mit Rückfrage (`switch`, `input_boolean`, `light`) |
+| `switch_entity` | – | Solarventil oder Solarpumpe → Powerbutton (`switch`, `input_boolean`, `light`) |
+| `confirm_off` | `true` | Vor dem Ausschalten nachfragen. `false` = sofort aus |
 | `temp_in_entity` | – | Vorlauf (Wasser zum Absorber) → Thermometer am **oberen** Anschluss, beim blauen Pfeil |
 | `temp_out_entity` | – | Rücklauf (Wasser zurück ins Becken) → Thermometer am **unteren** Anschluss, beim roten Pfeil |
 | `power_entity` | – | Leistung der Solarpumpe in W oder kW → Watt-Box |
@@ -429,7 +456,7 @@ Entities sind optional; es reicht eine.
 | `temp_out_top` / `temp_out_left` / `temp_out_scale` | `79` / `66` / `105` | Rücklauf-Thermometer |
 | `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `8` / `33` / `100` / `true` / `true` | Watt-Box |
 
-**Das Bild ist ein Feld, kein Einzelstück:** drei OKU-Absorber stehen nebeneinander in
+**Das Bild ist ein Feld, kein Einzelstück:** drei OKU-Absorber (seit Iteration 9 Thomas' eigenes Foto) stehen nebeneinander in
 Perspektive (siehe [Artwork](#artwork)). Die Fließrichtung steht fest und wird nur
 beschriftet: der **blaue Pfeil oben** zeigt ins Feld hinein (kaltes Wasser), der **rote unten**
 vom Feld weg (warmes Wasser). Beide sind statisch — eine Fließrichtung kehrt sich nicht um.
@@ -452,6 +479,7 @@ Jeder Eintrag:
 | `label` | Beschriftung; leer = Name der Entity |
 | `icon` | Icon für `button`, im Editor über den HA-Icon-Picker, z.B. `mdi:lightbulb` |
 | `text` | Inhalt für `kind: text` |
+| `confirm_off` | Nur `button`: `true` = vor dem Ausschalten nachfragen. Standard `false` (schaltet sofort) |
 
 ### Werte-Anzeige
 
@@ -521,7 +549,8 @@ python3 tools/prepare-assets.py <ordner-mit-originalen> [weiterer ordner ...]
 
 **Die Solarheizung ist eine Komposition.** Eine Solarheizung ist in Wirklichkeit ein Feld aus
 mehreren Absorbern, kein einzelnes Gerät — deshalb gibt es dafür auch kein einzelnes Bild.
-`dist/solar_transparent.png` wird aus **drei Kopien** von `OKU_Panel.png` gebaut: jedes Panel
+`dist/solar_transparent.png` wird aus **drei Kopien** von `OKU.png` gebaut (Thomas' Foto eines
+schwarzen Absorbers, freigestellt; bis Iteration 8 Selinas `OKU_Panel.png`): jedes Panel
 steht um 12 % seiner Breite überlappend neben dem linken Nachbarn und 4 % seiner Höhe tiefer,
 gezeichnet von hinten nach vorn. Daraus wird eine Querkachel in der Größenordnung der anderen
 Gerätebilder. Die Rechnung steht in `tools/prepare-assets.py` (`SOLAR_UEBERLAPP`,
@@ -573,7 +602,7 @@ Alte Karten laufen also unverändert weiter, sie holen sich ihre Farben jetzt nu
 
 ```bash
 npm install
-npx playwright install chromium   # einmalig, fuer den Render-Test
+npx playwright install chromium   # einmalig, für den Render-Test
 npm run build      # src/ -> dist/tomtut-pool-cards.js
 npm test           # beide Tests: jsdom-Smoke + Render im Browser
 npm run test:jsdom # nur der Smoke-Test (schnell, ohne Browser)
@@ -603,7 +632,7 @@ src/
   editor/                visueller Editor
 test/smoke.mjs           Logik/Markup in jsdom
 test/render.spec.mjs     Layout in Chromium (Playwright)
-test/fixtures/demo.mjs   Beispiel-Anlage fuer den Render-Test (hass + Alles-Config)
+test/fixtures/demo.mjs   Beispiel-Anlage für den Render-Test (hass + Alles-Config)
 tools/prepare-assets.py  erzeugt die optimierten PNGs in dist/ (Becken, Geräte, Sprites)
 tools/becken-zonen.mjs   vermisst die Becken-Bilder (Anker + Zonen-Fixture)
 tools/png-lesen.mjs      minimaler PNG-Leser für das Messwerkzeug

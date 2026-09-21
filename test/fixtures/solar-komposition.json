@@ -1,21 +1,21 @@
 {
   "_hinweis": "geschrieben von tools/prepare-assets.py — nicht von Hand aendern",
-  "quelle": "OKU_Panel.png",
+  "quelle": "OKU.png",
   "panels": 3,
   "ueberlapp": 0.12,
   "versatz_hoch": 0.04,
   "panel_groesse": [
-    363,
-    658
+    434,
+    788
   ],
   "versatz_px": [
-    319,
-    26
+    382,
+    32
   ],
   "datei": "solar_transparent.png",
   "groesse": [
-    1001,
-    710
+    1198,
+    852
   ],
-  "sha256": "52148b2c4ea0013edf5aeed34969ab6246552a6b7ac854c01fa9e25d91797c36"
+  "sha256": "4fe72412f210e5a43f5d6848f744c6e8e08fe6bf7af9d25d9a291d53ed2efb5e"
 }

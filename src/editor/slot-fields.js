@@ -2,6 +2,8 @@ import { html, nothing } from "lit";
 import { section, elementsGroup } from "../shared/fields.js";
 import { SHAPES } from "../shared/assets.js";
 import { FAN_SPEED_MIN, FAN_SPEED_MAX } from "../slots/pump.js";
+import { HP_MODES } from "../slots/heatpump.js";
+import { FAN_DESIGNS } from "../shared/slot-base.js";
 import { GROESSE_MIN, GROESSE_MAX } from "../shared/bild.js";
 
 /*
@@ -18,6 +20,21 @@ const SCHALTER = ["switch", "input_boolean", "light"];
 const VERBRAUCH = ["sensor", "input_number"];
 const MESSWERT = ["sensor", "input_number", "number"];
 const KLIMA = ["climate", "number", "input_number", "sensor"];
+const MODUS = ["sensor", "select", "input_select", "climate"];
+
+/*
+ * "Vor dem Ausschalten nachfragen" — derselbe Schalter in jedem Kasten mit
+ * Powerbutton (Iteration 9). Ab Werk an, wie bisher.
+ */
+const NACHFRAGEN = "Vor dem Ausschalten nachfragen";
+const nachfragen = (
+  f,
+  def = true,
+  hinweis = "Aus = ein Tippen auf den Powerbutton schaltet sofort ab, ohne Warnung."
+) => html`
+  ${f.toggle(NACHFRAGEN, "confirm_off", def)}
+  <small>${hinweis}</small>
+`;
 
 /* ---------------- Becken (Hero) ---------------- */
 
@@ -146,6 +163,7 @@ export const heatpumpFields = (f) => html`
   ${elementsGroup(html`
     ${f.element("⏻ Powerbutton", "show_power_button", [
       "switch_entity",
+      "confirm_off",
       "power_btn_top",
       "power_btn_left",
       "power_btn_scale",
@@ -185,16 +203,29 @@ export const heatpumpFields = (f) => html`
       "fan_size",
       "fan_ratio",
       "fan_inactive",
+      "fan_design",
+      "fan_color_mode",
     ])}
+    ${f.element(
+      "🔁 Betriebsmodus",
+      "show_mode",
+      [
+        "mode_entity",
+        "mode_attribute",
+        ...HP_MODES.flatMap((m) => [`mode_speed_${m.key}`, `mode_map_${m.key}`]),
+      ],
+      false
+    )}
   `)}
   ${f.shown("show_power_button")
     ? html`
         ${f.entity(
           "Powerbutton — Schalter",
           "switch_entity",
-          "z.B. die Shelly-Steckdose der Wärmepumpe. Ausschalten fragt immer nach.",
+          "z.B. die Shelly-Steckdose der Wärmepumpe. Ist er aus, steht der Lüfter immer.",
           ...SCHALTER
         )}
+        ${nachfragen(f)}
         ${section(
           "Powerbutton — Position",
           html`
@@ -293,8 +324,33 @@ export const heatpumpFields = (f) => html`
             )}
             ${f.slider("Leistungs-Schwelle", "fan_power_threshold", 0, 2000, " W", 10)}
             ${f.slider("Drehgeschwindigkeit", "fan_speed", 0, 100)}
+            <small>
+              Ist der Schalter der Wärmepumpe aus, steht der Lüfter immer. Mit erkanntem
+              Betriebsmodus gilt statt der Drehgeschwindigkeit das Tempo des Modus.
+            </small>
           `,
           true
+        )}
+        ${section(
+          "Lüfter — Aussehen",
+          html`
+            ${f.select(
+              "Blatt-Design",
+              "fan_design",
+              Object.entries(FAN_DESIGNS).map(([k, d]) => [k, d.label]),
+              "klassisch"
+            )}
+            ${f.select(
+              "Farbe",
+              "fan_color_mode",
+              [
+                ["neutral", "Schwarz/Weiß (wie die Schrift)"],
+                ["modus", "Nach Modus: Heizen rot, Kühlen blau"],
+              ],
+              "neutral"
+            )}
+            <small>Die Färbung nach Modus braucht einen erkannten Betriebsmodus.</small>
+          `
         )}
         ${section(
           "Lüfter — Position",
@@ -312,6 +368,44 @@ export const heatpumpFields = (f) => html`
               ],
               "gray"
             )}
+          `
+        )}
+      `
+    : nothing}
+  ${f.shown("show_mode", false)
+    ? html`
+        ${f.entity(
+          "Betriebsmodus — Entity",
+          "mode_entity",
+          "sensor, select, input_select oder climate — liefert den Modus der Wärmepumpe.",
+          ...MODUS
+        )}
+        ${f.text(
+          "Attribut (optional)",
+          "mode_attribute",
+          "Leer = Zustand der Entity. Bei climate.* z.B. preset_mode.",
+          "z.B. preset_mode"
+        )}
+        ${section(
+          "Betriebsmodus — Tempo je Modus",
+          html`
+            ${HP_MODES.map((m) =>
+              f.slider(m.label, `mode_speed_${m.key}`, FAN_SPEED_MIN, FAN_SPEED_MAX, "", 1)
+            )}
+            <small>Links langsam, rechts schnell (1–10, ohne Einheit).</small>
+          `,
+          true
+        )}
+        ${section(
+          "Betriebsmodus — Zuordnung Gerätezustand → Modus",
+          html`
+            ${HP_MODES.map((m) =>
+              f.text(m.label, `mode_map_${m.key}`, "", m.zustaende.join(", "))
+            )}
+            <small>
+              Kommaliste der Zustände, die dieser Modus heißt. Leer = Vorgabe (grau).
+              Groß-/Kleinschreibung, Leerzeichen und _ sind egal.
+            </small>
           `
         )}
       `
@@ -340,6 +434,7 @@ export const pumpFields = (f) => html`
     ])}
     ${f.element("⏻ Powerbutton", "show_power_button", [
       "main_entity",
+      "confirm_off",
       "power_btn_top",
       "power_btn_left",
       "power_btn_scale",
@@ -351,6 +446,10 @@ export const pumpFields = (f) => html`
       "power_scale",
       "power_box",
       "power_label",
+      "stage_from_power",
+      "stage_watt_1",
+      "stage_watt_2",
+      "stage_watt_3",
     ])}
     ${f.element("🌡 Temperatur", "show_temp", [
       "temp_entity",
@@ -397,9 +496,10 @@ export const pumpFields = (f) => html`
         ${f.entity(
           "Hauptschalter",
           "main_entity",
-          "Steckdose/Relais der Pumpe — Powerbutton mit Rückfrage.",
+          "Steckdose/Relais der Pumpe — Powerbutton.",
           ...SCHALTER
         )}
+        ${nachfragen(f)}
         ${section(
           "Powerbutton — Position",
           html`
@@ -423,6 +523,27 @@ export const pumpFields = (f) => html`
             ${f.toggle("Einheit anzeigen", "power_label", true)}
           `
         )}
+        ${f.raw("power_entity")
+          ? section(
+              "Stufe aus Leistung erkennen",
+              html`
+                ${f.toggle("Stufe aus Leistung erkennen", "stage_from_power", true)}
+                ${f.val("stage_from_power") !== false
+                  ? html`
+                      ${f.slider("N1 ab mehr als", "stage_watt_1", 0, 300, " W", 1)}
+                      ${f.slider("N2 ab mehr als", "stage_watt_2", 0, 1500, " W", 5)}
+                      ${f.slider("N3 ab mehr als", "stage_watt_3", 0, 3000, " W", 5)}
+                    `
+                  : nothing}
+                <small>
+                  Wird die Stufe direkt an der Pumpe umgestellt, weiß Home Assistant davon
+                  nichts — die Leistung schon. Unter der N1-Schwelle gilt die Pumpe als aus.
+                  Die erkannte Stufe leuchtet und bestimmt das Tempo des Laufrads; die
+                  Taster bleiben bedienbar.
+                </small>
+              `
+            )
+          : nothing}
       `
     : nothing}
   ${f.shown("show_temp")
@@ -472,7 +593,8 @@ export const pumpFields = (f) => html`
           "Wann steht die Pumpe?",
           html`
             ${f.slider("Ruhewatt", "idle_watt", 0, 200, " W", 1)}
-            <small>Unter diesem Verbrauch gilt die Pumpe als stehend (Laufrad grau).</small>
+            <small>Unter diesem Verbrauch gilt die Pumpe als stehend (Laufrad grau).
+              Bei „Stufe aus Leistung erkennen" gilt stattdessen die N1-Schwelle.</small>
           `
         )}
       `
@@ -485,6 +607,7 @@ export const uvFields = (f) => html`
   ${elementsGroup(html`
     ${f.element("⏻ Powerbutton", "show_power_button", [
       "switch_entity",
+      "confirm_off",
       "power_btn_top",
       "power_btn_left",
       "power_btn_scale",
@@ -510,6 +633,7 @@ export const uvFields = (f) => html`
       "glow_thickness",
       "glow_angle",
       "glow_intensity",
+      "glow_pulse",
     ])}
   `)}
   <small>Die UV-Lampe läuft üblicherweise per Zeitschaltuhr parallel zur Poolpumpe.</small>
@@ -519,9 +643,10 @@ export const uvFields = (f) => html`
         ${f.entity(
           "Powerbutton — Schalter",
           "switch_entity",
-          "Steckdose/Relais der Lampe. Ausschalten fragt immer nach.",
+          "Steckdose/Relais der Lampe.",
           ...SCHALTER
         )}
+        ${nachfragen(f)}
         ${section(
           "Powerbutton — Position",
           html`
@@ -570,7 +695,12 @@ export const uvFields = (f) => html`
           ${f.slider("Dicke", "glow_thickness", 2, 60, "%", 0.5)}
           ${f.slider("Neigung", "glow_angle", -90, 90, "°", 1)}
           ${f.slider("Leuchtstärke", "glow_intensity", 10, 100)}
-          <small>Leuchtet nur, solange der Schalter an ist — ohne Animation.</small>
+          ${f.slider("Wabern / Glimmen", "glow_pulse", 0, 100)}
+          <small>
+            Leuchtet nur, solange der Schalter an ist. „Wabern" lässt den Schein sanft
+            atmen — 0 = ruhig und statisch. Wer im System „Bewegung reduzieren" eingestellt
+            hat, sieht ihn immer ruhig.
+          </small>
         `
       )
     : nothing}
@@ -605,6 +735,7 @@ export const solarFields = (f) => html`
   ${elementsGroup(html`
     ${f.element("⏻ Powerbutton", "show_power_button", [
       "switch_entity",
+      "confirm_off",
       "power_btn_top",
       "power_btn_left",
       "power_btn_scale",
@@ -649,9 +780,10 @@ export const solarFields = (f) => html`
         ${f.entity(
           "Powerbutton — Ventil oder Pumpe",
           "switch_entity",
-          "Solarventil oder Solarpumpe. Abschalten fragt immer nach.",
+          "Solarventil oder Solarpumpe.",
           ...SCHALTER
         )}
+        ${nachfragen(f)}
         ${section(
           "Powerbutton — Position",
           html`
@@ -778,6 +910,8 @@ export const customEntryFields = (f) => html`
         )}
         ${f.text("Beschriftung (optional)", "label", "", "leer = Name der Entity")}
         ${f.config?.kind === "button" ? f.icon("Icon (optional)", "icon") : nothing}
+        ${f.config?.kind === "button" ? nachfragen(f, false, "An = vor dem Ausschalten kommt eine Rückfrage.")
+          : nothing}
       `}
 `;
 

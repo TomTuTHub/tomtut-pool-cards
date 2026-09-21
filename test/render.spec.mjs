@@ -38,7 +38,7 @@ const ausgabe = join(here, "render-out");
    der Beleg übersprungen — der Test hängt nicht am NAS. */
 const BELEG =
   process.env.RENDER_BELEG ||
-  "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/pool-cards-it7-render.png";
+  "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/pool-cards-it9-render.png";
 
 if (process.env.SKIP_RENDER_TEST === "1") {
   console.log("Render-Test uebersprungen (SKIP_RENDER_TEST=1)");
@@ -676,7 +676,7 @@ const kontaktbogen = async () => {
       karte(b, window.demo.allesConfig(0, false))
     );
   }
-  await abschnitt("UV-C-Lampe in drei Groessen (30 / 65 / 100 Prozent, ungedreht)", 1200, async (b) => {
+  await abschnitt("UV-C-Lampe in drei Größen (30 / 65 / 100 Prozent, ungedreht)", 1200, async (b) => {
     const reihe = document.createElement("div");
     reihe.style.cssText = "display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:1200px";
     b.appendChild(reihe);
@@ -707,12 +707,73 @@ const kontaktbogen = async () => {
     }
   });
 
-  await abschnitt("Editor: Kasten-Ueberschriften und Kennfarben je Slot-Typ", 640, async (b) => {
+  /* ---- Iteration 9 ---- */
+  const reihe = async (b, spalten, configs, fill = "transparent") => {
+    const r = document.createElement("div");
+    r.style.cssText = `display:grid;grid-template-columns:repeat(${spalten},1fr);gap:10px;width:1200px`;
+    b.appendChild(r);
+    for (const slot of configs) {
+      const zelle = document.createElement("div");
+      r.appendChild(zelle);
+      const card = document.createElement("tomtut-pool-dashboard");
+      card.setConfig({ hero: { enabled: false }, frame: { enabled: true, fill }, slots: [slot] });
+      card.hass = window.demo.DEMO_HASS;
+      zelle.appendChild(card);
+      await card.updateComplete;
+    }
+  };
+  const wp = (extra) => ({
+    type: "heatpump",
+    switch_entity: "switch.waermepumpe",
+    power_entity: "sensor.waermepumpe_power",
+    ...extra,
+  });
+  await abschnitt(
+    "Wärmepumpe: Blatt-Designs (klassisch · 3 Blätter · 5 Blätter · Sichel · Propeller · Batman)",
+    1200,
+    (b) =>
+      reihe(
+        b,
+        3,
+        [
+          ["klassisch", "Klassisch"],
+          ["drei", "3 Blätter"],
+          ["fuenf", "5 Blätter"],
+          ["sichel", "Sichel"],
+          ["propeller", "Propeller"],
+          ["batman", "Batman"],
+        ].map(([d, name]) => wp({ fan_design: d, label_text: name }))
+      )
+  );
+  await abschnitt(
+    "Wärmepumpe: Rad nach Modus einfärben (Heizen Boost rot · Kühlen Smart blau · Default schwarz/weiß)",
+    1200,
+    (b) =>
+      reihe(b, 3, [
+        wp({ show_mode: true, mode_entity: "input_select.wp_modus_heizen", fan_color_mode: "modus", fan_design: "batman", label_text: "Heizen Boost" }),
+        wp({ show_mode: true, mode_entity: "input_select.wp_modus_kuehlen", fan_color_mode: "modus", fan_design: "sichel", label_text: "Kühlen Smart" }),
+        wp({ show_mode: true, mode_entity: "input_select.wp_modus_heizen", label_text: "neutral" }),
+      ])
+  );
+  await abschnitt("Schwarze Füllung: UV-Glühen max + Wabern, Solarfeld (Thomas' Foto), Wärmepumpe", 1200, (b) =>
+    reihe(
+      b,
+      3,
+      [
+        { ...window.demo.uvSlot(0, false), glow_intensity: 100, glow_pulse: 60 },
+        window.demo.allesConfig().slots[3],
+        wp({ show_mode: true, mode_entity: "input_select.wp_modus_kuehlen", fan_color_mode: "modus", label_text: "Kühlen" }),
+      ],
+      "schwarz"
+    )
+  );
+
+  await abschnitt("Editor: Kasten-Überschriften und Kennfarben je Slot-Typ", 640, async (b) => {
     const editor = document.createElement("tomtut-pool-dashboard-editor");
     editor.setConfig({
       hero: { enabled: false },
       slots: [
-        { type: "heatpump", label_text: "Waermepumpe" },
+        { type: "heatpump", label_text: "Wärmepumpe" },
         { type: "pump", label: "Filterpumpe" },
         { type: "uv", label: "Entkeimung" },
         { type: "solar", label: "Absorberfeld" },
