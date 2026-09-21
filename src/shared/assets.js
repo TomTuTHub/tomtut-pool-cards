@@ -220,7 +220,14 @@ export const SLOT_TYPES = {
  * CSS-Variablen. Ein unbekannter Typ bekommt Grau statt einer Lücke.
  */
 export const SLOT_GRAU = "#8a8f98";
-export const slotFarbe = (type) => SLOT_TYPES[type]?.farbe || SLOT_GRAU;
+/*
+ * Kennfarben fuer Editor-Bloecke, die KEIN Slot-Typ sind (nicht waehlbar,
+ * nicht in der Config): aktuell nur der Becken-Block in Schritt 1. Bewusst
+ * ein eigenes Tuerkis/Wasserblau, klar getrennt vom Pumpen-Blau.
+ */
+export const BLOCK_FARBEN = { hero: "#12a4b8" };
+export const slotFarbe = (type) =>
+  SLOT_TYPES[type]?.farbe || BLOCK_FARBEN[type] || SLOT_GRAU;
 
 /*
  * Reihenfolge im Auswahlfeld des Editors — bewusst anders als die Tabelle

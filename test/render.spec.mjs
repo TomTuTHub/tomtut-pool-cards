@@ -786,7 +786,7 @@ const kontaktbogen = async () => {
     b.appendChild(editor);
     await editor.updateComplete;
     /* nur die Koepfe zeigen — die Feldlisten wuerden den Bogen sprengen */
-    for (const karte of editor.shadowRoot.querySelectorAll(".slot-card")) {
+    for (const karte of editor.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")) {
       for (const kind of [...karte.children]) {
         if (!kind.classList.contains("slot-head")) kind.remove();
       }

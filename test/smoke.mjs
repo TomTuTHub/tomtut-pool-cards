@@ -732,7 +732,7 @@ check("Editor hat drei Schritte", () => {
   assert.match(heads[2], /Optik/);
 });
 check("Editor zeigt je Slot eine Karte", () =>
-  assert.equal(editor.shadowRoot.querySelectorAll(".slot-card").length, 6)
+  assert.equal(editor.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)").length, 6)
 );
 check("Editor schlaegt Entities vor", () =>
   assert.ok(editor.shadowRoot.querySelectorAll("datalist option").length > 0)
@@ -1073,7 +1073,7 @@ let ed2Fired = null;
 ed2.addEventListener("config-changed", (e) => (ed2Fired = e.detail.config));
 
 check("Editor: 'Elemente anzeigen' steht in jedem Slot ganz oben", () => {
-  const cards = ed2.shadowRoot.querySelectorAll(".slot-card");
+  const cards = ed2.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)");
   for (const card of cards) {
     const first = card.querySelector(".section");
     assert.ok(first.classList.contains("elements"), "erste Gruppe ist nicht 'Elemente anzeigen'");
@@ -1128,7 +1128,7 @@ check("Editor: echte Umlaute in den Beschriftungen", () => {
 /* Hero-Regler liegen ausserhalb der Slot-Karten — Slots haben gleichnamige Felder */
 const heroReglerVon = (el, key) =>
   Array.from(el.shadowRoot.querySelectorAll(`input[data-key="${key}"]`)).filter(
-    (i) => !i.closest(".slot-card")
+    (i) => !i.closest(".slot-card:not(.becken-card)")
   )[0];
 
 /* Die Freitext-Regler starten auf dem Anker der gewaehlten Form (Freiform) */
@@ -1173,7 +1173,7 @@ check("Editor: Element abwaehlen raeumt seine Schluessel aus der Config", () => 
   assert.equal(ed2Fired.slots[0].show_temp, false);
   assert.ok(!("temp_entity" in ed2Fired.slots[0]), "temp_entity steht noch drin");
   assert.ok(!("temp_top" in ed2Fired.slots[0]), "temp_top steht noch drin");
-  const erster = ed2.shadowRoot.querySelectorAll(".slot-card")[0];
+  const erster = ed2.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")[0];
   assert.equal(erster.querySelector('input[data-key="temp_entity"]'), null);
 });
 
@@ -1185,7 +1185,7 @@ check("Editor: wieder anwaehlen bringt die Felder zurueck", () => {
   assert.equal(ed2Fired.slots[0].temp_entity, "sensor.poolpumpe_druckseite_temperature");
   assert.equal(ed2Fired.slots[0].temp_top, 12);
   assert.ok(!("show_temp" in ed2Fired.slots[0]), "show_temp bleibt unnoetig in der Config");
-  const erster = ed2.shadowRoot.querySelectorAll(".slot-card")[0];
+  const erster = ed2.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")[0];
   assert.ok(erster.querySelector('input[data-key="temp_entity"]'));
 });
 check("Editor: Patch mit undefined entfernt den Schluessel", () =>
@@ -1992,7 +1992,7 @@ check("Editor: Solar-Slot hat Elemente, Entities und Regler", () => {
   assert.equal(regler.value, String(pkg.SOLAR_DEFAULTS.temp_in_top));
 });
 check("Editor: alter Einlauf-Slot zeigt sich als abgeschafft", () => {
-  const karte = ed5.shadowRoot.querySelectorAll(".slot-card")[1];
+  const karte = ed5.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")[1];
   /* kein Gerätekasten mehr, sondern die Felder des leeren Rahmens */
   assert.equal(karte.querySelectorAll('.elements input[type="checkbox"]').length, 0);
   assert.ok(karte.querySelector('input[data-key="hint"]'), "Rahmen-Felder fehlen");
@@ -2279,7 +2279,7 @@ let ed7Fired = null;
 ed7.addEventListener("config-changed", (e) => (ed7Fired = e.detail.config));
 
 check("Editor: UV hat den Groessen-Regler nach Drehen und Spiegeln", () => {
-  const karte = ed7.shadowRoot.querySelectorAll(".slot-card")[0];
+  const karte = ed7.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")[0];
   const regler = karte.querySelector('input[data-key="uv_size"]');
   assert.ok(regler, "Groessen-Regler fehlt");
   assert.equal(regler.value, "100");
@@ -2313,7 +2313,7 @@ check("Editor: die Groesse landet in der Slot-Config", () =>
 /* ---- Editor: Orientierung ueber Ueberschrift und Kennfarbe ---- */
 
 check("Editor: jeder Slot-Block traegt Nummer, Typ und Beschriftung", () => {
-  const kopf = Array.from(ed7.shadowRoot.querySelectorAll(".slot-ueberschrift")).map((el) =>
+  const kopf = Array.from(ed7.shadowRoot.querySelectorAll(".slot-block:not(.becken-block) .slot-ueberschrift")).map((el) =>
     el.textContent.trim()
   );
   assert.deepEqual(kopf, [
@@ -2324,7 +2324,7 @@ check("Editor: jeder Slot-Block traegt Nummer, Typ und Beschriftung", () => {
   ]);
 });
 check("Editor: jeder Slot-Typ hat seine Kennfarbe", () => {
-  const farben = Array.from(ed7.shadowRoot.querySelectorAll(".slot-block")).map((el) =>
+  const farben = Array.from(ed7.shadowRoot.querySelectorAll(".slot-block:not(.becken-block)")).map((el) =>
     el.getAttribute("style")
   );
   assert.deepEqual(farben, [
@@ -2345,6 +2345,30 @@ check("Editor: die Kennfarbe wird als Balken und Toenung benutzt", () => {
   assert.match(css, /\.slot-block[\s\S]*border-top:\s*2px solid var\(--slot-farbe/);
   assert.match(css, /border-left:\s*5px solid var\(--slot-farbe/);
   assert.match(css, /color-mix\(in srgb, var\(--slot-farbe/);
+});
+
+const beckenBlock = (ed) => ed.shadowRoot.querySelector(".slot-block.becken-block");
+check("Editor: Becken-Block ist verpackt wie die Geraete (Iteration 10)", () => {
+  const block = beckenBlock(editor);
+  assert.ok(block, "Becken-Block fehlt");
+  assert.equal(block.getAttribute("style"), `--slot-farbe:${pkg.slotFarbe("hero")};`);
+  assert.equal(pkg.slotFarbe("hero"), pkg.BLOCK_FARBEN.hero);
+  const belegt = Object.keys(pkg.SLOT_TYPES).map(pkg.slotFarbe);
+  assert.ok(!belegt.includes(pkg.slotFarbe("hero")), "Beckenfarbe kollidiert mit Slot-Farbe");
+  assert.equal(block.querySelector(".slot-ueberschrift").textContent.trim(), "Becken");
+  const karte = block.querySelector(".slot-card.becken-card");
+  assert.ok(karte, "Becken-Karte fehlt");
+  assert.ok(karte.querySelector('input[data-key="enabled"]'), "Toggle nicht in der Becken-Karte");
+  assert.ok(karte.querySelector('input[data-key="label_scale"]'), "heroFields nicht in der Becken-Karte");
+  assert.equal(editor.shadowRoot.querySelector(".slot-block"), block, "Becken ist nicht der erste Block");
+  assert.ok(!pkg.slotTypeOptions().some((o) => o.value === "hero"), "hero ist waehlbar");
+});
+check("Editor: Becken aus -> Kasten bleibt, nur mit Toggle", () => {
+  const block = beckenBlock(ed7);
+  assert.ok(block, "Becken-Block fehlt bei ausgeschaltetem Becken");
+  const karte = block.querySelector(".slot-card.becken-card");
+  assert.ok(karte.querySelector('input[data-key="enabled"]'));
+  assert.equal(karte.querySelectorAll("input, select").length, 1, "mehr als der Toggle sichtbar");
 });
 
 /* ---- Stapel-Ordnung: nichts schlaegt in die HA-Oberflaeche durch ---- */
@@ -2780,7 +2804,7 @@ ed9.setConfig({
 ed9.hass = makeHass();
 document.body.appendChild(ed9);
 await ed9.updateComplete;
-const slotKarten9 = () => [...ed9.shadowRoot.querySelectorAll(".slot-card")];
+const slotKarten9 = () => [...ed9.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")];
 const feld9 = (i, key) => slotKarten9()[i].querySelector(`[data-key="${key}"]`);
 
 check("Editor: 'Vor dem Ausschalten nachfragen' in jedem Geraet, Default an", () => {

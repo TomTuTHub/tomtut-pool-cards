@@ -214,8 +214,13 @@ export class TomtutPoolDashboardEditor extends LitElement {
     return html`
       <div class="editor">
         <div class="step-head">Schritt 1 — Becken</div>
-        ${heroF.toggle("Becken anzeigen", "enabled", true)}
-        ${hero.enabled === false ? nothing : heroFields(heroF)}
+        <div class="slot-block becken-block" style="--slot-farbe:${slotFarbe("hero")};">
+          <div class="slot-ueberschrift">Becken</div>
+          <div class="slot-card becken-card">
+            ${heroF.toggle("Becken anzeigen", "enabled", true)}
+            ${hero.enabled === false ? nothing : heroFields(heroF)}
+          </div>
+        </div>
 
         <div class="step-head">Schritt 2 — Geräte</div>
         ${slots.map(

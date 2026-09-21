@@ -49,6 +49,7 @@ export {
   SLOT_TYPES,
   SLOT_TYPE_GROUPS,
   SLOT_GRAU,
+  BLOCK_FARBEN,
   slotFarbe,
   slotTypeOptions,
 } from "./shared/assets.js";
