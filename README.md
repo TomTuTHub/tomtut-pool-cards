@@ -344,7 +344,7 @@ Mindestens **eine** der vier Entities sollte gesetzt sein; sonst zeigt der Kaste
 | `temp_entity` | – | Temperaturfühler → Thermometer auf dem Bild |
 | `idle_watt` | `30` | Ruhewatt: unter diesem Verbrauch gilt die Pumpe als stehend (Laufrad grau). Gilt nur ohne Stufen-Erkennung |
 | `stage_from_power` | `true` | **Stufe aus Leistung erkennen** (nur mit `power_entity`). Wird die Stufe direkt an der Pumpe umgestellt, weiß HA das nicht — die Leistung schon. Die erkannte Stufe leuchtet und bestimmt das Laufrad-Tempo; die Taster bleiben tippbar |
-| `stage_watt_1` / `stage_watt_2` / `stage_watt_3` | `20` / `300` / `500` | Schwellen in W (strikt größer): über `stage_watt_1` = N1 usw., darunter = aus. Beispiel einer Pumpe mit N1 47 W, N2 271 W, N3 735 W: `stage_watt_2` auf ca. `150` stellen |
+| `stage_watt_1` / `stage_watt_2` / `stage_watt_3` | `20` / `150` / `500` | Schwellen in W (strikt größer): über `stage_watt_1` = N1 usw., darunter = aus. Passt z.B. zu einer Pumpe mit N1 47 W, N2 271 W, N3 735 W |
 | `label` | – | Überschrift über dem Kasten |
 | `fan_speed_1` / `fan_speed_2` / `fan_speed_3` | `3` / `5` / `8` | Tempo des Laufrads je Stufe auf der Skala **1–10** (links langsam, rechts schnell) |
 | `fan_top` / `fan_left` / `fan_size` | `60` / `61` / `18` | Lage des Laufrads in % des Bildes — ab Werk mittig auf der Volute (dem Spiralgehäuse). Die Box ist immer quadratisch, das Rad bleibt kreisrund |

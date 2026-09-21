@@ -58,7 +58,7 @@ export const PUMP_DEFAULTS = {
    */
   stage_from_power: true,
   stage_watt_1: 20,
-  stage_watt_2: 300,
+  stage_watt_2: 150,
   stage_watt_3: 500,
 };
 
@@ -69,7 +69,7 @@ export const PUMP_DEFAULTS = {
  * Unsinnige Schwellen (nicht aufsteigend) werden nicht korrigiert — es
  * zählt die höchste überschrittene.
  */
-export const stageFromWatt = (w, schwellen = [20, 300, 500], anzahl = 3) => {
+export const stageFromWatt = (w, schwellen = [20, 150, 500], anzahl = 3) => {
   const n = Number(w);
   if (w === null || w === undefined || !isFinite(n) || anzahl < 1) return null;
   let stufe = null;

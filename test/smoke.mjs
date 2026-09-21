@@ -2410,10 +2410,10 @@ const aktiveTaste = (slot) =>
 
 /* ---- 1. Poolpumpe: Stufe aus der Leistung ---- */
 
-check("Watt->Stufe: Default-Schwellen 20/300/500, Erkennung ab Werk an", () => {
+check("Watt->Stufe: Default-Schwellen 20/150/500, Erkennung ab Werk an", () => {
   assert.equal(pkg.PUMP_DEFAULTS.stage_from_power, true);
   assert.equal(pkg.PUMP_DEFAULTS.stage_watt_1, 20);
-  assert.equal(pkg.PUMP_DEFAULTS.stage_watt_2, 300);
+  assert.equal(pkg.PUMP_DEFAULTS.stage_watt_2, 150);
   assert.equal(pkg.PUMP_DEFAULTS.stage_watt_3, 500);
 });
 check("Watt->Stufe: Schwellen sind strikt groesser, darunter aus", () => {
@@ -2428,8 +2428,8 @@ check("Watt->Stufe: Schwellen sind strikt groesser, darunter aus", () => {
   assert.equal(pkg.stageFromWatt(null, s), null);
   assert.equal(pkg.stageFromWatt("x", s), null);
 });
-check("Watt->Stufe: Thomas' Pumpe (47/271/735 W) mit N2-Schwelle 150", () => {
-  const s = [20, 150, 500];
+check("Watt->Stufe: Thomas' Pumpe (47/271/735 W) mit den Defaults", () => {
+  const s = [1, 2, 3].map((i) => pkg.PUMP_DEFAULTS[`stage_watt_${i}`]);
   assert.deepEqual([47, 271, 735].map((w) => pkg.stageFromWatt(w, s)), [0, 1, 2]);
 });
 check("Watt->Stufe: weniger Stufen als erkannt -> hoechste vorhandene", () => {
@@ -2470,11 +2470,11 @@ check("Pumpe: 4 W -> aus: STOP leuchtet, Laufrad steht", () => {
   assert.ok(pumpAusW.shadowRoot.querySelector(".fan-overlay.idle"));
 });
 const pumpEigen = await mountPump(
-  { ...PUMP_WATT, stage_watt_2: 150 },
+  { ...PUMP_WATT, stage_watt_2: 280 },
   makeHass({ "sensor.poolpumpe_power": wattZustand(271) })
 );
-check("Pumpe: eigene Schwelle aus der Config (N2 > 150 W, 271 W -> N2)", () =>
-  assert.equal(aktiveTaste(pumpEigen), 1)
+check("Pumpe: eigene Schwelle aus der Config (N2 > 280 W, 271 W -> N1)", () =>
+  assert.equal(aktiveTaste(pumpEigen), 0)
 );
 const pumpAbgewaehlt = await mountPump(
   { ...PUMP_WATT, stage_from_power: false },
@@ -2800,7 +2800,7 @@ check("Editor: Freifeld-Button hat die Rueckfrage, ab Werk aus", () => {
 check("Editor: Poolpumpe mit Leistung -> 'Stufe aus Leistung erkennen' + 3 Schwellen", () => {
   assert.equal(feld9(1, "stage_from_power").checked, true);
   assert.equal(feld9(1, "stage_watt_1").value, "20");
-  assert.equal(feld9(1, "stage_watt_2").value, "300");
+  assert.equal(feld9(1, "stage_watt_2").value, "150");
   assert.equal(feld9(1, "stage_watt_3").value, "500");
 });
 check("Editor: Poolpumpe ohne Leistungssensor -> keine Schwellen", () =>
