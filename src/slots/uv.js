@@ -177,7 +177,7 @@ export class TomtutPoolSlotUv extends SlotBase {
         position: absolute;
         border-radius: 50%;
         pointer-events: none;
-        z-index: 2;
+        z-index: 1;
         background: radial-gradient(
           ellipse at center,
           rgba(203, 178, 255, 0.95) 0%,

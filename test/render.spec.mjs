@@ -492,6 +492,149 @@ check("Solar: beide Marker liegen im Bild, blau oben, rot unten", () => {
   assert.ok(thermos[1].unten > rot.oben, "Ruecklauf steht nicht unten beim roten Pfeil");
 });
 
+/* ---- Kopfleiste: nichts schiebt sich beim Scrollen darueber ---- */
+
+/*
+ * Der Befund aus Iteration 8: beim Scrollen im Dashboard lagen die pH/RX-
+ * Kaestchen des Beckens ueber der Kopfleiste von Home Assistant. Ursache war
+ * der fehlende eigene Stacking-Context der Card — die z-index-Werte der
+ * Overlays zaehlten gegen die HA-Oberflaeche statt nur gegeneinander.
+ *
+ * Hier steht eine Kopfleiste wie die echte (fest, z-index 4) ueber der Seite.
+ * Jedes Overlay wird einzeln unter die Leiste gescrollt und an seiner Mitte
+ * per elementFromPoint gefragt, wer dort oben liegt. Richtig ist: die
+ * Kopfleiste — nie das Overlay (bzw. dessen Card).
+ */
+const KOPF_HOCH = 56;
+let kopfProbe = null;
+await checkAsync("Kopfleiste: Overlays sind messbar", async () => {
+  kopfProbe = await page.evaluate(async (KOPF_HOCH) => {
+    document.body.innerHTML = "";
+    window.scrollTo(0, 0);
+
+    const kopf = document.createElement("div");
+    kopf.id = "kopf";
+    kopf.style.cssText =
+      `position:fixed;top:0;left:0;right:0;height:${KOPF_HOCH}px;z-index:4;` +
+      "background:#03a9f4;color:#fff;font:600 14px/56px system-ui;" +
+      "padding:0 16px;box-sizing:border-box;";
+    kopf.textContent = "Home Assistant";
+    document.body.appendChild(kopf);
+
+    const oben = document.createElement("div");
+    oben.style.height = "400px";
+    document.body.appendChild(oben);
+
+    const buehne = document.createElement("div");
+    buehne.style.cssText = "width:900px;margin:0 auto";
+    document.body.appendChild(buehne);
+
+    const card = document.createElement("tomtut-pool-dashboard");
+    card.setConfig(window.demo.allesConfig(0, false));
+    card.hass = window.demo.DEMO_HASS;
+    buehne.appendChild(card);
+    await card.updateComplete;
+
+    const kinder = [...card.shadowRoot.querySelector(".grid").children];
+    await Promise.all(kinder.map((el) => el.updateComplete));
+    const bilder = kinder.flatMap((el) => [...(el.shadowRoot?.querySelectorAll("img") || [])]);
+    await Promise.all(
+      bilder.map((img) =>
+        img.complete && img.naturalWidth > 0
+          ? null
+          : new Promise((f) => {
+              img.addEventListener("load", f, { once: true });
+              img.addEventListener("error", f, { once: true });
+            })
+      )
+    );
+
+    const unten = document.createElement("div");
+    unten.style.height = "1600px";
+    document.body.appendChild(unten);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const OVERLAYS =
+      ".chem-box, .thermo, .label-badge, img.hero-sprite, .power-badge," +
+      " .value-box, img.flow-arrow, .glow, .fan-overlay, .stage-btn";
+    const klarname = (el) =>
+      el.tagName.toLowerCase() + (el.className ? "." + String(el.className).split(" ")[0] : "");
+
+    /* 1. Stacking-Context der Card selbst */
+    const cs = getComputedStyle(card);
+    const riegel = { isolation: cs.isolation, position: cs.position, zIndex: cs.zIndex };
+
+    /* 2. computed z-index im ganzen Shadow-DOM */
+    const zuHoch = [];
+    for (const el of [card, ...kinder]) {
+      const wurzeln = [el.shadowRoot].filter(Boolean);
+      for (const wurzel of wurzeln) {
+        for (const teil of wurzel.querySelectorAll("*")) {
+          const z = getComputedStyle(teil).zIndex;
+          if (z !== "auto" && Number(z) > 10) {
+            zuHoch.push(`${el.tagName.toLowerCase()} > ${klarname(teil)}: z-index ${z}`);
+          }
+        }
+      }
+    }
+
+    /* 3. jedes Overlay einzeln unter die Kopfleiste scrollen und fragen */
+    const proben = [];
+    for (const el of kinder) {
+      const name = el.tagName.toLowerCase().replace("tomtut-pool-", "");
+      for (const teil of el.shadowRoot.querySelectorAll(OVERLAYS)) proben.push({ name, teil });
+    }
+    const treffer = [];
+    for (const { name, teil } of proben) {
+      const r0 = teil.getBoundingClientRect();
+      if (r0.width < 2 || r0.height < 2) continue;
+      const mitteImDokument = r0.top + window.scrollY + r0.height / 2;
+      window.scrollTo(0, Math.max(0, Math.round(mitteImDokument - KOPF_HOCH / 2)));
+      await new Promise((f) => requestAnimationFrame(f));
+      const r = teil.getBoundingClientRect();
+      const x = Math.round(r.left + r.width / 2);
+      const y = Math.round(r.top + r.height / 2);
+      const etikett = `${name} > ${klarname(teil)}`;
+      if (y < 0 || y > KOPF_HOCH) {
+        treffer.push({ etikett, y, fehler: "nicht unter die Kopfleiste gescrollt" });
+        continue;
+      }
+      const oberstes = document.elementFromPoint(x, y);
+      treffer.push({
+        etikett,
+        y,
+        kopf: !!(oberstes && (oberstes === kopf || kopf.contains(oberstes))),
+        getroffen: oberstes ? klarname(oberstes) : "nichts",
+      });
+    }
+    window.scrollTo(0, 0);
+    return { riegel, zuHoch, treffer };
+  }, KOPF_HOCH);
+  assert.ok(kopfProbe.treffer.length >= 8, `nur ${kopfProbe.treffer.length} Overlays gemessen`);
+});
+
+check("Kopfleiste: die Card bildet einen eigenen Stacking-Context", () => {
+  assert.equal(kopfProbe.riegel.isolation, "isolate");
+  assert.equal(kopfProbe.riegel.position, "relative");
+  assert.equal(kopfProbe.riegel.zIndex, "0");
+});
+
+check("Kopfleiste: kein Element im Shadow-DOM hat einen z-index ueber 10", () =>
+  assert.deepEqual(kopfProbe.zuHoch, [], "\n       " + kopfProbe.zuHoch.join("\n       "))
+);
+
+check("Kopfleiste: jedes Overlay verschwindet darunter, keines darueber", () => {
+  const schlecht = kopfProbe.treffer.filter((t) => t.kopf !== true);
+  assert.deepEqual(
+    schlecht.map((t) => `${t.etikett} (y=${t.y}): ${t.fehler || "oben liegt " + t.getroffen}`),
+    [],
+    "\n       " +
+      schlecht
+        .map((t) => `${t.etikett} (y=${t.y}): ${t.fehler || "oben liegt " + t.getroffen}`)
+        .join("\n       ")
+  );
+});
+
 check("keine Fehler in der Browser-Konsole", () =>
   assert.deepEqual(konsolenfehler, [], konsolenfehler.join(" | "))
 );

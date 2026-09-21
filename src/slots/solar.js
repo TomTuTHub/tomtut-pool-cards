@@ -165,7 +165,7 @@ export class TomtutPoolSlotSolar extends SlotBase {
         max-width: none;
         transform: translate(-50%, -50%);
         pointer-events: none;
-        z-index: 3;
+        z-index: 2;
       }
     `,
   ];

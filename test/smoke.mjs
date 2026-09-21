@@ -908,11 +908,38 @@ check("Alias-Editor feuert config-changed", () => assert.equal(hpFired.label_tex
 /* Iteration 2 — Thomas' Korrekturen                                   */
 /* ================================================================== */
 
-const cssOf = (tag) =>
-  customElements
-    .get(tag)
-    .styles.map((x) => x.cssText)
-    .join("\n");
+const cssOf = (tag) => {
+  const el = customElements.get(tag);
+  if (!el) throw new Error(`Baustein ${tag} ist nicht registriert`);
+  /* static styles ist mal ein Array, mal ein einzelnes CSSResult */
+  return [el.styles].flat(2).map((x) => x.cssText).join("\n");
+};
+
+/* Der z-index einer Regel — gelesen aus dem Block, der mit dem Selektor
+   beginnt. jsdom rechnet kein Layout, also wird der Wert am Text geprueft. */
+const zIndexVon = (css, selektor) => {
+  const i = css.indexOf(selektor + " {");
+  if (i < 0) throw new Error(`Selektor ${selektor} nicht gefunden`);
+  const block = css.slice(i, css.indexOf("}", i));
+  const treffer = block.match(/z-index:\s*(-?\d+)/);
+  return treffer ? Number(treffer[1]) : null;
+};
+
+/* Alle z-index-Werte eines Bausteins */
+const alleZIndex = (css) => [...css.matchAll(/z-index:\s*(-?\d+)/g)].map((m) => Number(m[1]));
+
+const ALLE_BAUSTEINE = [
+  "tomtut-pool-dashboard",
+  "tomtut-pool-heatpump-card",
+  "tomtut-pool-hero",
+  "tomtut-pool-slot-heatpump",
+  "tomtut-pool-slot-pump",
+  "tomtut-pool-slot-uv",
+  "tomtut-pool-slot-solar",
+  "tomtut-pool-slot-custom",
+  "tomtut-pool-slot-frame",
+  "tomtut-pool-dashboard-editor",
+];
 
 /* ---- frisch angelegter Slot rendert sofort ---- */
 
@@ -1937,9 +1964,11 @@ check("Becken: alle drei Sprites mit Bild, Anker und Groesse", () => {
 check("Becken: Sprites liegen ueber dem Wasser, unter den Messwerten", () => {
   const css = cssOf("tomtut-pool-hero");
   assert.match(css, /img\.hero-sprite/);
-  assert.match(css, /z-index:\s*3/);
+  assert.equal(zIndexVon(css, "img.hero-sprite"), 2);
   /* Thermometer, Kaestchen und Freitext liegen hoeher */
-  assert.match(css, /z-index:\s*5/);
+  assert.equal(zIndexVon(css, ".thermo"), 4);
+  assert.equal(zIndexVon(css, ".chem-box"), 4);
+  assert.equal(zIndexVon(css, ".label-badge"), 4);
 });
 check("Becken: Sprite-Groessen sind die der Tabelle", () => {
   assert.equal(pkg.HERO_SPRITES.skimmer.groesse, 10);
@@ -2236,7 +2265,8 @@ check("Solar: blauer Pfeil oben hinein, roter unten hinaus", () => {
 check("Solar: die Marker liegen ueber dem Bild, aber unter den Messwerten", () => {
   const css = cssOf("tomtut-pool-slot-solar");
   assert.match(css, /img\.flow-arrow/);
-  assert.match(css, /z-index:\s*3/);
+  assert.equal(zIndexVon(css, "img.flow-arrow"), 2);
+  assert.ok(zIndexVon(css, "img.flow-arrow") < zIndexVon(css, ".thermo"));
 });
 
 const solarOhnePfeile = await mountSolar({ ...SOLAR_CONFIG, show_arrows: false });
@@ -2391,6 +2421,50 @@ check("Editor: die Kennfarbe wird als Balken und Toenung benutzt", () => {
   assert.match(css, /\.slot-block[\s\S]*border-top:\s*2px solid var\(--slot-farbe/);
   assert.match(css, /border-left:\s*5px solid var\(--slot-farbe/);
   assert.match(css, /color-mix\(in srgb, var\(--slot-farbe/);
+});
+
+/* ---- Stapel-Ordnung: nichts schlaegt in die HA-Oberflaeche durch ---- */
+
+check("Stapel: jede Card und jeder Slot bildet einen eigenen Stacking-Context", () => {
+  for (const tag of ALLE_BAUSTEINE) {
+    if (tag === "tomtut-pool-dashboard-editor") continue;
+    const css = cssOf(tag);
+    const i = css.indexOf(":host {");
+    assert.ok(i >= 0, `${tag} hat keine :host-Regel`);
+    const block = css.slice(i, css.indexOf("}", i));
+    assert.match(block, /isolation:\s*isolate/, `${tag}: :host ohne isolation`);
+    assert.match(block, /position:\s*relative/, `${tag}: :host ohne position:relative`);
+    assert.match(block, /z-index:\s*0/, `${tag}: :host ohne z-index 0`);
+  }
+});
+check("Stapel: der Alias erbt den Riegel der Dashboard-Card", () =>
+  assert.equal(cssOf("tomtut-pool-heatpump-card"), cssOf("tomtut-pool-dashboard"))
+);
+check("Stapel: die ha-card der Dashboard-Card sperrt ebenfalls ein", () => {
+  const css = cssOf("tomtut-pool-dashboard");
+  const i = css.indexOf("ha-card {");
+  const block = css.slice(i, css.indexOf("}", i));
+  assert.match(block, /isolation:\s*isolate/);
+  assert.match(block, /position:\s*relative/);
+});
+check("Stapel: kein Baustein vergibt einen z-index ueber 10", () => {
+  for (const tag of ALLE_BAUSTEINE) {
+    for (const z of alleZIndex(cssOf(tag))) {
+      assert.ok(z <= 10, `${tag} vergibt z-index ${z}`);
+    }
+  }
+});
+check("Stapel: die Leiter der Overlays stimmt (Glimmen unten, Dialog oben)", () => {
+  const hero = cssOf("tomtut-pool-hero");
+  const uv = cssOf("tomtut-pool-slot-uv");
+  const solar = cssOf("tomtut-pool-slot-solar");
+  assert.equal(zIndexVon(uv, ".glow"), 1);
+  assert.equal(zIndexVon(solar, "img.flow-arrow"), 2);
+  assert.equal(zIndexVon(hero, "img.hero-sprite"), 2);
+  assert.equal(zIndexVon(hero, ".value-box"), 3);
+  assert.equal(zIndexVon(hero, ".chem-box"), 4);
+  assert.equal(zIndexVon(hero, ".power-badge"), 5);
+  assert.equal(zIndexVon(hero, ".confirm-overlay"), 10);
 });
 
 /* ------------------------------------------------------------------ */

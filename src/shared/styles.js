@@ -18,9 +18,21 @@ import { css } from "lit";
  * transparent = Theme-Hintergrund von Home Assistant, Schrift folgt dem Theme.
  */
 export const frameStyles = css`
+  /*
+   * Eigener Stacking-Context je Card/Slot.
+   *
+   * Ohne ihn steigen die z-index-Werte der Overlays (Kaestchen, Thermometer,
+   * Powerbutton, Sprites, Pfeile) in den Stapel der Home-Assistant-Oberflaeche
+   * auf und legen sich beim Scrollen ueber die Kopfleiste. isolation:isolate
+   * sperrt sie ein: innen zaehlt die Reihenfolge 1-5, nach aussen ist die
+   * ganze Card ein einziges Element auf z-index 0 — unter der Kopfleiste.
+   */
   :host {
     display: block;
     height: 100%;
+    position: relative;
+    isolation: isolate;
+    z-index: 0;
   }
   .slot {
     position: relative;
@@ -80,7 +92,15 @@ export const frameStyles = css`
 `;
 
 /* Overlays auf den Geräte-/Becken-Bildern: Werte-Box, Powerbutton,
-   Thermometer, Laufrad/Lüfter und der Bestätigungs-Dialog. */
+   Thermometer, Laufrad/Lüfter und der Bestätigungs-Dialog.
+ *
+ * Die z-index-Leiter bleibt bewusst klein und gilt nur innerhalb des
+ * Stacking-Context der Card (:host oben):
+ *   1 Glimmen (UV)  ·  2 Sprites/Pfeile  ·  3 Werte-Box
+ *   4 Freitext, Thermometer, pH/RX       ·  5 Powerbutton
+ *   10 Bestätigungs-Dialog (liegt über allem, bleibt aber in der Card)
+ * Nichts darf hier über 10 gehen — sonst ueberholt es die HA-Kopfleiste,
+ * sobald der Stacking-Context einmal fehlt. */
 export const overlayStyles = css`
   .img-wrap {
     position: relative;
@@ -138,7 +158,7 @@ export const overlayStyles = css`
     max-width: none;
     transform: translate(-50%, -50%);
     pointer-events: none;
-    z-index: 3;
+    z-index: 2;
   }
 
   /*
@@ -199,7 +219,7 @@ export const overlayStyles = css`
     background: var(--tt-soft);
     border: 1px solid var(--tt-line);
     transform-origin: top left;
-    z-index: 6;
+    z-index: 5;
   }
   .power-badge.on {
     color: #4caf50;
@@ -229,7 +249,7 @@ export const overlayStyles = css`
     line-height: 1.2;
     backdrop-filter: blur(4px);
     cursor: default;
-    z-index: 4;
+    z-index: 3;
   }
   .value-box.no-bg {
     background: none;
@@ -267,7 +287,7 @@ export const overlayStyles = css`
     line-height: 1.3;
     pointer-events: none;
     white-space: nowrap;
-    z-index: 5;
+    z-index: 4;
   }
   .label-badge.no-bg {
     background: none;
@@ -282,7 +302,7 @@ export const overlayStyles = css`
     align-items: center;
     gap: 6px;
     line-height: 1;
-    z-index: 5;
+    z-index: 4;
     cursor: default;
   }
   .thermo svg {
@@ -317,7 +337,7 @@ export const overlayStyles = css`
     color: var(--tt-box-fg);
     border: 1.5px solid var(--tt-line);
     line-height: 1.15;
-    z-index: 5;
+    z-index: 4;
   }
   .chem-box .chem-key {
     font-size: 0.72em;
@@ -340,7 +360,7 @@ export const overlayStyles = css`
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 20;
+    z-index: 10;
     line-height: normal;
     border-radius: 16px;
     animation: fadeIn 0.15s ease-out;

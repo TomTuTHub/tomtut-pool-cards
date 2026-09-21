@@ -166,12 +166,28 @@ export class TomtutPoolDashboardCard extends LitElement {
   }
 
   static styles = css`
+    /*
+     * Der aeussere Riegel gegen das Durchschlagen in die HA-Oberflaeche:
+     * Host und ha-card bilden je einen eigenen Stacking-Context. Alles,
+     * was in den Slots an z-index vergeben wird (1-10, s. shared/styles.js),
+     * bleibt damit innerhalb der Card — beim Scrollen verschwindet sie unter
+     * der Kopfleiste, statt darueber zu liegen.
+     */
+    :host {
+      display: block;
+      position: relative;
+      isolation: isolate;
+      z-index: 0;
+    }
     ha-card {
       background: transparent;
       border: none;
       box-shadow: none;
       padding: 0;
       overflow: visible;
+      position: relative;
+      isolation: isolate;
+      z-index: 0;
     }
     /* Container-Queries statt Media-Queries: es zählt die Breite der Card,
        nicht die des Fensters — sonst bricht das Raster in Sections-Views. */
