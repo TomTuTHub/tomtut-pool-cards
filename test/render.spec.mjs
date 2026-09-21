@@ -29,11 +29,12 @@ import { UV_LAGEN } from "./fixtures/demo.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 const wurzel = join(here, "..");
 const ausgabe = join(here, "render-out");
-/* Beleg für die Karte im Studio-Cockpit (ka-839); fehlt der Ordner, wird er
-   übersprungen — der Test hängt nicht am NAS. */
+/* Beleg für die Karte im Studio-Cockpit (ka-973 "TomTuT Pool Dashboard",
+   seit 21.09.2026 eigener Vorgang, vorher ka-839). Fehlt der Ordner, wird
+   der Beleg übersprungen — der Test hängt nicht am NAS. */
 const BELEG =
   process.env.RENDER_BELEG ||
-  "/mnt/nas/proxmox-container/studio/vorgaenge/ka-839/pool-cards-it6-render.png";
+  "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/pool-cards-it6-render.png";
 
 if (process.env.SKIP_RENDER_TEST === "1") {
   console.log("Render-Test uebersprungen (SKIP_RENDER_TEST=1)");
