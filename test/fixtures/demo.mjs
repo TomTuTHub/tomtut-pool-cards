@@ -74,8 +74,12 @@ export const DEMO_HASS = {
   },
 };
 
-/* UV-Slot in einer bestimmten Lage — der Fall, um den es in Iteration 6 geht */
-export const uvSlot = (rotate = 0, mirror = false) => ({
+/*
+ * UV-Slot in einer bestimmten Lage — der Fall, um den es in Iteration 6
+ * geht. `groesse` (Iteration 7) bleibt weg, solange sie 100 ist: so misst
+ * der Test auch, dass die Vorgabe wirklich der alte Zustand ist.
+ */
+export const uvSlot = (rotate = 0, mirror = false, groesse = 100) => ({
   type: "uv",
   label: "UV-C-Lampe",
   switch_entity: "switch.uv_lampe",
@@ -83,7 +87,11 @@ export const uvSlot = (rotate = 0, mirror = false) => ({
   temp_entity: "sensor.uv_lampe_temperatur",
   rotate,
   mirror,
+  ...(groesse === 100 ? {} : { uv_size: groesse }),
 });
+
+/* Die Größen, in denen die UV-Lampe zusätzlich gemessen wird */
+export const UV_GROESSEN = [30, 65, 100];
 
 /* Alles, was die Card kann, in einer Config */
 export const allesConfig = (rotate = 0, mirror = false) => ({

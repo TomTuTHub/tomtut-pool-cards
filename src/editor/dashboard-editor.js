@@ -1,7 +1,7 @@
 import { LitElement, html, nothing } from "lit";
 import { Fields, editorStyles } from "../shared/fields.js";
 import { loadHaElements } from "../shared/ha-elements.js";
-import { DEFAULT_SHAPE, SLOT_TYPES, slotTypeOptions } from "../shared/assets.js";
+import { DEFAULT_SHAPE, SLOT_TYPES, slotFarbe, slotTypeOptions } from "../shared/assets.js";
 import { HEATPUMP_DEFAULTS } from "../slots/heatpump.js";
 import { PUMP_DEFAULTS } from "../slots/pump.js";
 import { UV_DEFAULTS } from "../slots/uv.js";
@@ -145,6 +145,18 @@ export class TomtutPoolDashboardEditor extends LitElement {
     return html`<option value="${type}" selected>${meta.label}</option>`;
   }
 
+  /*
+   * Überschrift eines Slot-Blocks: "Kasten 3 · Poolpumpe · Filterpumpe".
+   * Der dritte Teil ist die Beschriftung, die der Slot selbst trägt — je
+   * nach Typ heißt das Feld `label`, `label_text` oder `title`. Fehlt sie,
+   * bleibt der Teil weg statt ein leeres " · " zu hinterlassen.
+   */
+  _slotKopf(slot, index) {
+    const typ = SLOT_TYPES[slot?.type]?.label || SLOT_TYPES.frame.label;
+    const name = String(slot?.label || slot?.label_text || slot?.title || "").trim();
+    return `Kasten ${index + 1} · ${typ}${name ? ` · ${name}` : ""}`;
+  }
+
   _slotBody(index) {
     const slot = this._slots()[index] || {};
     const f = this._fieldsFor(index);
@@ -208,44 +220,51 @@ export class TomtutPoolDashboardEditor extends LitElement {
         <div class="step-head">Schritt 2 — Geräte</div>
         ${slots.map(
           (slot, i) => html`
-            <div class="slot-card">
-              <div class="slot-head">
-                <div class="row">
-                  <span class="row-label">Slot ${i + 1}</span>
-                  <select
-                    data-key="type"
-                    @change="${(e) => this._updateSlot(i, { type: e.target.value })}"
+            <div class="slot-block" style="--slot-farbe:${slotFarbe(slot.type)};">
+              <div class="slot-ueberschrift">${this._slotKopf(slot, i)}</div>
+              <div class="slot-card">
+                <div class="slot-head">
+                  <div class="row">
+                    <span class="row-label">Typ</span>
+                    <select
+                      data-key="type"
+                      @change="${(e) => this._updateSlot(i, { type: e.target.value })}"
+                    >
+                      ${this._altTypOption(slot.type)}
+                      ${slotTypeOptions().map((o) =>
+                        o.trenner
+                          ? html`<option disabled data-trenner>${o.label}</option>`
+                          : html`
+                              <option
+                                value="${o.value}"
+                                ?selected="${(slot.type || "frame") === o.value}"
+                              >
+                                ${o.label}
+                              </option>
+                            `
+                      )}
+                    </select>
+                  </div>
+                  <button
+                    class="icon-btn"
+                    title="nach oben"
+                    @click="${() => this._moveSlot(i, -1)}"
                   >
-                    ${this._altTypOption(slot.type)}
-                    ${slotTypeOptions().map((o) =>
-                      o.trenner
-                        ? html`<option disabled data-trenner>${o.label}</option>`
-                        : html`
-                            <option
-                              value="${o.value}"
-                              ?selected="${(slot.type || "frame") === o.value}"
-                            >
-                              ${o.label}
-                            </option>
-                          `
-                    )}
-                  </select>
+                    ↑
+                  </button>
+                  <button class="icon-btn" title="nach unten" @click="${() => this._moveSlot(i, 1)}">
+                    ↓
+                  </button>
+                  <button
+                    class="icon-btn danger"
+                    title="entfernen"
+                    @click="${() => this._removeSlot(i)}"
+                  >
+                    ✕
+                  </button>
                 </div>
-                <button class="icon-btn" title="nach oben" @click="${() => this._moveSlot(i, -1)}">
-                  ↑
-                </button>
-                <button class="icon-btn" title="nach unten" @click="${() => this._moveSlot(i, 1)}">
-                  ↓
-                </button>
-                <button
-                  class="icon-btn danger"
-                  title="entfernen"
-                  @click="${() => this._removeSlot(i)}"
-                >
-                  ✕
-                </button>
+                ${this._slotBody(i)}
               </div>
-              ${this._slotBody(i)}
             </div>
           `
         )}

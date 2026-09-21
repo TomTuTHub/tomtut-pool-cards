@@ -21,8 +21,9 @@ export { normGrad, passFaktor } from "../shared/bild.js";
  *   1. Glüheffekt — läuft die Lampe, liegt ein statischer blau-violetter
  *      Schein über dem Rohrkörper. Statisch ist Absicht: ein UV-Strahler
  *      flackert nicht, und eine Animation würde im Dashboard nur nerven.
- *   2. Drehen/Spiegeln — die Lampe sitzt je nach Anlage andersherum im
- *      Strang. Gedreht wird das Bild samt Glühen; Thermometer, Watt-Box und
+ *   2. Drehen/Spiegeln/Größe — die Lampe sitzt je nach Anlage andersherum
+ *      im Strang und darf im Kasten kleiner stehen (`uv_size`, 30–100 %).
+ *      Gedreht wird das Bild samt Glühen; Thermometer, Watt-Box und
  *      Powerbutton bleiben aufrecht und damit lesbar.
  *
  * Der Bildkasten ist dabei derselbe wie bei jedem anderen Geräte-Slot und
@@ -30,16 +31,18 @@ export { normGrad, passFaktor } from "../shared/bild.js";
  * das gedrehte Bild wird stattdessen so weit verkleinert, dass es hineinpasst.
  *
  * Die Positions-Defaults sind am Artwork vermessen (Rohrmitte, Neigung des
- * Rohrs ≈ −15°) und im Editor frei verschiebbar.
+ * Rohrs ≈ −15°) und im Editor frei verschiebbar. Powerbutton und Glühen
+ * stehen seit Iteration 7 auf Thomas' eigenen Werten aus der Test-Anlage.
  */
 export const UV_DEFAULTS = {
-  /* Bild */
+  /* Bild — 100 % ist der Zustand vor Iteration 7: so groß wie es passt */
   anschluss: "seite",
   rotate: 0,
   mirror: false,
+  uv_size: 100,
   /* Powerbutton */
-  power_btn_top: 6,
-  power_btn_left: 3,
+  power_btn_top: 30,
+  power_btn_left: 11,
   power_btn_scale: 120,
   /* Stromverbrauch */
   power_bottom: 9,
@@ -52,7 +55,7 @@ export const UV_DEFAULTS = {
   temp_left: 40,
   temp_scale: 110,
   /* Glüheffekt — Mitte, Länge und Neigung des Rohrkörpers */
-  glow_top: 40,
+  glow_top: 35,
   glow_left: 56,
   glow_size: 40,
   glow_thickness: 13,
@@ -124,6 +127,7 @@ export class TomtutPoolSlotUv extends SlotBase {
           alt: "UV-C-Lampe",
           rotate: this._v("rotate"),
           mirror: this._v("mirror") === true,
+          groesse: this._v("uv_size"),
           inhalt: showGlow && configured && this.leuchtet ? this.renderGlow() : nothing,
         })}
 

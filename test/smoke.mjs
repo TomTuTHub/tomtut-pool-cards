@@ -4,7 +4,8 @@
  *   node test/smoke.mjs
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { JSDOM } from "jsdom";
@@ -1652,31 +1653,37 @@ check("Hero setzt die gemessenen Anker der gewaehlten Form", () => {
 
 check("Pumpe: Artwork und Seitenverhaeltnis des neuen Motivs", () => {
   assert.equal(pkg.DEVICE_IMAGES.pump, "poolpumpe_transparent.png");
-  assert.ok(Math.abs(pkg.DEVICE_RATIOS.pump - 1191 / 889) < 1e-9, "Ratio nicht nachgezogen");
+  /* Iteration 7: Selinas Zeichnung `Pumpe.png` statt des KI-Platzhalters */
+  assert.ok(Math.abs(pkg.DEVICE_RATIOS.pump - 1126 / 756) < 1e-9, "Ratio nicht nachgezogen");
 });
 check("Pumpe: Laufrad sitzt auf der Volute und bleibt darin", () => {
   const d = pkg.PUMP_DEFAULTS;
-  assert.equal(d.fan_top, 52);
+  assert.equal(d.fan_top, 60);
   assert.equal(d.fan_left, 61);
-  assert.equal(d.fan_size, 19);
-  /* Die Volute reicht im Bild von rund 52 % bis 70 % der Breite */
-  assert.ok(d.fan_left - d.fan_size / 2 >= 51, "Laufrad ragt nach links aus der Volute");
-  assert.ok(d.fan_left + d.fan_size / 2 <= 71, "Laufrad ragt nach rechts aus der Volute");
+  assert.equal(d.fan_size, 18);
+  /* Die Volute reicht im neuen Bild von rund 50 % bis 72 % der Breite und
+     von rund 28 % bis 92 % der Hoehe; das Laufrad ist rund, seine Hoehe in
+     Prozent der Bildhoehe also fan_size * ratio. */
+  const hoch = d.fan_size * pkg.DEVICE_RATIOS.pump;
+  assert.ok(d.fan_left - d.fan_size / 2 >= 50, "Laufrad ragt nach links aus der Volute");
+  assert.ok(d.fan_left + d.fan_size / 2 <= 72, "Laufrad ragt nach rechts aus der Volute");
+  assert.ok(d.fan_top - hoch / 2 >= 28, "Laufrad ragt oben aus der Volute");
+  assert.ok(d.fan_top + hoch / 2 <= 92, "Laufrad ragt unten aus der Volute");
 });
 check("Pumpe: Overlays stehen auf den vermessenen Defaults", () => {
   const stil = (sel) => pump.shadowRoot.querySelector(sel).getAttribute("style");
-  assert.match(stil(".fan-overlay"), /top:52%/);
+  assert.match(stil(".fan-overlay"), /top:60%/);
   assert.match(stil(".fan-overlay"), /left:61%/);
-  assert.match(stil(".fan-overlay"), /width:19%/);
+  assert.match(stil(".fan-overlay"), /width:18%/);
   /* Powerbutton auf dem Motor (rechte Bildhaelfte) */
-  assert.match(stil(".power-badge"), /top:43%/);
-  assert.match(stil(".power-badge"), /left:79%/);
-  /* Watt-Box unten links */
+  assert.match(stil(".power-badge"), /top:62%/);
+  assert.match(stil(".power-badge"), /left:80%/);
+  /* Watt-Box unten links, in der freien Ecke */
   assert.match(stil(".value-box"), /bottom:9%/);
-  assert.match(stil(".value-box"), /left:26%/);
-  /* Thermometer oben beim Ausgangsstutzen */
-  assert.match(stil(".thermo"), /top:10%/);
-  assert.match(stil(".thermo"), /left:36%/);
+  assert.match(stil(".value-box"), /left:24%/);
+  /* Thermometer oben neben dem Druckstutzen */
+  assert.match(stil(".thermo"), /top:11%/);
+  assert.match(stil(".thermo"), /left:38%/);
 });
 
 /* ---- Solarheizung ---- */
@@ -1738,16 +1745,26 @@ check("Solar: Vorlauf, Ruecklauf, Watt und Powerbutton", () => {
   assert.ok(solar.shadowRoot.querySelector(".power-badge.on"));
   assert.match(solar.shadowRoot.querySelector(".slot-title").textContent, /Solarheizung/);
 });
-check("Solar: Ruecklauf oben, Vorlauf unten am Stutzen", () => {
+/*
+ * Iteration 7 dreht die Leserichtung um: das Feld wird OBEN gespeist und
+ * gibt UNTEN ab (so haengen die drei Panels im Bild zusammen). Vorlauf
+ * steht deshalb oben, Ruecklauf unten — jeweils neben seinem Pfeil.
+ */
+check("Solar: Vorlauf oben, Ruecklauf unten am Anschluss", () => {
   const d = pkg.SOLAR_DEFAULTS;
-  assert.ok(d.temp_out_top < 30, "Ruecklauf nicht am oberen Stutzen");
-  assert.ok(d.temp_in_top > 70, "Vorlauf nicht am unteren Stutzen");
-  assert.equal(d.temp_in_left, d.temp_out_left, "Stutzen liegen uebereinander");
+  assert.ok(d.temp_in_top < 30, "Vorlauf nicht am oberen Anschluss");
+  assert.ok(d.temp_out_top > 70, "Ruecklauf nicht am unteren Anschluss");
   const stile = Array.from(solar.shadowRoot.querySelectorAll(".thermo")).map((t) =>
     t.getAttribute("style")
   );
-  assert.match(stile[0], new RegExp(`top:${d.temp_out_top}%`));
-  assert.match(stile[1], new RegExp(`top:${d.temp_in_top}%`));
+  assert.match(stile[0], new RegExp(`top:${d.temp_in_top}%`));
+  assert.match(stile[1], new RegExp(`top:${d.temp_out_top}%`));
+});
+check("Solar: jedes Thermometer steht neben seinem Pfeil", () => {
+  const d = pkg.SOLAR_DEFAULTS;
+  const nah = (a, b) => Math.abs(a - b) <= 12;
+  assert.ok(nah(d.temp_in_top, d.arrow_in_top), "Vorlauf steht nicht beim blauen Pfeil");
+  assert.ok(nah(d.temp_out_top, d.arrow_out_top), "Ruecklauf steht nicht beim roten Pfeil");
 });
 
 calls.length = 0;
@@ -2122,6 +2139,258 @@ check("v1-Config: Becken-Sprites kommen ab Werk dazu, ohne die Config zu aendern
   assert.ok(frozenHero.shadowRoot.querySelector("img.sprite-inlet"));
   assert.equal(frozenHero.shadowRoot.querySelector("img.sprite-drain"), null);
   assert.ok(!("show_skimmer" in frozen._config.hero));
+});
+
+/* ================================================================== */
+/* Iteration 7 — Selinas Artwork, Solarfeld, UV-Groesse, Editor-Farben */
+/* ================================================================== */
+
+const pngGroesse = (datei) => {
+  const png = readFileSync(join(here, "../dist", datei));
+  assert.equal(png.readUInt32BE(12), 0x49484452, `${datei}: kein PNG-Header`);
+  return [png.readUInt32BE(16), png.readUInt32BE(20)];
+};
+
+/* ---- alle Bilder kommen aus demselben handgezeichneten Satz ---- */
+
+check("Artwork: jede ausgelieferte Datei ist im Bundle benannt", () => {
+  /* Eine Quelle fuer Dateinamen (shared/assets.js) — kein Bild aus einer
+     anderen Ecke, keine Karteileiche in dist/. */
+  const genannt = new Set([
+    ...Object.values(pkg.DEVICE_IMAGES),
+    ...Object.values(pkg.DEVICE_VARIANTS.uv),
+    ...Object.values(pkg.HERO_SPRITES).map((x) => x.file),
+    ...Object.values(pkg.FLOW_MARKERS),
+    ...Object.values(pkg.SHAPES).map((x) => x.file),
+  ]);
+  const dateien = readdirSync(join(here, "../dist")).filter((f) => f.endsWith(".png"));
+  assert.deepEqual(
+    dateien.filter((f) => !genannt.has(f)),
+    [],
+    "unbenutzte PNGs in dist/"
+  );
+  for (const f of genannt) assert.ok(dateien.includes(f), `${f} fehlt in dist/`);
+});
+check("Artwork: Sprites und Marker werden klein ausgeliefert", () => {
+  /* HACS kopiert dist/ in jede Installation: was nur als Sprite auf dem
+     Becken liegt, braucht keine Geraete-Aufloesung. */
+  for (const sprite of Object.values(pkg.HERO_SPRITES)) {
+    const [breit] = pngGroesse(sprite.file);
+    assert.ok(breit <= 640, `${sprite.file} ist ${breit} px breit`);
+  }
+  for (const datei of Object.values(pkg.FLOW_MARKERS)) {
+    const [breit] = pngGroesse(datei);
+    assert.ok(breit <= 200, `${datei} ist ${breit} px breit`);
+  }
+});
+
+/* ---- Solarfeld: drei Panels, deterministisch zusammengesetzt ---- */
+
+const komposition = JSON.parse(
+  readFileSync(join(here, "fixtures/solar-komposition.json"), "utf8")
+);
+
+check("Solar: das Feld ist die Komposition aus drei OKU-Panels", () => {
+  assert.equal(komposition.quelle, "OKU_Panel.png");
+  assert.equal(komposition.panels, 3);
+  assert.equal(komposition.datei, pkg.DEVICE_IMAGES.solar);
+  const [breit, hoch] = komposition.panel_groesse;
+  const [dx, dy] = komposition.versatz_px;
+  /* Versatz = Panelbreite minus Ueberlapp, Hoehenversatz wie eingestellt */
+  assert.equal(dx, Math.round(breit * (1 - komposition.ueberlapp)));
+  assert.equal(dy, Math.round(hoch * komposition.versatz_hoch));
+  /* und die Leinwand ist genau so gross, wie die drei Panels es machen */
+  assert.deepEqual(komposition.groesse, [breit + dx * 2, hoch + dy * 2]);
+});
+check("Solar: das ausgelieferte PNG ist genau diese Komposition", () => {
+  const roh = readFileSync(join(here, "../dist", pkg.DEVICE_IMAGES.solar));
+  assert.equal(createHash("sha256").update(roh).digest("hex"), komposition.sha256);
+  assert.deepEqual(pngGroesse(pkg.DEVICE_IMAGES.solar), komposition.groesse);
+});
+check("Solar: das Feld liegt quer wie die anderen Geraetebilder", () => {
+  const [breit, hoch] = komposition.groesse;
+  assert.ok(Math.abs(pkg.DEVICE_RATIOS.solar - breit / hoch) < 1e-9, "Ratio nicht nachgezogen");
+  assert.ok(pkg.DEVICE_RATIOS.solar > 1.2, "Solarfeld ist hochkant — der Slot wuerde zu hoch");
+});
+
+/* ---- Richtungsmarker ---- */
+
+const solarPfeile = (el) =>
+  Array.from(el.shadowRoot.querySelectorAll("img.flow-arrow")).map((x) => ({
+    src: x.getAttribute("src"),
+    stil: x.getAttribute("style"),
+  }));
+
+check("Solar: blauer Pfeil oben hinein, roter unten hinaus", () => {
+  const pfeile = solarPfeile(solar);
+  assert.equal(pfeile.length, 2, "zwei Marker erwartet");
+  assert.equal(pfeile[0].src, "/local/community/tomtut-pool-cards/" + pkg.FLOW_MARKERS.in);
+  assert.equal(pfeile[1].src, "/local/community/tomtut-pool-cards/" + pkg.FLOW_MARKERS.out);
+  const d = pkg.SOLAR_DEFAULTS;
+  assert.match(pfeile[0].stil, new RegExp(`top:${d.arrow_in_top}%`));
+  assert.match(pfeile[0].stil, new RegExp(`left:${d.arrow_in_left}%`));
+  assert.match(pfeile[0].stil, new RegExp(`width:${d.arrow_in_size}%`));
+  assert.match(pfeile[1].stil, new RegExp(`top:${d.arrow_out_top}%`));
+  assert.ok(d.arrow_in_top < d.arrow_out_top, "der blaue Pfeil sitzt nicht oben");
+});
+check("Solar: die Marker liegen ueber dem Bild, aber unter den Messwerten", () => {
+  const css = cssOf("tomtut-pool-slot-solar");
+  assert.match(css, /img\.flow-arrow/);
+  assert.match(css, /z-index:\s*3/);
+});
+
+const solarOhnePfeile = await mountSolar({ ...SOLAR_CONFIG, show_arrows: false });
+check("Solar: die Marker sind abwaehlbar, alles andere bleibt", () => {
+  assert.equal(solarPfeile(solarOhnePfeile).length, 0);
+  assert.equal(solarOhnePfeile.shadowRoot.querySelectorAll(".thermo").length, 2);
+});
+const solarLeerPfeile = await mountSolar({ type: "solar" });
+check("Solar: die Marker stehen auch ohne Entity (sie erklaeren das Bild)", () =>
+  assert.equal(solarPfeile(solarLeerPfeile).length, 2)
+);
+
+/* ---- UV: frei waehlbare Bildgroesse ---- */
+
+check("UV: 100 Prozent ist der Zustand von vorher", () => {
+  assert.equal(pkg.UV_DEFAULTS.uv_size, 100);
+  assert.equal(pkg.groesseFaktor(100), 1);
+  assert.equal(pkg.bildTransform(0, false, pkg.DEVICE_RATIOS.uv, 100), "");
+  assert.equal(
+    pkg.bildTransform(90, false, pkg.DEVICE_RATIOS.uv, 100),
+    pkg.bildTransform(90, false, pkg.DEVICE_RATIOS.uv)
+  );
+});
+check("UV: Groesse wird gekappt statt krumm uebernommen", () => {
+  assert.equal(pkg.GROESSE_MIN, 30);
+  assert.equal(pkg.GROESSE_MAX, 100);
+  assert.equal(pkg.groesseFaktor(0), 0.3);
+  assert.equal(pkg.groesseFaktor(500), 1);
+  assert.equal(pkg.groesseFaktor("nicht"), 1);
+});
+check("UV: Groesse und Drehung multiplizieren sich", () => {
+  for (const grad of [0, 45, 90, 180, 270]) {
+    for (const groesse of [30, 55, 100]) {
+      const soll =
+        Math.round(pkg.passFaktor(grad, pkg.DEVICE_RATIOS.uv) * (groesse / 100) * 1000) / 1000;
+      const stil = pkg.bildTransform(grad, false, pkg.DEVICE_RATIOS.uv, groesse);
+      assert.ok(soll <= 1, "groesser als der Kasten");
+      /* Faktor 1 heisst: gar nicht skalieren — dann steht auch nichts da. */
+      if (soll === 1) assert.ok(!/scale\(/.test(stil), `${grad} Grad / ${groesse} %: ${stil}`);
+      else assert.ok(stil.includes(`scale(${soll})`), `${grad} Grad / ${groesse} %: ${stil}`);
+    }
+  }
+});
+
+const uvKlein = await mountUv({ ...UV_CONFIG, uv_size: 50 });
+check("UV: die Groesse wirkt auf das Bild, nicht auf den Kasten", () => {
+  assert.ok(bildStil(uvKlein).includes("scale(0.5)"), bildStil(uvKlein));
+  assert.equal(kastenStil(uvKlein), UV_KASTEN);
+});
+const uvKleinGedreht = await mountUv({ ...UV_CONFIG, uv_size: 50, rotate: 90 });
+check("UV: klein UND gedreht bleibt im Kasten", () => {
+  const f = Math.round(pkg.passFaktor(90, pkg.DEVICE_RATIOS.uv) * 0.5 * 1000) / 1000;
+  const stil = bildStil(uvKleinGedreht);
+  assert.match(stil, /rotate\(90deg\)/);
+  assert.ok(stil.includes(`scale(${f})`), stil);
+  assert.equal(kastenStil(uvKleinGedreht), UV_KASTEN);
+});
+
+check("UV: Powerbutton und Gluehen stehen auf Thomas' Werten", () => {
+  assert.equal(pkg.UV_DEFAULTS.power_btn_top, 30);
+  assert.equal(pkg.UV_DEFAULTS.power_btn_left, 11);
+  assert.equal(pkg.UV_DEFAULTS.glow_top, 35);
+  assert.equal(pkg.UV_DEFAULTS.rotate, 0);
+  const stil = (sel) => uv.shadowRoot.querySelector(sel).getAttribute("style");
+  assert.match(stil(".power-badge"), /top:30%/);
+  assert.match(stil(".power-badge"), /left:11%/);
+  assert.match(stil(".glow"), /top:35%/);
+});
+
+/* ---- Editor: Bild-Abschnitt der UV-Lampe ---- */
+
+const ed7 = new Editor();
+ed7.setConfig({
+  hero: { enabled: false },
+  slots: [
+    { type: "uv", label: "Entkeimung", switch_entity: "switch.uv_lampe" },
+    { type: "pump", label: "Filterpumpe" },
+    { type: "solar" },
+    { type: "frame" },
+  ],
+});
+ed7.hass = makeHass();
+document.body.appendChild(ed7);
+await ed7.updateComplete;
+let ed7Fired = null;
+ed7.addEventListener("config-changed", (e) => (ed7Fired = e.detail.config));
+
+check("Editor: UV hat den Groessen-Regler nach Drehen und Spiegeln", () => {
+  const karte = ed7.shadowRoot.querySelectorAll(".slot-card")[0];
+  const regler = karte.querySelector('input[data-key="uv_size"]');
+  assert.ok(regler, "Groessen-Regler fehlt");
+  assert.equal(regler.value, "100");
+  assert.equal(regler.getAttribute("min"), "30");
+  assert.equal(regler.getAttribute("max"), "100");
+  /* Reihenfolge im Abschnitt: Drehen, Spiegeln, Groesse, Anschlussvariante */
+  const felder = Array.from(karte.querySelectorAll("[data-key]"))
+    .map((el) => el.dataset.key)
+    .filter((k) => ["rotate", "mirror", "uv_size", "anschluss"].includes(k));
+  assert.deepEqual(felder, ["rotate", "mirror", "uv_size", "anschluss"]);
+});
+check("Editor: die Anschlussvarianten heissen 1 und 2, die Werte bleiben", () => {
+  const sel = ed7.shadowRoot.querySelector('select[data-key="anschluss"]');
+  assert.deepEqual(
+    Array.from(sel.querySelectorAll("option")).map((o) => [o.value, o.textContent.trim()]),
+    [
+      ["seite", "Anschlussvariante 1"],
+      ["oben", "Anschlussvariante 2"],
+    ]
+  );
+});
+
+const groessenRegler = ed7.shadowRoot.querySelector('input[data-key="uv_size"]');
+groessenRegler.value = "60";
+groessenRegler.dispatchEvent(new dom.window.Event("input"));
+await ed7.updateComplete;
+check("Editor: die Groesse landet in der Slot-Config", () =>
+  assert.equal(ed7Fired.slots[0].uv_size, 60)
+);
+
+/* ---- Editor: Orientierung ueber Ueberschrift und Kennfarbe ---- */
+
+check("Editor: jeder Slot-Block traegt Nummer, Typ und Beschriftung", () => {
+  const kopf = Array.from(ed7.shadowRoot.querySelectorAll(".slot-ueberschrift")).map((el) =>
+    el.textContent.trim()
+  );
+  assert.deepEqual(kopf, [
+    "Kasten 1 · UV-C-Lampe · Entkeimung",
+    "Kasten 2 · Poolpumpe · Filterpumpe",
+    "Kasten 3 · Solarheizung",
+    "Kasten 4 · Leerer Rahmen",
+  ]);
+});
+check("Editor: jeder Slot-Typ hat seine Kennfarbe", () => {
+  const farben = Array.from(ed7.shadowRoot.querySelectorAll(".slot-block")).map((el) =>
+    el.getAttribute("style")
+  );
+  assert.deepEqual(farben, [
+    `--slot-farbe:${pkg.slotFarbe("uv")};`,
+    `--slot-farbe:${pkg.slotFarbe("pump")};`,
+    `--slot-farbe:${pkg.slotFarbe("solar")};`,
+    `--slot-farbe:${pkg.slotFarbe("frame")};`,
+  ]);
+  /* jede Geraetefarbe ist eigen, die allgemeinen Slots bleiben grau */
+  const geraete = ["heatpump", "pump", "uv", "solar"].map(pkg.slotFarbe);
+  assert.equal(new Set(geraete).size, 4, "zwei Geraete teilen sich eine Farbe");
+  assert.ok(!geraete.includes(pkg.SLOT_GRAU), "ein Geraet ist grau");
+  for (const key of ["frame", "hidden"]) assert.equal(pkg.slotFarbe(key), pkg.SLOT_GRAU);
+  assert.equal(pkg.slotFarbe("gibtsnicht"), pkg.SLOT_GRAU);
+});
+check("Editor: die Kennfarbe wird als Balken und Toenung benutzt", () => {
+  const css = cssOf("tomtut-pool-dashboard-editor");
+  assert.match(css, /\.slot-block[\s\S]*border-top:\s*2px solid var\(--slot-farbe/);
+  assert.match(css, /border-left:\s*5px solid var\(--slot-farbe/);
+  assert.match(css, /color-mix\(in srgb, var\(--slot-farbe/);
 });
 
 /* ------------------------------------------------------------------ */

@@ -2,6 +2,7 @@ import { html, nothing } from "lit";
 import { section, elementsGroup } from "../shared/fields.js";
 import { SHAPES } from "../shared/assets.js";
 import { FAN_SPEED_MIN, FAN_SPEED_MAX } from "../slots/pump.js";
+import { GROESSE_MIN, GROESSE_MAX } from "../shared/bild.js";
 
 /*
  * Die Feldgruppen der einzelnen Slot-Typen.
@@ -574,23 +575,25 @@ export const uvFields = (f) => html`
       )
     : nothing}
   ${section(
-    "Bild — Anschluss, Drehung, Spiegelung",
+    "Bild — Drehen, Spiegeln, Größe, Anschlussvariante",
     html`
+      ${f.slider("Drehen", "rotate", 0, 359, "°", 1)}
+      ${f.toggle("Waagrecht spiegeln", "mirror", false)}
+      ${f.slider("Größe", "uv_size", GROESSE_MIN, GROESSE_MAX)}
       ${f.select(
-        "Anschluss am linken T-Stück",
+        "Anschlussvariante",
         "anschluss",
         [
-          ["seite", "Seitlich (Standard)"],
-          ["oben", "Nach oben"],
+          ["seite", "Anschlussvariante 1"],
+          ["oben", "Anschlussvariante 2"],
         ],
         "seite"
       )}
-      ${f.slider("Drehen", "rotate", 0, 359, "°", 1)}
-      ${f.toggle("Waagrecht spiegeln", "mirror", false)}
       <small>
         Gedreht wird das Bild samt Glühen; Thermometer, Watt-Box und Powerbutton bleiben
-        aufrecht. Bei gedrehtem Bild wird der Kasten quadratisch, damit nichts abgeschnitten
-        wird — die Overlays wollen dann neu gesetzt werden.
+        aufrecht. Der Kasten bleibt in jeder Lage gleich groß — das gedrehte Bild wird so
+        weit verkleinert, dass es hineinpasst. 100 % Größe ist genau das; kleiner stellt das
+        Bild zusätzlich ein Stück zurück, ohne dass etwas herausragen kann.
       </small>
     `
   )}
@@ -606,17 +609,25 @@ export const solarFields = (f) => html`
       "power_btn_left",
       "power_btn_scale",
     ])}
-    ${f.element("🌡 Vorlauf (ins Feld)", "show_temp_in", [
+    ${f.element("🌡 Vorlauf (oben, ins Feld)", "show_temp_in", [
       "temp_in_entity",
       "temp_in_top",
       "temp_in_left",
       "temp_in_scale",
     ])}
-    ${f.element("🌡 Rücklauf (ins Becken)", "show_temp_out", [
+    ${f.element("🌡 Rücklauf (unten, ins Becken)", "show_temp_out", [
       "temp_out_entity",
       "temp_out_top",
       "temp_out_left",
       "temp_out_scale",
+    ])}
+    ${f.element("⬇ Richtungspfeile", "show_arrows", [
+      "arrow_in_top",
+      "arrow_in_left",
+      "arrow_in_size",
+      "arrow_out_top",
+      "arrow_out_left",
+      "arrow_out_size",
     ])}
     ${f.element("⚡ Stromverbrauch", "show_power", [
       "power_entity",
@@ -629,7 +640,8 @@ export const solarFields = (f) => html`
   `)}
   <small>
     Die Solarheizung heizt nicht selbst — sie gibt nur den Weg über die Absorber frei. Der
-    Vergleich Vorlauf/Rücklauf zeigt, ob sie gerade etwas bringt.
+    Vergleich Vorlauf/Rücklauf zeigt, ob sie gerade etwas bringt. Das Bild zeigt ein Feld aus
+    drei Absorbern; der blaue Pfeil oben ist der Zulauf, der rote unten der Rücklauf.
   </small>
   ${f.text("Überschrift (optional)", "label", "", "z.B. Solarheizung")}
   ${f.shown("show_power_button")
@@ -655,7 +667,7 @@ export const solarFields = (f) => html`
         ${f.entity(
           "Vorlauf-Temperatur",
           "temp_in_entity",
-          "Wasser, das zum Absorber läuft — unterer Stutzen.",
+          "Wasser, das zum Absorber läuft — oberer Anschluss (blauer Pfeil).",
           ...MESSWERT
         )}
         ${section(
@@ -673,7 +685,7 @@ export const solarFields = (f) => html`
         ${f.entity(
           "Rücklauf-Temperatur",
           "temp_out_entity",
-          "Wasser, das zurück ins Becken läuft — oberer Stutzen.",
+          "Wasser, das zurück ins Becken läuft — unterer Anschluss (roter Pfeil).",
           ...MESSWERT
         )}
         ${section(
@@ -700,6 +712,23 @@ export const solarFields = (f) => html`
           `
         )}
       `
+    : nothing}
+  ${f.shown("show_arrows")
+    ? section(
+        "Richtungspfeile — Lage",
+        html`
+          ${f.slider("Zulauf (blau) — Von oben", "arrow_in_top", 0, 100, "%", 0.5)}
+          ${f.slider("Zulauf (blau) — Von links", "arrow_in_left", 0, 100, "%", 0.5)}
+          ${f.slider("Zulauf (blau) — Größe", "arrow_in_size", 2, 20, "%", 0.5)}
+          ${f.slider("Rücklauf (rot) — Von oben", "arrow_out_top", 0, 100, "%", 0.5)}
+          ${f.slider("Rücklauf (rot) — Von links", "arrow_out_left", 0, 100, "%", 0.5)}
+          ${f.slider("Rücklauf (rot) — Größe", "arrow_out_size", 2, 20, "%", 0.5)}
+          <small>
+            Beide Pfeile zeigen nach unten: oben läuft kaltes Wasser ins Feld, unten warmes
+            heraus. Sie sind reine Beschriftung und ändern sich nie.
+          </small>
+        `
+      )
     : nothing}
 `;
 

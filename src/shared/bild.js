@@ -44,13 +44,35 @@ export const passFaktor = (grad, ratio) => {
 export const rundFaktor = (f) => Math.round(f * 1000) / 1000;
 
 /*
+ * Frei gewählte Bildgröße (Iteration 7).
+ *
+ * 100 % ist der Zustand, den die Card vorher fest hatte: das Bild füllt
+ * seinen Kasten so weit aus, wie es der Passfaktor erlaubt. Kleinere Werte
+ * verkleinern zusätzlich — weniger als 30 % wäre nur noch ein Punkt, mehr
+ * als 100 % würde aus dem Kasten ragen. Beides wird deshalb gekappt statt
+ * abgelehnt: eine krumme Config soll nichts zerschießen.
+ */
+export const GROESSE_MIN = 30;
+export const GROESSE_MAX = 100;
+
+export const groesseFaktor = (wert) => {
+  const n = Number(wert);
+  if (!isFinite(n)) return 1;
+  return Math.min(GROESSE_MAX, Math.max(GROESSE_MIN, n)) / 100;
+};
+
+/*
  * Inline-Stil des drehbaren Wrappers. Reihenfolge der Transformationen:
  * erst spiegeln, dann skalieren, dann drehen (CSS wendet die Liste von
- * rechts nach links an). Ohne Drehung und ohne Spiegel bleibt der Stil leer.
+ * rechts nach links an). Ohne Drehung, ohne Spiegel und in voller Größe
+ * bleibt der Stil leer.
+ *
+ * Gewählte Größe und Passfaktor werden multipliziert — deshalb ragt auch
+ * ein gedrehtes Bild nie heraus, egal welche Größe eingestellt ist.
  */
-export const bildTransform = (grad, mirror, ratio) => {
+export const bildTransform = (grad, mirror, ratio, groesse = GROESSE_MAX) => {
   const g = normGrad(grad);
-  const f = rundFaktor(passFaktor(g, ratio));
+  const f = rundFaktor(passFaktor(g, ratio) * groesseFaktor(groesse));
   const teile = [];
   if (g) teile.push(`rotate(${g}deg)`);
   if (f < 1) teile.push(`scale(${f})`);

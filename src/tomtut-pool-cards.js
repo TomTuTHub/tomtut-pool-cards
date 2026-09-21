@@ -48,7 +48,14 @@ export {
 export { PUMP_DEFAULTS, fanDuration } from "./slots/pump.js";
 export { HEATPUMP_DEFAULTS } from "./slots/heatpump.js";
 export { UV_DEFAULTS } from "./slots/uv.js";
-export { passFaktor, normGrad, bildTransform } from "./shared/bild.js";
+export {
+  passFaktor,
+  normGrad,
+  bildTransform,
+  groesseFaktor,
+  GROESSE_MIN,
+  GROESSE_MAX,
+} from "./shared/bild.js";
 export { SOLAR_DEFAULTS } from "./slots/solar.js";
 export { HERO_DEFAULTS, heroDefaultsFor, INLET_TEMP_VERSATZ } from "./hero.js";
 export {
@@ -57,8 +64,11 @@ export {
   DEVICE_IMAGES,
   DEVICE_VARIANTS,
   DEVICE_RATIOS,
+  FLOW_MARKERS,
   SLOT_TYPES,
   SLOT_TYPE_GROUPS,
+  SLOT_GRAU,
+  slotFarbe,
   slotTypeOptions,
 } from "./shared/assets.js";
 export { numText, numOf, toWatt } from "./shared/util.js";

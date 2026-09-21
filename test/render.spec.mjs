@@ -10,6 +10,10 @@
  *   1. Bild und alle Overlays liegen vollständig in ihrer Slot-Box (1 px).
  *   2. Kein Slot ist höher als das 1,6-fache seiner Breite.
  *
+ * Seit Iteration 7 kommen zwei Messungen dazu: die frei einstellbare Größe
+ * der UV-Lampe (mal Drehung — beides zusammen darf nie herausragen) und die
+ * zwei Richtungsmarker des Solarfelds.
+ *
  * Geprüft wird in drei Breiten (360 / 768 / 1200 px — eine Spalte, zwei,
  * drei) und mit der UV-Lampe in zehn Lagen (0/45/90/180/270 Grad, jeweils
  * mit und ohne Spiegelung); alle anderen Slot-Typen sind in jedem Durchgang
@@ -24,7 +28,7 @@ import { createServer } from "node:http";
 import { readFile, mkdir, rm } from "node:fs/promises";
 import { dirname, join, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
-import { UV_LAGEN } from "./fixtures/demo.mjs";
+import { UV_LAGEN, UV_GROESSEN } from "./fixtures/demo.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const wurzel = join(here, "..");
@@ -34,7 +38,7 @@ const ausgabe = join(here, "render-out");
    der Beleg übersprungen — der Test hängt nicht am NAS. */
 const BELEG =
   process.env.RENDER_BELEG ||
-  "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/pool-cards-it6-render.png";
+  "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/pool-cards-it7-render.png";
 
 if (process.env.SKIP_RENDER_TEST === "1") {
   console.log("Render-Test uebersprungen (SKIP_RENDER_TEST=1)");
@@ -198,7 +202,7 @@ const bauenUndMessen = (breite, grad, mirror) =>
       const MAX_HOCH = 1.6;
       const TEILE =
         "img, .bild, .bild-flaeche, .glow, .power-badge, .value-box, .thermo, .fan-overlay," +
-        " .label-badge, .chem-box, .stage-btn, .slot-title, .entries";
+        " .flow-arrow, .label-badge, .chem-box, .stage-btn, .slot-title, .entries";
       const klarname = (el) =>
         el.tagName.toLowerCase() + (el.className ? "." + String(el.className).split(" ")[0] : "");
       const probleme = [];
@@ -360,6 +364,134 @@ check("Alte Config: type inlet wird zum Rahmen mit Hinweis", () =>
   assert.match(String(becken.altText), /Einlaufdüse ist jetzt Teil des Beckens/)
 );
 
+/* ---- UV: Groesse mal Drehung ---- */
+
+let uvGroessen = [];
+await checkAsync("UV: Groesse mal Drehung ist messbar", async () => {
+  uvGroessen = await page.evaluate(async () => {
+    const messen = async (grad, groesse) => {
+      document.body.innerHTML = "";
+      const buehne = document.createElement("div");
+      buehne.style.width = "600px";
+      document.body.appendChild(buehne);
+      const card = document.createElement("tomtut-pool-dashboard");
+      card.setConfig({ hero: { enabled: false }, slots: [window.demo.uvSlot(grad, false, groesse)] });
+      card.hass = window.demo.DEMO_HASS;
+      buehne.appendChild(card);
+      await card.updateComplete;
+      const slot = card.shadowRoot.querySelector("tomtut-pool-slot-uv");
+      await slot.updateComplete;
+      const flaeche = slot.shadowRoot.querySelector(".bild-flaeche").getBoundingClientRect();
+      const bild = slot.shadowRoot.querySelector(".bild").getBoundingClientRect();
+      return {
+        grad,
+        groesse,
+        kasten: [Math.round(flaeche.width), Math.round(flaeche.height)],
+        bild: [Math.round(bild.width), Math.round(bild.height)],
+      };
+    };
+    const aus = [];
+    for (const grad of [0, 45, 90]) {
+      for (const groesse of [30, 65, 100]) aus.push(await messen(grad, groesse));
+    }
+    return aus;
+  });
+  assert.equal(uvGroessen.length, 9);
+});
+
+check("UV: der Kasten bleibt auch bei kleinerem Bild gleich gross", () => {
+  const soll = uvGroessen[0].kasten;
+  for (const m of uvGroessen) {
+    assert.deepEqual(m.kasten, soll, `${m.grad} Grad / ${m.groesse} %: ${m.kasten}`);
+  }
+});
+check("UV: kleiner gestellt heisst wirklich kleiner — und nie groesser als der Kasten", () => {
+  for (const grad of [0, 45, 90]) {
+    const reihe = uvGroessen.filter((m) => m.grad === grad).sort((a, b) => a.groesse - b.groesse);
+    for (let i = 1; i < reihe.length; i += 1) {
+      assert.ok(
+        reihe[i].bild[0] > reihe[i - 1].bild[0],
+        `${grad} Grad: ${reihe[i - 1].groesse} % ist nicht kleiner als ${reihe[i].groesse} %`
+      );
+    }
+    for (const m of reihe) {
+      assert.ok(
+        m.bild[0] <= m.kasten[0] + 1 && m.bild[1] <= m.kasten[1] + 1,
+        `${grad} Grad / ${m.groesse} %: Bild ${m.bild} im Kasten ${m.kasten}`
+      );
+    }
+    /* 30 % ist rund ein Drittel von 100 % — der Faktor wirkt linear */
+    const klein = reihe[0];
+    const voll = reihe[reihe.length - 1];
+    assert.ok(
+      Math.abs(klein.bild[0] / voll.bild[0] - 0.3) < 0.02,
+      `${grad} Grad: 30 % misst ${klein.bild[0]} von ${voll.bild[0]}`
+    );
+  }
+});
+
+/* ---- Solar: die beiden Richtungsmarker ---- */
+
+let solarMarker = null;
+await checkAsync("Solar: die Richtungsmarker sind messbar", async () => {
+  solarMarker = await page.evaluate(async () => {
+    document.body.innerHTML = "";
+    const buehne = document.createElement("div");
+    buehne.style.width = "600px";
+    document.body.appendChild(buehne);
+    const card = document.createElement("tomtut-pool-dashboard");
+    card.setConfig({
+      hero: { enabled: false },
+      slots: [window.demo.allesConfig(0, false).slots.find((s) => s.type === "solar")],
+    });
+    card.hass = window.demo.DEMO_HASS;
+    buehne.appendChild(card);
+    await card.updateComplete;
+    const slot = card.shadowRoot.querySelector("tomtut-pool-slot-solar");
+    await slot.updateComplete;
+    const bilder = [...slot.shadowRoot.querySelectorAll("img")];
+    await Promise.all(
+      bilder.map((img) =>
+        img.complete && img.naturalWidth > 0
+          ? null
+          : new Promise((f) => {
+              img.addEventListener("load", f, { once: true });
+              img.addEventListener("error", f, { once: true });
+            })
+      )
+    );
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const masse = (el) => {
+      const r = el.getBoundingClientRect();
+      return { links: r.left, oben: r.top, rechts: r.right, unten: r.bottom, breit: r.width, hoch: r.height };
+    };
+    const thermos = [...slot.shadowRoot.querySelectorAll(".thermo")];
+    return {
+      feld: masse(slot.shadowRoot.querySelector(".bild-flaeche")),
+      blau: masse(slot.shadowRoot.querySelector("img.flow-in")),
+      rot: masse(slot.shadowRoot.querySelector("img.flow-out")),
+      thermos: thermos.map(masse),
+      geladen: [...slot.shadowRoot.querySelectorAll("img")].every((i) => i.naturalWidth > 0),
+    };
+  });
+  assert.ok(solarMarker.blau && solarMarker.rot, "Marker fehlen");
+  assert.ok(solarMarker.geladen, "ein Bild des Solar-Slots laedt nicht");
+});
+
+check("Solar: beide Marker liegen im Bild, blau oben, rot unten", () => {
+  const { feld, blau, rot, thermos } = solarMarker;
+  for (const [name, m] of [["blau", blau], ["rot", rot]]) {
+    assert.ok(m.links >= feld.links - 1 && m.rechts <= feld.rechts + 1, `${name} ragt seitlich raus`);
+    assert.ok(m.oben >= feld.oben - 1 && m.unten <= feld.unten + 1, `${name} ragt oben/unten raus`);
+    assert.ok(m.breit > 0 && m.hoch > m.breit, `${name} ist kein stehender Pfeil`);
+  }
+  assert.ok(blau.unten < rot.oben, "die Marker stehen nicht ueber- sondern nebeneinander");
+  /* jedes Thermometer steht auf der Hoehe seines Markers */
+  assert.equal(thermos.length, 2);
+  assert.ok(thermos[0].oben < blau.unten, "Vorlauf steht nicht oben beim blauen Pfeil");
+  assert.ok(thermos[1].unten > rot.oben, "Ruecklauf steht nicht unten beim roten Pfeil");
+});
+
 check("keine Fehler in der Browser-Konsole", () =>
   assert.deepEqual(konsolenfehler, [], konsolenfehler.join(" | "))
 );
@@ -401,6 +533,20 @@ const kontaktbogen = async () => {
       karte(b, window.demo.allesConfig(0, false))
     );
   }
+  await abschnitt("UV-C-Lampe in drei Groessen (30 / 65 / 100 Prozent, ungedreht)", 1200, async (b) => {
+    const reihe = document.createElement("div");
+    reihe.style.cssText = "display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:1200px";
+    b.appendChild(reihe);
+    for (const groesse of window.demo.UV_GROESSEN) {
+      const zelle = document.createElement("div");
+      reihe.appendChild(zelle);
+      const card = document.createElement("tomtut-pool-dashboard");
+      card.setConfig({ hero: { enabled: false }, slots: [window.demo.uvSlot(0, false, groesse)] });
+      card.hass = window.demo.DEMO_HASS;
+      zelle.appendChild(card);
+      await card.updateComplete;
+    }
+  });
   await abschnitt("UV-C-Lampe in allen Lagen (0/45/90/180/270 Grad, unten gespiegelt)", 1200, async (b) => {
     for (const mirror of [false, true]) {
       const reihe = document.createElement("div");
@@ -414,6 +560,31 @@ const kontaktbogen = async () => {
         card.hass = window.demo.DEMO_HASS;
         zelle.appendChild(card);
         await card.updateComplete;
+      }
+    }
+  });
+
+  await abschnitt("Editor: Kasten-Ueberschriften und Kennfarben je Slot-Typ", 640, async (b) => {
+    const editor = document.createElement("tomtut-pool-dashboard-editor");
+    editor.setConfig({
+      hero: { enabled: false },
+      slots: [
+        { type: "heatpump", label_text: "Waermepumpe" },
+        { type: "pump", label: "Filterpumpe" },
+        { type: "uv", label: "Entkeimung" },
+        { type: "solar", label: "Absorberfeld" },
+        { type: "custom", title: "Wetter" },
+        { type: "frame" },
+      ],
+    });
+    editor.hass = window.demo.DEMO_HASS;
+    editor.style.cssText = "display:block;background:#fff;border-radius:12px";
+    b.appendChild(editor);
+    await editor.updateComplete;
+    /* nur die Koepfe zeigen — die Feldlisten wuerden den Bogen sprengen */
+    for (const karte of editor.shadowRoot.querySelectorAll(".slot-card")) {
+      for (const kind of [...karte.children]) {
+        if (!kind.classList.contains("slot-head")) kind.remove();
       }
     }
   });

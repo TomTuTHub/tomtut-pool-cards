@@ -151,9 +151,24 @@ export const DEVICE_VARIANTS = {
  */
 export const DEVICE_RATIOS = {
   heatpump: 988 / 725,
-  pump: 1191 / 889,
+  pump: 1126 / 756,
   uv: 947 / 384,
-  solar: 1188 / 888,
+  solar: 1001 / 710,
+};
+
+/*
+ * Richtungsmarker des Solar-Slots.
+ *
+ * Zwei kleine Pfeile aus demselben handgezeichneten Satz wie das Artwork.
+ * Sie zeigen im ausgelieferten PNG bereits nach unten (tools/prepare-assets.py
+ * dreht sie beim Bauen) — die Card setzt sie nur an ihren Platz:
+ *   in   blau, am oberen Anschluss, Spitze INS Absorberfeld  = kaltes Wasser
+ *   out  rot,  am unteren Anschluss, Spitze vom Feld WEG     = warmes Wasser
+ * Sie sind statisch: eine Fliessrichtung kehrt sich nicht um.
+ */
+export const FLOW_MARKERS = {
+  in: "pfeil_blau.png",
+  out: "pfeil_rot.png",
 };
 
 export const imagePath = (file) => IMAGE_BASE + file;
@@ -175,13 +190,13 @@ export const deviceRatio = (kind) => DEVICE_RATIOS[kind] || 1;
  * nur die Beschriftung im Editor.
  */
 export const SLOT_TYPES = {
-  heatpump: { label: "Wärmepumpe", ready: true },
-  pump: { label: "Poolpumpe", ready: true },
-  custom: { label: "Freifeld (benutzerdefiniert)", ready: true },
-  frame: { label: "Leerer Rahmen", ready: true },
-  hidden: { label: "Ausgeblendet", ready: true },
-  uv: { label: "UV-C-Lampe", ready: true },
-  solar: { label: "Solarheizung", ready: true },
+  heatpump: { label: "Wärmepumpe", ready: true, farbe: "#e07b28" },
+  pump: { label: "Poolpumpe", ready: true, farbe: "#2f7fd0" },
+  custom: { label: "Freifeld (benutzerdefiniert)", ready: true, farbe: "#2fa25f" },
+  frame: { label: "Leerer Rahmen", ready: true, farbe: "#8a8f98" },
+  hidden: { label: "Ausgeblendet", ready: true, farbe: "#8a8f98" },
+  uv: { label: "UV-C-Lampe", ready: true, farbe: "#8b5cf6" },
+  solar: { label: "Solarheizung", ready: true, farbe: "#d9a71c" },
   /*
    * Abgeschafft in Iteration 6: eine Einlaufdüse als eigener Kasten sagt
    * nichts, was das Becken nicht besser zeigt. Sie lebt weiter als Sprite auf
@@ -193,9 +208,19 @@ export const SLOT_TYPES = {
     label: "Einlaufdüse (entfällt)",
     ready: false,
     waehlbar: false,
+    farbe: "#8a8f98",
     hint: "Einlaufdüse ist jetzt Teil des Beckens",
   },
 };
+
+/*
+ * Kennfarbe eines Slot-Typs — reine Orientierung im Editor (Überschrift,
+ * linker Balken, dezente Tönung des Blocks). Sie steht hier, weil in dieser
+ * Datei ohnehin alles Typ-Wissen liegt; der Editor macht daraus nur zwei
+ * CSS-Variablen. Ein unbekannter Typ bekommt Grau statt einer Lücke.
+ */
+export const SLOT_GRAU = "#8a8f98";
+export const slotFarbe = (type) => SLOT_TYPES[type]?.farbe || SLOT_GRAU;
 
 /*
  * Reihenfolge im Auswahlfeld des Editors — bewusst anders als die Tabelle

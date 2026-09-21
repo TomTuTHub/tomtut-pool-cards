@@ -403,13 +403,39 @@ export const editorStyles = css`
     width: 18px;
     height: 18px;
   }
+  /*
+   * Ein Slot-Block im Editor: Trennlinie, große Überschrift, darunter die
+   * Karte mit den Feldern. Die Kennfarbe des Slot-Typs (shared/assets.js)
+   * kommt als --slot-farbe von außen und wird hier zweimal benutzt:
+   * als schmaler Balken links und als sehr dezente Tönung des Blocks.
+   * Weil die Tönung aus derselben Farbe gemischt wird, trägt sie in hellen
+   * wie in dunklen Themes; die erste Regel ist der Rückfall für Browser
+   * ohne color-mix.
+   */
+  .slot-block {
+    display: flex;
+    flex-direction: column;
+    margin-top: 18px;
+    padding-top: 10px;
+    border-top: 2px solid var(--slot-farbe, var(--divider-color, #ccc));
+  }
+  .slot-ueberschrift {
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.25;
+    margin: 0 0 10px;
+    color: var(--primary-text-color);
+  }
   .slot-card {
     border: 1px solid var(--divider-color, #ccc);
+    border-left: 5px solid var(--slot-farbe, var(--divider-color, #ccc));
     border-radius: 10px;
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
     gap: 10px;
+    background: rgba(127, 127, 127, 0.05);
+    background: color-mix(in srgb, var(--slot-farbe, transparent) 9%, transparent);
   }
   .slot-head {
     display: flex;

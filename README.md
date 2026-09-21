@@ -41,12 +41,13 @@ eine Herstellerintegration in Home Assistant landen.
   Hauptschalter mit Rückfrage. Funktioniert mit Impulstastern **und** mit Dauerrelais.
 - **UV-C-Lampen-Kasten** — Powerbutton mit Rückfrage, Watt-Anzeige, optionaler
   Temperaturfühler und ein ruhiges blau-violettes Glühen über dem Rohr, solange die Lampe
-  läuft. Das Bild lässt sich frei drehen und spiegeln, damit die Lampe so im Kasten liegt
-  wie in der Anlage.
-- **Solarheizungs-Kasten** — Absorberfeld mit Vorlauf- und Rücklauf-Thermometer an den
-  beiden Rohrstutzen, optionalem Stromverbrauch und Powerbutton (Solarventil oder -pumpe)
-  mit Rückfrage. Der Vergleich der beiden Temperaturen zeigt auf einen Blick, ob die Sonne
-  gerade etwas bringt.
+  läuft. Das Bild lässt sich frei drehen, spiegeln und **in der Größe einstellen**, damit die
+  Lampe so im Kasten liegt wie in der Anlage.
+- **Solarheizungs-Kasten** — ein **Feld aus drei Absorbern** mit Vorlauf- und
+  Rücklauf-Thermometer, optionalem Stromverbrauch und Powerbutton (Solarventil oder -pumpe)
+  mit Rückfrage. Zwei Pfeile zeigen die Fließrichtung: blau oben hinein, rot unten hinaus.
+  Der Vergleich der beiden Temperaturen zeigt auf einen Blick, ob die Sonne gerade etwas
+  bringt.
 - **Zubehör am Becken** — Skimmer, Einlaufdüse und Bodenablauf liegen als eigene kleine
   Bilder auf dem Becken, nicht in der Zeichnung. Jedes ist einzeln an- und abwählbar, in der
   Größe verstellbar und sitzt auf jeder der sechs Formen richtig. Die Einlaufdüse zeigt auf
@@ -59,7 +60,11 @@ eine Herstellerintegration in Home Assistant landen.
 - **Mobil zuerst** — das Raster stapelt auf schmalen Bildschirmen sauber untereinander,
   alle Touch-Ziele sind mindestens 44 px groß, nichts hängt an Hover.
 - **Visueller Editor** in drei Schritten (Becken / Geräte / Optik): erst ankreuzen, was das
-  Gerät hat, dann erscheinen dessen Felder. YAML ist möglich, aber nie nötig.
+  Gerät hat, dann erscheinen dessen Felder. Jeder Kasten trägt eine große Überschrift
+  („Kasten 3 · Poolpumpe · Filterpumpe") und die Kennfarbe seines Typs, damit man bei sechs
+  Kästen nicht den Faden verliert. YAML ist möglich, aber nie nötig.
+- **Handgezeichnetes Artwork** — jedes Gerät, jedes Becken und jedes Zubehörteil ist eine
+  Zeichnung, kein Foto und kein KI-Bild (© TomTuT).
 
 ---
 
@@ -323,10 +328,10 @@ Mindestens **eine** der vier Entities sollte gesetzt sein; sonst zeigt der Kaste
 | `idle_watt` | `30` | Ruhewatt: unter diesem Verbrauch gilt die Pumpe als stehend (Laufrad grau) |
 | `label` | – | Überschrift über dem Kasten |
 | `fan_speed_1` / `fan_speed_2` / `fan_speed_3` | `3` / `5` / `8` | Tempo des Laufrads je Stufe auf der Skala **1–10** (links langsam, rechts schnell) |
-| `fan_top` / `fan_left` / `fan_size` | `52` / `61` / `19` | Lage des Laufrads in % des Bildes — ab Werk mittig auf der Volute (dem Spiralgehäuse). Die Box ist immer quadratisch, das Rad bleibt kreisrund |
-| `power_btn_top` / `power_btn_left` / `power_btn_scale` | `43` / `79` / `110` | Powerbutton — ab Werk auf dem Motor |
-| `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `9` / `26` / `98` / `true` / `true` | Watt-Box unten links |
-| `temp_top` / `temp_left` / `temp_scale` | `10` / `36` / `119` | Thermometer oben am Ausgangsstutzen |
+| `fan_top` / `fan_left` / `fan_size` | `60` / `61` / `18` | Lage des Laufrads in % des Bildes — ab Werk mittig auf der Volute (dem Spiralgehäuse). Die Box ist immer quadratisch, das Rad bleibt kreisrund |
+| `power_btn_top` / `power_btn_left` / `power_btn_scale` | `62` / `80` / `110` | Powerbutton — ab Werk auf dem Motor |
+| `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `9` / `24` / `98` / `true` / `true` | Watt-Box unten links |
+| `temp_top` / `temp_left` / `temp_scale` | `11` / `38` / `119` | Thermometer oben neben dem Druckstutzen |
 | `show_stages` / `show_power_button` / `show_power` / `show_temp` / `show_fan` | `true` | Einzelne Elemente abwählen |
 
 Mindestens `stage_entities` (≥ 1) **oder** `main_entity` sollte gesetzt sein.
@@ -367,16 +372,17 @@ Alle drei Entities sind optional; es reicht eine.
 | `power_entity` | – | Leistung in W oder kW → Watt-Box |
 | `temp_entity` | – | Temperaturfühler → Thermometer |
 | `show_power_button` / `show_power` / `show_temp` / `show_glow` | `true` | Einzelne Elemente abschalten |
-| `anschluss` | `seite` | Bildvariante: `seite` (Anschluss seitlich) oder `oben` |
+| `anschluss` | `seite` | Bildvariante: `seite` (im Editor „Anschlussvariante 1") oder `oben` („Anschlussvariante 2") |
 | `rotate` | `0` | Bild drehen, 0–359° |
 | `mirror` | `false` | Bild waagrecht spiegeln |
-| `glow_top` / `glow_left` | `40` / `56` | Mitte des Glühbereichs in % |
+| `uv_size` | `100` | Größe des Bildes im Kasten, `30`–`100` %. `100` = so groß, wie es in der jeweiligen Lage passt |
+| `glow_top` / `glow_left` | `35` / `56` | Mitte des Glühbereichs in % |
 | `glow_size` / `glow_thickness` | `40` / `13` | Länge und Dicke des Glühbereichs in % |
 | `glow_angle` | `-15` | Neigung des Glühbereichs in ° (Neigung des Rohrs im Artwork) |
 | `glow_intensity` | `80` | Leuchtstärke in % |
 | `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `9` / `76` / `100` / `true` / `true` | Watt-Box |
 | `temp_top` / `temp_left` / `temp_scale` | `19` / `40` / `110` | Thermometer |
-| `power_btn_top` / `power_btn_left` / `power_btn_scale` | `6` / `3` / `120` | Powerbutton |
+| `power_btn_top` / `power_btn_left` / `power_btn_scale` | `30` / `11` / `120` | Powerbutton |
 
 ```yaml
 - type: uv
@@ -390,12 +396,14 @@ Alle drei Entities sind optional; es reicht eine.
 Rohrkörper — **statisch, ohne Animation**. Bei `off`, unbekanntem Zustand oder fehlendem
 Schalter bleibt das Bild ruhig. Ohne `switch_entity` gibt es kein Glühen.
 
-**Drehen und Spiegeln:** gedreht wird das Bild **samt Glühen**; Thermometer, Watt-Box und
+**Drehen, Spiegeln, Größe:** gedreht wird das Bild **samt Glühen**; Thermometer, Watt-Box und
 Powerbutton bleiben aufrecht und lesbar. Der Kasten ändert dabei seine Größe **nicht** — er
 hat in jeder Lage das Seitenverhältnis des Artworks. Stattdessen wird das gedrehte Bild so
 weit verkleinert, dass seine Hülle hineinpasst (bei 90°/270° einer quer liegenden Lampe also
-auf gut 40 %). Nichts kann über den Kasten hinausragen, die Nachbar-Cards bleiben unberührt.
-Nach dem Drehen sitzen die Overlays anders und wollen im Editor neu gesetzt werden.
+auf gut 40 %). Genau das ist `uv_size: 100`. Kleinere Werte verkleinern zusätzlich —
+Größe und Passfaktor werden multipliziert, deshalb kann auch eine gedrehte, kleine Lampe
+nichts über den Kasten hinausschieben; die Nachbar-Cards bleiben unberührt. Nach dem Drehen
+sitzen die Overlays anders und wollen im Editor neu gesetzt werden.
 
 > Eine UV-Lampe kann nichts regeln, darum hat der Slot bewusst weder Durchflussfeld noch
 > Stufen. In den meisten Anlagen hängt sie ohnehin an einer Zeitschaltuhr parallel zur
@@ -410,17 +418,23 @@ Entities sind optional; es reicht eine.
 |---|---|---|
 | `label` | – | Überschrift über dem Bild |
 | `switch_entity` | – | Solarventil oder Solarpumpe → Powerbutton mit Rückfrage (`switch`, `input_boolean`, `light`) |
-| `temp_in_entity` | – | Vorlauf (Wasser zum Absorber) → Thermometer am unteren Stutzen |
-| `temp_out_entity` | – | Rücklauf (Wasser zurück ins Becken) → Thermometer am oberen Stutzen |
+| `temp_in_entity` | – | Vorlauf (Wasser zum Absorber) → Thermometer am **oberen** Anschluss, beim blauen Pfeil |
+| `temp_out_entity` | – | Rücklauf (Wasser zurück ins Becken) → Thermometer am **unteren** Anschluss, beim roten Pfeil |
 | `power_entity` | – | Leistung der Solarpumpe in W oder kW → Watt-Box |
 | `show_power_button` / `show_temp_in` / `show_temp_out` / `show_power` | `true` | Einzelne Elemente abschalten |
-| `power_btn_top` / `power_btn_left` / `power_btn_scale` | `8` / `4` / `110` | Powerbutton |
-| `temp_in_top` / `temp_in_left` / `temp_in_scale` | `84` / `76` / `105` | Vorlauf-Thermometer |
-| `temp_out_top` / `temp_out_left` / `temp_out_scale` | `17` / `76` / `105` | Rücklauf-Thermometer |
-| `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `6` / `30` / `100` / `true` / `true` | Watt-Box |
+| `show_arrows` | `true` | Die beiden Richtungspfeile abschalten |
+| `power_btn_top` / `power_btn_left` / `power_btn_scale` | `45` / `8` / `110` | Powerbutton |
+| `arrow_in_top` / `arrow_in_left` / `arrow_in_size` | `20` / `11` / `6.5` | Blauer Pfeil (Zulauf) in % des Bildes |
+| `arrow_out_top` / `arrow_out_left` / `arrow_out_size` | `86` / `82` / `6.5` | Roter Pfeil (Rücklauf) in % des Bildes |
+| `temp_in_top` / `temp_in_left` / `temp_in_scale` | `21` / `32` / `105` | Vorlauf-Thermometer |
+| `temp_out_top` / `temp_out_left` / `temp_out_scale` | `79` / `66` / `105` | Rücklauf-Thermometer |
+| `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `8` / `33` / `100` / `true` / `true` | Watt-Box |
 
-Welcher Stutzen welcher ist, sagt die Position: die Defaults sitzen an den beiden Rohrstutzen
-rechts im Bild — unten Vorlauf, oben Rücklauf. Verschieben geht im Editor.
+**Das Bild ist ein Feld, kein Einzelstück:** drei OKU-Absorber stehen nebeneinander in
+Perspektive (siehe [Artwork](#artwork)). Die Fließrichtung steht fest und wird nur
+beschriftet: der **blaue Pfeil oben** zeigt ins Feld hinein (kaltes Wasser), der **rote unten**
+vom Feld weg (warmes Wasser). Beide sind statisch — eine Fließrichtung kehrt sich nicht um.
+Die Thermometer sitzen ab Werk neben ihrem Pfeil; verschieben geht im Editor.
 
 ### Slot `custom` — Freifeld (benutzerdefiniert)
 
@@ -481,6 +495,48 @@ Das Zubehör am Becken ist bewusst **nicht in die Zeichnung eingebacken**: Skimm
 Einlaufdüse und Bodenablauf sind eigene PNGs (`HERO_SPRITES` in `src/shared/assets.js`), die
 auf ihrem Anker sitzen. So bleibt jedes Teil einzeln abwählbar und funktioniert auf allen
 sechs Formen, ohne dass es je Form eine eigene Bildvariante bräuchte.
+
+---
+
+## Artwork
+
+Alles, was diese Card zeigt, ist **handgezeichnet** — Becken, Geräte, Zubehör und die beiden
+Richtungspfeile stammen aus einem gemeinsamen Satz von Tuschezeichnungen (© TomTuT). Es gibt
+in dieser Sammlung **keine KI-generierten Gerätebilder mehr**; die letzten (Poolpumpe,
+Solarheizung, Einlaufdüse) sind in Iteration 7 gegen die Originale getauscht worden.
+
+Die Originale liegen bewusst **nicht** im Repo: HACS kopiert den Plugin-Ordner in jede
+Home-Assistant-Installation, deshalb enthält `dist/` nur die optimierten Fassungen. Gebaut
+werden sie mit einem einzigen Aufruf:
+
+```bash
+python3 tools/prepare-assets.py <ordner-mit-originalen> [weiterer ordner ...]
+```
+
+| Gruppe | Breite | Behandlung |
+|---|---|---|
+| Becken | max. 1280 px | Palette reduziert |
+| Geräte | max. 1200 px | Palette reduziert, transparenter Rand abgeschnitten |
+| Sprites am Becken | max. 640 px | dito — sie werden nie groß angezeigt |
+| Richtungspfeile | max. 200 px | dito, zusätzlich um 180° gedreht (sie zeigen im Bild nach unten) |
+
+**Die Solarheizung ist eine Komposition.** Eine Solarheizung ist in Wirklichkeit ein Feld aus
+mehreren Absorbern, kein einzelnes Gerät — deshalb gibt es dafür auch kein einzelnes Bild.
+`dist/solar_transparent.png` wird aus **drei Kopien** von `OKU_Panel.png` gebaut: jedes Panel
+steht um 12 % seiner Breite überlappend neben dem linken Nachbarn und 4 % seiner Höhe tiefer,
+gezeichnet von hinten nach vorn. Daraus wird eine Querkachel in der Größenordnung der anderen
+Gerätebilder. Die Rechnung steht in `tools/prepare-assets.py` (`SOLAR_UEBERLAPP`,
+`SOLAR_VERSATZ_HOCH`); das Werkzeug schreibt sie samt Prüfsumme nach
+`test/fixtures/solar-komposition.json`, und der Smoke-Test vergleicht das ausgelieferte PNG
+damit. Wer die Panels anders stapeln will, ändert eine Zahl und lässt beides neu erzeugen.
+
+> Die Palettenreduktion hängt an der Pillow-Version: gebaut wird auf der Werkbank
+> (Debian 12, `python3-pil`). Ein anderer Rechner kann pixelgleiche, aber byteverschiedene
+> PNGs erzeugen — dann meldet der Komposition-Test eine abweichende Prüfsumme.
+
+Nach einem neuen Gerätebild gehören zwei Dinge nachgezogen: das Seitenverhältnis in
+`DEVICE_RATIOS` (`src/shared/assets.js`) und die Overlay-Defaults des Slots, die am Motiv
+vermessen sind.
 
 ---
 

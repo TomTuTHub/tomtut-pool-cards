@@ -95,12 +95,23 @@ export class SlotBase extends LitElement {
    * mitdrehen soll (z.B. das Glühen der UV-Lampe), kommt als `inhalt` in
    * denselben Wrapper. `overflow:hidden` auf dem Kasten ist die harte
    * Grenze — aus dem Bildbereich ragt nie etwas heraus.
+   *
+   * `groesse` (Prozent, seit Iteration 7) verkleinert das Bild im Kasten
+   * zusätzlich — der Kasten selbst bleibt auch davon unberührt.
    */
-  renderGeraeteBild({ kind, variante, alt, rotate = 0, mirror = false, inhalt = nothing }) {
+  renderGeraeteBild({
+    kind,
+    variante,
+    alt,
+    rotate = 0,
+    mirror = false,
+    groesse = 100,
+    inhalt = nothing,
+  }) {
     const ratio = deviceRatio(kind);
     return html`
       <div class="bild-flaeche" style="aspect-ratio:${Math.round(ratio * 10000) / 10000};">
-        <div class="bild" style="${bildTransform(rotate, mirror, ratio)}">
+        <div class="bild" style="${bildTransform(rotate, mirror, ratio, groesse)}">
           <img src="${deviceImage(kind, variante)}" alt="${alt}" />
           ${inhalt}
         </div>
