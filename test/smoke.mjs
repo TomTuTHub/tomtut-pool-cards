@@ -50,6 +50,10 @@ const check = (name, fn) => {
 
 const pkg = await import("../dist/tomtut-pool-cards.js");
 
+/* Erwartete Bild-URL inkl. Cache-Buster (?v=<Version>) */
+const bild = (datei) =>
+  "/local/community/tomtut-pool-cards/" + datei + "?v=" + encodeURIComponent(pkg.ASSET_VERSION);
+
 const Dashboard = customElements.get("tomtut-pool-dashboard");
 
 /* ------------------------------------------------------------------ */
@@ -236,7 +240,7 @@ await hero.updateComplete;
 check("Hero laedt das Bild der gewaehlten Form", () =>
   assert.equal(
     hero.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/poolbecken_freiform.png"
+    bild("poolbecken_freiform.png")
   )
 );
 check("Hero zeigt Thermometer mit Wert", () => {
@@ -310,7 +314,7 @@ await fallbackHero.updateComplete;
 check("unbekannte Form faellt auf oval zurueck", () =>
   assert.equal(
     fallbackHero.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/poolbecken_oval.png"
+    bild("poolbecken_oval.png")
   )
 );
 
@@ -396,7 +400,7 @@ await hp.updateComplete;
 check("Waermepumpe: Artwork aus dem Card-Ordner", () =>
   assert.equal(
     hp.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/waermepumpe_transparent.png"
+    bild("waermepumpe_transparent.png")
   )
 );
 check("Waermepumpe: Werte gerendert", () => {
@@ -872,7 +876,7 @@ await freshHp.updateComplete;
 check("frischer Pump-Slot rendert sofort (ohne hass, ohne Entity)", () => {
   assert.equal(
     freshPump.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/poolpumpe_transparent.png"
+    bild("poolpumpe_transparent.png")
   );
   assert.ok(freshPump.shadowRoot.querySelector(".fan-overlay"), "Laufrad fehlt");
   assert.match(freshPump.shadowRoot.textContent, /mindestens eine Stufen-Entity/);
@@ -880,7 +884,7 @@ check("frischer Pump-Slot rendert sofort (ohne hass, ohne Entity)", () => {
 check("frischer Waermepumpen-Slot rendert sofort", () => {
   assert.equal(
     freshHp.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/waermepumpe_transparent.png"
+    bild("waermepumpe_transparent.png")
   );
   assert.match(freshHp.shadowRoot.textContent, /mindestens eine Entity/);
 });
@@ -998,7 +1002,7 @@ await legacyPump.updateComplete;
 check("alte Schluessel werden ignoriert, nicht abgelehnt", () => {
   assert.equal(
     legacyPump.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/poolpumpe_transparent.png"
+    bild("poolpumpe_transparent.png")
   );
   assert.match(legacyPump.shadowRoot.querySelector(".fan-overlay").getAttribute("style"), /--fan-ratio:1;/);
   assert.ok(legacyPump.shadowRoot.querySelector(".power-badge"));
@@ -1221,7 +1225,7 @@ check("UV: eigener Slot statt Platzhalter", () => {
 check("UV: Artwork aus dem Card-Ordner", () =>
   assert.equal(
     uv.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/uv_lampe_transparent.png"
+    bild("uv_lampe_transparent.png")
   )
 );
 check("UV: Ueberschrift, Watt-Box und Thermometer", () => {
@@ -1321,14 +1325,14 @@ const uvOben = await mountUv({ ...UV_CONFIG, anschluss: "oben" });
 check("UV: Bildvariante 'Anschluss oben'", () =>
   assert.equal(
     uvOben.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/uv_lampe_transparent_2.png"
+    bild("uv_lampe_transparent_2.png")
   )
 );
 const uvKrumm = await mountUv({ ...UV_CONFIG, anschluss: "gibtsnicht" });
 check("UV: unbekannte Variante faellt auf das Standardbild zurueck", () =>
   assert.equal(
     uvKrumm.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/uv_lampe_transparent.png"
+    bild("uv_lampe_transparent.png")
   )
 );
 
@@ -1433,7 +1437,7 @@ check("UV ohne Entity zeigt Hinweis statt Fehler", () => {
   assert.match(uvLeer.shadowRoot.textContent, /mindestens eine Entity/);
   assert.equal(
     uvLeer.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/uv_lampe_transparent.png"
+    bild("uv_lampe_transparent.png")
   );
   assert.equal(uvLeer.shadowRoot.querySelector(".glow"), null);
 });
@@ -1682,7 +1686,7 @@ check("Solar: eigener Slot statt Platzhalter", () => {
 check("Solar: Artwork aus dem Card-Ordner", () =>
   assert.equal(
     solar.shadowRoot.querySelector("img").getAttribute("src"),
-    "/local/community/tomtut-pool-cards/solar_transparent.png"
+    bild("solar_transparent.png")
   )
 );
 check("Solar: Vorlauf, Ruecklauf, Watt und Powerbutton", () => {
@@ -1877,7 +1881,7 @@ check("Becken: alle drei Sprites mit Bild, Anker und Groesse", () => {
     const sprite = pkg.HERO_SPRITES[name];
     const el = spriteHero.shadowRoot.querySelector(`img.sprite-${anker}`);
     assert.ok(el, `${name} fehlt`);
-    assert.equal(el.getAttribute("src"), "/local/community/tomtut-pool-cards/" + sprite.file);
+    assert.equal(el.getAttribute("src"), bild(sprite.file));
     const stil = el.getAttribute("style");
     assert.match(stil, new RegExp(`top:${form[anker].top}%`));
     assert.match(stil, new RegExp(`left:${form[anker].left}%`));
@@ -2105,6 +2109,21 @@ const pngGroesse = (datei) => {
 
 /* ---- alle Bilder kommen aus demselben handgezeichneten Satz ---- */
 
+check("Bilder: jede URL traegt den Cache-Buster ?v=<Version>", () => {
+  assert.match(pkg.ASSET_VERSION, /^\d+\.\d+\.\d+-[0-9a-f]{8}$/, "Version beim Build nicht eingesetzt");
+  assert.equal(
+    pkg.imagePath("solar_transparent.png"),
+    "/local/community/tomtut-pool-cards/solar_transparent.png?v=" + pkg.ASSET_VERSION
+  );
+  assert.ok(pkg.imagePath("x.png").includes("?v="));
+  /* Hash ueber die PNGs in dist/ — wie in rollup.config.js */
+  const h = createHash("sha256");
+  for (const f of readdirSync(join(here, "../dist")).filter((x) => x.endsWith(".png")).sort()) {
+    h.update(f);
+    h.update(readFileSync(join(here, "../dist", f)));
+  }
+  assert.ok(pkg.ASSET_VERSION.endsWith("-" + h.digest("hex").slice(0, 8)), "Version passt nicht zu den PNGs");
+});
 check("Artwork: jede ausgelieferte Datei ist im Bundle benannt", () => {
   /* Eine Quelle fuer Dateinamen (shared/assets.js) — kein Bild aus einer
      anderen Ecke, keine Karteileiche in dist/. */
@@ -2177,8 +2196,8 @@ const solarPfeile = (el) =>
 check("Solar: blauer Pfeil oben hinein, roter unten hinaus", () => {
   const pfeile = solarPfeile(solar);
   assert.equal(pfeile.length, 2, "zwei Marker erwartet");
-  assert.equal(pfeile[0].src, "/local/community/tomtut-pool-cards/" + pkg.FLOW_MARKERS.in);
-  assert.equal(pfeile[1].src, "/local/community/tomtut-pool-cards/" + pkg.FLOW_MARKERS.out);
+  assert.equal(pfeile[0].src, bild(pkg.FLOW_MARKERS.in));
+  assert.equal(pfeile[1].src, bild(pkg.FLOW_MARKERS.out));
   const d = pkg.SOLAR_DEFAULTS;
   assert.match(pfeile[0].stil, new RegExp(`top:${d.arrow_in_top}%`));
   assert.match(pfeile[0].stil, new RegExp(`left:${d.arrow_in_left}%`));

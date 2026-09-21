@@ -171,7 +171,19 @@ export const FLOW_MARKERS = {
   out: "pfeil_rot.png",
 };
 
-export const imagePath = (file) => IMAGE_BASE + file;
+/*
+ * Cache-Buster fuer alle Bild-URLs. Die Dateinamen bleiben ueber Iterationen
+ * gleich (solar_transparent.png ...) — ohne Query haelt der Browser bzw. der
+ * HA-Service-Worker ein ersetztes Artwork einfach fest. Der Wert wird beim
+ * Bauen eingesetzt (rollup.config.js): Paketversion + Hash ueber alle PNGs in
+ * dist/. Er aendert sich also genau dann, wenn sich ein Bild aendert.
+ * Ungebaut (Quellcode direkt importiert) steht hier "dev".
+ */
+const ASSET_VERSION_ROH = "__ASSET_VERSION__";
+export const ASSET_VERSION = ASSET_VERSION_ROH.startsWith("__") ? "dev" : ASSET_VERSION_ROH;
+
+export const imagePath = (file) =>
+  IMAGE_BASE + file + "?v=" + encodeURIComponent(ASSET_VERSION);
 
 /* Bildpfad eines Geräte-Slots, optional in einer Bildvariante */
 export const deviceImage = (kind, variante) =>

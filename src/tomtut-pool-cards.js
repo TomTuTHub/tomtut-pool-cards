@@ -52,6 +52,8 @@ export {
   BLOCK_FARBEN,
   slotFarbe,
   slotTypeOptions,
+  ASSET_VERSION,
+  imagePath,
 } from "./shared/assets.js";
 export { numText, numOf, toWatt } from "./shared/util.js";
 export { applyPatch } from "./editor/dashboard-editor.js";
