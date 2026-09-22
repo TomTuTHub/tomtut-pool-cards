@@ -40,6 +40,10 @@ export const HEATPUMP_DEFAULTS = {
   power_btn_top: 5,
   power_btn_left: 3,
   power_btn_scale: 139,
+  /* Freigabekontakt (Iteration 12) — unter dem Lüfter, links unten */
+  release_top: 84,
+  release_left: 24,
+  release_scale: 100,
   /* Stromverbrauch */
   power_top: 22,
   power_left: 62,
@@ -110,8 +114,39 @@ export const modeFromState = (state, c = {}) => {
   return HP_MODES.find((m) => modeZustaende(c, m).some((z) => normZustand(z) === s)) || null;
 };
 
+/*
+ * Freigabekontakt (Iteration 12) — Thomas' Erklärstück fürs Video
+ * ---------------------------------------------------------------
+ * Der Freigabekontakt ist der potentialfreie Eingang der Wärmepumpe:
+ *
+ *   offen       = die Wärmepumpe darf NICHT laufen — egal, was an ihrem
+ *                 eigenen Bedienteil eingestellt ist.
+ *   geschlossen = freigegeben; die Wärmepumpe arbeitet nach ihrer eigenen
+ *                 Logik weiter.
+ *
+ * Typischer Zweck: von außen sperren oder freigeben (PV-Überschuss,
+ * Zeitfenster, Nachtruhe), ohne in die Einstellungen der Wärmepumpe
+ * einzugreifen. In Thomas' Anlage ist das seit 22.09.2026 der Schalter
+ * switch.pooltechnik_pool_wp_freigabekontakt.
+ *
+ * In der Card ist `release_entity` rein optional:
+ *   nicht gesetzt -> alles bleibt exakt wie bisher (rückwärtskompatibel)
+ *   gesetzt + zu  -> Anzeige "Frei", sonst ändert sich nichts
+ *   gesetzt + auf -> Anzeige "Gesperrt" UND der Lüfter steht still, auch
+ *                    wenn der Schalter an ist und Watt anliegen. Genau das
+ *                    ist der didaktische Kern: die Karte zeigt, dass die
+ *                    Wärmepumpe gar nicht laufen KANN.
+ * switch/input_boolean lassen sich per Klick umschalten, binary_sensor ist
+ * nur Anzeige (dort gibt es nichts zu schalten).
+ */
 export const heatpumpHasEntity = (c = {}) =>
-  !!(c.switch_entity || c.power_entity || c.target_entity || c.current_entity);
+  !!(
+    c.switch_entity ||
+    c.power_entity ||
+    c.target_entity ||
+    c.current_entity ||
+    c.release_entity
+  );
 
 export class TomtutPoolSlotHeatpump extends SlotBase {
   get defaults() {
@@ -126,6 +161,80 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     return `Eine laufende Wärmepumpe sollte erst am Gerät bzw. über den Betriebsmodus
       ausgeschaltet werden — nicht einfach den Stecker ziehen! Hartes Trennen im Betrieb
       kann Kompressor und Elektronik schaden.`;
+  }
+
+  /*
+   * Zustand des Freigabekontakts:
+   *   null  = keiner konfiguriert, abgewählt oder Entity (noch) unbekannt
+   *   true  = Kontakt geschlossen -> freigegeben
+   *   false = Kontakt offen -> gesperrt, die Wärmepumpe kann nicht laufen
+   * Ein unbekannter/nicht erreichbarer Zustand sperrt bewusst NICHT — eine
+   * fehlende Entity darf die Anzeige nicht stillstellen.
+   */
+  get _freigabe() {
+    const c = this.config || {};
+    if (c.show_release === false || !c.release_entity) return null;
+    const e = this._ent(c.release_entity);
+    if (!e) return null;
+    const s = String(e.state).toLowerCase();
+    if (s === "unknown" || s === "unavailable" || s === "") return null;
+    return isOn(s);
+  }
+
+  /* binary_sensor ist eine Meldung, kein Schalter — nur Anzeige. */
+  get _releaseSchaltbar() {
+    const id = this.config?.release_entity;
+    return !!id && !String(id).startsWith("binary_sensor.");
+  }
+
+  _onReleaseClick(ev) {
+    ev?.stopPropagation();
+    if (!this._releaseSchaltbar) return;
+    this._call(this.config.release_entity, "toggle");
+  }
+
+  /*
+   * Kleines Kontaktsymbol plus Wort: geschlossener Hebel + grün = frei,
+   * abgehobener Hebel + rot = gesperrt. Positionierbar wie jedes andere
+   * Overlay (release_top/-_left/-_scale).
+   */
+  _renderRelease() {
+    const freigabe = this._freigabe;
+    const gesperrt = freigabe === false;
+    const zustand = freigabe === null ? "unbekannt" : gesperrt ? "gesperrt" : "frei";
+    const schaltbar = this._releaseSchaltbar;
+    const titel =
+      freigabe === null
+        ? "Freigabekontakt — Zustand unbekannt"
+        : !schaltbar
+        ? gesperrt
+          ? "Freigabekontakt offen — die Wärmepumpe ist gesperrt (nur Anzeige)"
+          : "Freigabekontakt geschlossen — die Wärmepumpe ist freigegeben (nur Anzeige)"
+        : gesperrt
+        ? "Freigabe geben (Kontakt schließen)"
+        : "Freigabe entziehen (Kontakt öffnen)";
+    return html`
+      <div
+        class="release-badge ${zustand} ${schaltbar ? "schaltbar" : "nur-anzeige"}"
+        style="top:${this._v("release_top")}%; left:${this._v(
+          "release_left"
+        )}%; transform:translateX(-50%) scale(${(this._v("release_scale") ?? 100) / 100});"
+        title="${titel}"
+        @click="${this._onReleaseClick}"
+      >
+        <svg viewBox="0 0 34 20" aria-hidden="true">
+          <line x1="1.5" y1="15" x2="8" y2="15" />
+          <line x1="26" y1="15" x2="32.5" y2="15" />
+          <line x1="8" y1="15" x2="${gesperrt ? 24 : 26}" y2="${gesperrt ? 3.5 : 15}" />
+          <circle cx="8" cy="15" r="2.4" />
+          <circle cx="26" cy="15" r="2.4" />
+        </svg>
+        <span class="release-text">
+          <span class="val">${freigabe === null ? "—" : gesperrt ? "Gesperrt" : "Frei"}</span>
+          <span class="unit">Freigabe</span>
+        </span>
+      </div>
+    `;
   }
 
   /* Soll-Temperatur: climate (attributes.temperature) oder number (state) */
@@ -196,6 +305,9 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
   }
 
   get _fanActive() {
+    /* Freigabekontakt offen = die Wärmepumpe KANN nicht laufen. Das schlägt
+       alles andere: Schalter an, Lüfter-Entity, anliegende Watt — egal. */
+    if (this._freigabe === false) return false;
     /* Schalter aus = das Rad steht. Immer — egal, was die Watt sagen
        (Nachlauf, träger Sensor, Standby-Verbrauch). */
     const sw = this.config.switch_entity;
@@ -251,6 +363,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
 
     const showFan = c.show_fan !== false;
     const showPowerBtn = c.show_power_button !== false && !!c.switch_entity;
+    const showRelease = c.show_release !== false && !!c.release_entity;
     const showPower = c.show_power !== false && !!c.power_entity;
     const showTarget = c.show_target !== false && !!c.target_entity;
     const showCurrent = c.show_current !== false && !!c.current_entity;
@@ -285,6 +398,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
               scale: this._v("power_btn_scale"),
             })
           : nothing}
+        ${showRelease ? this._renderRelease() : nothing}
         ${showPower
           ? this.renderValueBox({
               value: this.wattText(c.power_entity),
@@ -409,6 +523,76 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
       .step[disabled] {
         opacity: 0.35;
         cursor: not-allowed;
+      }
+
+      /*
+       * Freigabekontakt (Iteration 12). Zwei Zustände, sofort erkennbar:
+       * geschlossener Kontakt + grün = frei, abgehobener Hebel + rot =
+       * gesperrt. Der Kasten sitzt in derselben z-index-Leiter wie die
+       * übrigen Overlays (4, nie über 10 — s. shared/styles.js).
+       */
+      .release-badge {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 0.45em;
+        padding: 0.3em 0.6em;
+        border-radius: 0.7em;
+        background: var(--tt-box-bg);
+        color: var(--tt-box-fg);
+        border: 1.5px solid var(--tt-line);
+        line-height: 1.15;
+        white-space: nowrap;
+        backdrop-filter: blur(4px);
+        cursor: default;
+        transition: border-color 0.3s, box-shadow 0.3s;
+        z-index: 4;
+      }
+      .release-badge.schaltbar {
+        cursor: pointer;
+      }
+      .release-badge.schaltbar:hover {
+        filter: brightness(1.15);
+      }
+      .release-badge svg {
+        width: 2.3em;
+        height: auto;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        color: #9e9e9e;
+      }
+      .release-badge svg circle {
+        fill: currentColor;
+        stroke: none;
+      }
+      .release-badge .release-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .release-badge .val {
+        font-size: 1.05em;
+      }
+      .release-badge .unit {
+        margin-top: 0;
+      }
+      .release-badge.frei {
+        border-color: #4caf50;
+      }
+      .release-badge.frei svg,
+      .release-badge.frei .val {
+        color: #4caf50;
+      }
+      .release-badge.gesperrt {
+        border-color: #ef5350;
+        box-shadow: 0 0 9px rgba(244, 67, 54, 0.45);
+      }
+      .release-badge.gesperrt svg,
+      .release-badge.gesperrt .val {
+        color: #ef5350;
       }
     `,
   ];

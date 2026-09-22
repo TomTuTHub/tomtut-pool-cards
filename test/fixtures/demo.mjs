@@ -71,6 +71,10 @@ export const DEMO_HASS = {
     "sensor.solar_power": watt(58),
     /* Einlaufdüse */
     "sensor.einlauf_temperatur": grad(26.9),
+    /* Freigabekontakt der Wärmepumpe (Iteration 12) */
+    "input_boolean.wp_freigabe": schalter(true),
+    "input_boolean.wp_freigabe_aus": schalter(false),
+    "binary_sensor.wp_freigabe_meldung": schalter(false),
     /* Betriebsmodus der Wärmepumpe (Iteration 9) */
     "input_select.wp_modus_heizen": { state: "Heizen Boost", attributes: {}, last_changed: iso(60) },
     "input_select.wp_modus_kuehlen": { state: "Kühlen Smart", attributes: {}, last_changed: iso(60) },
@@ -119,6 +123,7 @@ export const allesConfig = (rotate = 0, mirror = false) => ({
       power_entity: "sensor.waermepumpe_power",
       target_entity: "climate.waermepumpe",
       current_entity: "climate.waermepumpe",
+      release_entity: "input_boolean.wp_freigabe",
     },
     {
       type: "pump",
@@ -158,6 +163,27 @@ export const allesConfig = (rotate = 0, mirror = false) => ({
     },
     { type: "frame", title: "Platz für später" },
   ],
+});
+
+/*
+ * Wärmepumpe mit Freigabekontakt (Iteration 12) — drei Fälle:
+ * "frei" = Kontakt geschlossen, "gesperrt" = Kontakt offen (Rad muss
+ * stehen), "meldung" = binary_sensor, also nur Anzeige ohne Klick.
+ */
+export const wpFreigabe = (fall) => ({
+  type: "heatpump",
+  label_text:
+    fall === "frei" ? "Freigabe frei" : fall === "gesperrt" ? "Freigabe gesperrt" : "nur Anzeige",
+  switch_entity: "switch.waermepumpe",
+  power_entity: "sensor.waermepumpe_power",
+  target_entity: "climate.waermepumpe",
+  current_entity: "climate.waermepumpe",
+  release_entity:
+    fall === "frei"
+      ? "input_boolean.wp_freigabe"
+      : fall === "gesperrt"
+      ? "input_boolean.wp_freigabe_aus"
+      : "binary_sensor.wp_freigabe_meldung",
 });
 
 /* Die Lagen, in denen die UV-Lampe geprüft wird */

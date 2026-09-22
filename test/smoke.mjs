@@ -2880,6 +2880,169 @@ check("Editor: Betriebsmodus abwaehlen raeumt die Modus-Felder", () => {
   assert.equal(feld9(0, "mode_speed_heiz_boost"), null);
 });
 
+/* ------------------------------------------------------------------ */
+/* Iteration 12: Freigabekontakt der Waermepumpe                       */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Der Freigabekontakt ist der potentialfreie Eingang der Waermepumpe:
+ * offen = sie darf NICHT laufen (egal, was am Bedienteil steht),
+ * geschlossen = freigegeben. Die Karte zeigt den Zustand und stellt bei
+ * "gesperrt" das Rad still — auch bei eingeschaltetem Schalter und
+ * anliegenden Watt. Ohne release_entity aendert sich gar nichts.
+ */
+
+const FREI_ENT = "input_boolean.wp_freigabe";
+const freigabeHass = (an, extra = {}) =>
+  makeHass({
+    [FREI_ENT]: { state: an ? "on" : "off", attributes: {}, last_changed: iso(30) },
+    ...extra,
+  });
+const HP_FREI = { ...HP_CONFIG, release_entity: FREI_ENT };
+
+const hpFrei = await mountSlotTyp(HP_FREI, freigabeHass(true));
+const hpGesperrt = await mountSlotTyp(HP_FREI, freigabeHass(false));
+
+check("Freigabe: Lage und Groesse haben Vorgaben", () => {
+  assert.equal(pkg.HEATPUMP_DEFAULTS.release_top, 84);
+  assert.equal(pkg.HEATPUMP_DEFAULTS.release_left, 24);
+  assert.equal(pkg.HEATPUMP_DEFAULTS.release_scale, 100);
+});
+check("Freigabe: Kontakt geschlossen -> 'Frei', das Rad dreht weiter", () => {
+  const b = hpFrei.shadowRoot.querySelector(".release-badge");
+  assert.ok(b, "kein Freigabe-Element");
+  assert.ok(b.classList.contains("frei"), b.className);
+  assert.match(b.textContent.replace(/\s+/g, " "), /Frei/);
+  assert.ok(hpFrei.shadowRoot.querySelector(".fan-overlay.spinning"), "Rad steht trotz Freigabe");
+});
+check("Freigabe: Kontakt offen -> 'Gesperrt', Rad steht trotz Schalter an und 820 W", () => {
+  const b = hpGesperrt.shadowRoot.querySelector(".release-badge");
+  assert.ok(b.classList.contains("gesperrt"), b.className);
+  assert.match(b.textContent.replace(/\s+/g, " "), /Gesperrt/);
+  const f = hpGesperrt.shadowRoot.querySelector(".fan-overlay");
+  assert.ok(!f.classList.contains("spinning"), "Rad dreht trotz Sperre");
+  assert.ok(f.classList.contains("idle"));
+});
+
+const hpGesperrtEntity = await mountSlotTyp(
+  { ...HP_FREI, fan_entity: "switch.poolbeleuchtung", fan_source: "entity" },
+  freigabeHass(false, {
+    "switch.poolbeleuchtung": { state: "on", attributes: {}, last_changed: iso(60) },
+  })
+);
+check("Freigabe: gesperrt schlaegt auch eine laufende Luefter-Entity", () =>
+  assert.ok(!hpGesperrtEntity.shadowRoot.querySelector(".fan-overlay.spinning"))
+);
+
+check("Freigabe: ohne release_entity bleibt alles wie bisher", () => {
+  assert.equal(hp.shadowRoot.querySelector(".release-badge"), null);
+  assert.ok(hp.shadowRoot.querySelector(".fan-overlay.spinning"));
+});
+
+calls.length = 0;
+hpGesperrt.shadowRoot.querySelector(".release-badge").click();
+await hpGesperrt.updateComplete;
+check("Freigabe: Klick schaltet die Entity um (toggle)", () =>
+  assert.deepEqual(calls, [
+    { domain: "input_boolean", service: "toggle", data: { entity_id: FREI_ENT } },
+  ])
+);
+
+const hpSensor = await mountSlotTyp(
+  { ...HP_CONFIG, release_entity: "binary_sensor.wp_freigabe" },
+  makeHass({
+    "binary_sensor.wp_freigabe": { state: "off", attributes: {}, last_changed: iso(30) },
+  })
+);
+calls.length = 0;
+hpSensor.shadowRoot.querySelector(".release-badge").click();
+await hpSensor.updateComplete;
+check("Freigabe: binary_sensor ist nur Anzeige — Klick schaltet nichts", () => {
+  assert.deepEqual(calls, []);
+  const b = hpSensor.shadowRoot.querySelector(".release-badge");
+  assert.ok(b.classList.contains("nur-anzeige"), b.className);
+  assert.ok(b.classList.contains("gesperrt"));
+  assert.ok(!hpSensor.shadowRoot.querySelector(".fan-overlay.spinning"));
+});
+
+const hpUnbekannt2 = await mountSlotTyp(
+  HP_FREI,
+  freigabeHass(true, {
+    [FREI_ENT]: { state: "unavailable", attributes: {}, last_changed: iso(30) },
+  })
+);
+check("Freigabe: unbekannter Zustand sperrt nicht", () => {
+  assert.ok(hpUnbekannt2.shadowRoot.querySelector(".release-badge.unbekannt"));
+  assert.ok(hpUnbekannt2.shadowRoot.querySelector(".fan-overlay.spinning"));
+});
+
+const hpFreigabeAus = await mountSlotTyp({ ...HP_FREI, show_release: false }, freigabeHass(false));
+check("Freigabe: abgewaehlt -> kein Element und keine Wirkung aufs Rad", () => {
+  assert.equal(hpFreigabeAus.shadowRoot.querySelector(".release-badge"), null);
+  assert.ok(hpFreigabeAus.shadowRoot.querySelector(".fan-overlay.spinning"));
+});
+
+const hpFreiPos = await mountSlotTyp(
+  { ...HP_FREI, release_top: 40, release_left: 70, release_scale: 150 },
+  freigabeHass(true)
+);
+check("Freigabe: Lage und Groesse sind einstellbar", () => {
+  const stil = hpFreiPos.shadowRoot.querySelector(".release-badge").getAttribute("style");
+  assert.match(stil, /top:40%/);
+  assert.match(stil, /left:70%/);
+  assert.match(stil, /scale\(1\.5\)/);
+});
+
+const hpNurFreigabe = await mountSlotTyp({ type: "heatpump", release_entity: FREI_ENT }, freigabeHass(true));
+check("Freigabe: allein reicht als Konfiguration (kein 'bitte Entity waehlen')", () =>
+  assert.ok(!/mindestens eine Entity/.test(hpNurFreigabe.shadowRoot.textContent))
+);
+
+/* ---- Editor ---- */
+
+const ed12 = new Editor();
+ed12.setConfig({
+  hero: { enabled: false },
+  slots: [
+    {
+      type: "heatpump",
+      switch_entity: "switch.waermepumpe",
+      show_release: true,
+      release_entity: FREI_ENT,
+    },
+    { type: "heatpump", switch_entity: "switch.waermepumpe" },
+  ],
+});
+ed12.hass = freigabeHass(true);
+document.body.appendChild(ed12);
+await ed12.updateComplete;
+const karten12 = () => [...ed12.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")];
+const feld12 = (i, key) => karten12()[i].querySelector(`[data-key="${key}"]`);
+
+check("Editor: Freigabekontakt ist ein eigenes Element mit Entity und drei Reglern", () => {
+  assert.equal(feld12(0, "show_release").checked, true);
+  assert.ok(feld12(0, "release_entity"), "Entity-Feld fehlt");
+  for (const k of ["release_top", "release_left", "release_scale"]) {
+    assert.ok(feld12(0, k), `${k} fehlt`);
+  }
+  assert.match(ed12.shadowRoot.textContent, /Freigabekontakt/);
+});
+check("Editor: Freigabekontakt ab Werk aus — ohne Haken keine Felder", () => {
+  assert.equal(feld12(1, "show_release").checked, false);
+  assert.equal(feld12(1, "release_entity"), null);
+});
+let ed12Fired = null;
+ed12.addEventListener("config-changed", (e) => (ed12Fired = e.detail.config));
+const box12 = feld12(0, "show_release");
+box12.checked = false;
+box12.dispatchEvent(new dom.window.Event("change"));
+await ed12.updateComplete;
+check("Editor: Freigabe abwaehlen raeumt release_entity aus der Config", () => {
+  assert.equal(ed12Fired.slots[0].show_release, false);
+  assert.equal(ed12Fired.slots[0].release_entity, undefined);
+  assert.equal(feld12(0, "release_entity"), null);
+});
+
 /* ---- 2a. Umlaute in allem, was man sieht ---- */
 
 /*
@@ -2922,7 +3085,7 @@ const vollCard = await mount(
       label_text: "Pool",
     },
     slots: [
-      { ...HP_MODUS, label_text: "Wärmepumpe" },
+      { ...HP_MODUS, label_text: "Wärmepumpe", release_entity: FREI_ENT },
       { ...PUMP_WATT },
       { ...UV_CONFIG },
       {
@@ -2961,7 +3124,7 @@ const edVoll = new Editor();
 edVoll.setConfig({
   hero: { enabled: true, shape: "oval", show_drain: true, label_text: "Pool", inlet_temp_entity: "sensor.x" },
   slots: [
-    { type: "heatpump", show_mode: true, label_text: "x" },
+    { type: "heatpump", show_mode: true, label_text: "x", show_release: true, release_entity: FREI_ENT },
     { type: "pump", power_entity: "sensor.poolpumpe_power" },
     { type: "uv" },
     { type: "solar" },

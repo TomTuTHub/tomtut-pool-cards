@@ -21,6 +21,8 @@ const VERBRAUCH = ["sensor", "input_number"];
 const MESSWERT = ["sensor", "input_number", "number"];
 const KLIMA = ["climate", "number", "input_number", "sensor"];
 const MODUS = ["sensor", "select", "input_select", "climate"];
+/* Freigabekontakt: schaltbar (switch/input_boolean) oder nur Meldung */
+const FREIGABE = ["switch", "input_boolean", "binary_sensor"];
 
 /*
  * "Vor dem Ausschalten nachfragen" — derselbe Schalter in jedem Kasten mit
@@ -168,6 +170,12 @@ export const heatpumpFields = (f) => html`
       "power_btn_left",
       "power_btn_scale",
     ])}
+    ${f.element(
+      "🔌 Freigabekontakt",
+      "show_release",
+      ["release_entity", "release_top", "release_left", "release_scale"],
+      false
+    )}
     ${f.element("⚡ Stromverbrauch", "show_power", [
       "power_entity",
       "power_top",
@@ -232,6 +240,30 @@ export const heatpumpFields = (f) => html`
             ${f.slider("Von oben", "power_btn_top", 0, 100)}
             ${f.slider("Von links", "power_btn_left", 0, 100)}
             ${f.slider("Größe", "power_btn_scale", 50, 200)}
+          `
+        )}
+      `
+    : nothing}
+  ${f.shown("show_release", false)
+    ? html`
+        ${f.entity(
+          "Freigabekontakt — Entity",
+          "release_entity",
+          "Der potentialfreie Eingang der Wärmepumpe: offen = sie darf nicht laufen, geschlossen = freigegeben.",
+          ...FREIGABE
+        )}
+        <small>
+          Damit sperrt oder gibt man die Wärmepumpe von außen frei (PV-Überschuss, Zeitfenster) —
+          ohne an ihren eigenen Einstellungen zu drehen. Ist der Kontakt offen, zeigt die Karte
+          „Gesperrt" und der Lüfter steht still, auch wenn der Schalter an ist. Ein binary_sensor
+          wird nur angezeigt, switch und input_boolean schalten per Klick um.
+        </small>
+        ${section(
+          "Freigabekontakt — Position",
+          html`
+            ${f.slider("Von oben", "release_top", 0, 100, "%", 0.5)}
+            ${f.slider("Von links", "release_left", 0, 100, "%", 0.5)}
+            ${f.slider("Größe", "release_scale", 50, 200)}
           `
         )}
       `

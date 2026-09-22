@@ -202,7 +202,8 @@ const bauenUndMessen = (breite, grad, mirror) =>
       const MAX_HOCH = 1.6;
       const TEILE =
         "img, .bild, .bild-flaeche, .glow, .power-badge, .value-box, .thermo, .fan-overlay," +
-        " .flow-arrow, .label-badge, .chem-box, .stage-btn, .slot-title, .entries";
+        " .flow-arrow, .label-badge, .chem-box, .stage-btn, .slot-title, .entries," +
+        " .release-badge";
       const klarname = (el) =>
         el.tagName.toLowerCase() + (el.className ? "." + String(el.className).split(" ")[0] : "");
       const probleme = [];
@@ -492,6 +493,95 @@ check("Solar: beide Marker liegen im Bild, blau oben, rot unten", () => {
   assert.ok(thermos[1].unten > rot.oben, "Ruecklauf steht nicht unten beim roten Pfeil");
 });
 
+/* ---- Freigabekontakt: Anzeige und Wirkung aufs Rad (Iteration 12) ---- */
+
+/*
+ * jsdom kann nur Klassen lesen — hier wird gemessen: sitzt die Anzeige im
+ * Bild, unterscheiden sich die beiden Zustaende sichtbar (Farbe, Wort) und
+ * steht das Rad bei gesperrter Freigabe wirklich still (computed
+ * animation-name)?
+ */
+let freigabe = null;
+await checkAsync("Freigabekontakt: die Anzeige ist messbar", async () => {
+  freigabe = await page.evaluate(async () => {
+    const messen = async (fall) => {
+      document.body.innerHTML = "";
+      const buehne = document.createElement("div");
+      buehne.style.width = "600px";
+      document.body.appendChild(buehne);
+      const card = document.createElement("tomtut-pool-dashboard");
+      card.setConfig({ hero: { enabled: false }, slots: [window.demo.wpFreigabe(fall)] });
+      card.hass = window.demo.DEMO_HASS;
+      buehne.appendChild(card);
+      await card.updateComplete;
+      const slot = card.shadowRoot.querySelector("tomtut-pool-slot-heatpump");
+      await slot.updateComplete;
+      const bilder = [...slot.shadowRoot.querySelectorAll("img")];
+      await Promise.all(
+        bilder.map((img) =>
+          img.complete && img.naturalWidth > 0
+            ? null
+            : new Promise((f) => {
+                img.addEventListener("load", f, { once: true });
+                img.addEventListener("error", f, { once: true });
+              })
+        )
+      );
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const masse = (el) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return {
+          links: r.left, oben: r.top, rechts: r.right, unten: r.bottom,
+          breit: r.width, hoch: r.height,
+        };
+      };
+      const badge = slot.shadowRoot.querySelector(".release-badge");
+      const rad = slot.shadowRoot.querySelector(".fan-overlay svg g");
+      return {
+        flaeche: masse(slot.shadowRoot.querySelector(".bild-flaeche")),
+        badge: masse(badge),
+        text: badge ? badge.textContent.replace(/\s+/g, " ").trim() : "",
+        farbe: badge ? getComputedStyle(badge).borderTopColor : "",
+        zeiger: badge ? getComputedStyle(badge).cursor : "",
+        dreht: getComputedStyle(rad).animationName !== "none",
+      };
+    };
+    return {
+      frei: await messen("frei"),
+      gesperrt: await messen("gesperrt"),
+      meldung: await messen("meldung"),
+    };
+  });
+  assert.ok(freigabe.frei.badge && freigabe.gesperrt.badge, "Anzeige fehlt");
+});
+
+check("Freigabekontakt: die Anzeige liegt im Bild und ist lesbar gross", () => {
+  for (const [name, m] of Object.entries(freigabe)) {
+    const { flaeche, badge } = m;
+    assert.ok(badge.links >= flaeche.links - 1 && badge.rechts <= flaeche.rechts + 1, `${name}: ragt seitlich aus dem Bild`);
+    assert.ok(badge.oben >= flaeche.oben - 1 && badge.unten <= flaeche.unten + 1, `${name}: ragt oben/unten aus dem Bild`);
+    assert.ok(badge.breit > 40 && badge.hoch > 14, `${name}: Anzeige misst nur ${Math.round(badge.breit)}x${Math.round(badge.hoch)} px`);
+  }
+});
+
+check("Freigabekontakt: frei und gesperrt sehen verschieden aus", () => {
+  assert.match(freigabe.frei.text, /Frei/);
+  assert.match(freigabe.gesperrt.text, /Gesperrt/);
+  assert.notEqual(freigabe.frei.farbe, freigabe.gesperrt.farbe);
+});
+
+check("Freigabekontakt: gesperrt stellt das Rad still, frei laesst es drehen", () => {
+  assert.equal(freigabe.frei.dreht, true, "Rad steht trotz Freigabe");
+  assert.equal(freigabe.gesperrt.dreht, false, "Rad dreht trotz Sperre");
+  assert.equal(freigabe.meldung.dreht, false, "binary_sensor offen: Rad muesste stehen");
+});
+
+check("Freigabekontakt: schaltbar zeigt den Zeigefinger, binary_sensor nicht", () => {
+  assert.equal(freigabe.frei.zeiger, "pointer");
+  assert.equal(freigabe.meldung.zeiger, "default");
+});
+
 /* ---- Kopfleiste: nichts schiebt sich beim Scrollen darueber ---- */
 
 /*
@@ -556,7 +646,7 @@ await checkAsync("Kopfleiste: Overlays sind messbar", async () => {
 
     const OVERLAYS =
       ".chem-box, .thermo, .label-badge, img.hero-sprite, .power-badge," +
-      " .value-box, img.flow-arrow, .glow, .fan-overlay, .stage-btn";
+      " .value-box, img.flow-arrow, .glow, .fan-overlay, .stage-btn, .release-badge";
     const klarname = (el) =>
       el.tagName.toLowerCase() + (el.className ? "." + String(el.className).split(" ")[0] : "");
 
@@ -755,6 +845,13 @@ const kontaktbogen = async () => {
         wp({ show_mode: true, mode_entity: "input_select.wp_modus_heizen", label_text: "neutral" }),
       ])
   );
+  /* ---- Iteration 12 ---- */
+  await abschnitt(
+    "Wärmepumpe: Freigabekontakt (geschlossen = frei · offen = gesperrt, Rad steht · binary_sensor = nur Anzeige)",
+    1200,
+    (b) => reihe(b, 3, [window.demo.wpFreigabe("frei"), window.demo.wpFreigabe("gesperrt"), window.demo.wpFreigabe("meldung")])
+  );
+
   await abschnitt("Schwarze Füllung: UV-Glühen max + Wabern, Solarfeld (Thomas' Foto), Wärmepumpe", 1200, (b) =>
     reihe(
       b,

@@ -37,7 +37,9 @@ eine Herstellerintegration in Home Assistant landen.
   Powerbutton mit Sicherheitsabfrage, animierter Lüfter in sechs Blatt-Designs (vom
   klassischen Vierblatt bis Batman). Optional mit **Betriebsmodus** (Heizen/Kühlen ×
   Silent/Smart/Auto/Boost): jeder Modus dreht das Rad in seinem eigenen Tempo, auf Wunsch
-  rot beim Heizen und blau beim Kühlen.
+  rot beim Heizen und blau beim Kühlen. Dazu optional der **Freigabekontakt**
+  (`release_entity`): offen = gesperrt, die Card zeigt es rot und das Lüfterrad steht still,
+  auch wenn der Schalter an ist — geschlossen = freigegeben.
 - **Poolpumpen-Kasten** — Stufen **N1 · N2 · N3** und **STOP** als Taster mit „seit …"-Anzeige,
   drehendes Laufrad mit eigenem Tempo je Stufe, Watt-Anzeige, optionaler Temperaturfühler,
   Hauptschalter mit Rückfrage. Funktioniert mit Impulstastern **und** mit Dauerrelais. Mit
@@ -324,11 +326,28 @@ sind davon unberührt — die Reihenfolge ist reine Anzeige.
 | `mode_attribute` | – | Statt des Zustands ein Attribut lesen, z.B. `preset_mode` bei `climate.*` |
 | `mode_speed_<modus>` | Silent `3` · Smart `5` · Auto `6` · Boost `9` | Tempo je Modus auf der Skala 1–10 (wie die Poolpumpe). `<modus>` = `heiz_silent`, `heiz_smart`, `heiz_auto`, `heiz_boost`, `kuehl_silent`, `kuehl_smart`, `kuehl_auto`, `kuehl_boost` |
 | `mode_map_<modus>` | z.B. `Heizen Silent, heat_silent, …` | Welche Gerätezustände dieser Modus heißt — Kommaliste, Groß-/Kleinschreibung, Leerzeichen, `_` und `-` egal. Leer = Vorgabe |
+| `release_entity` | – | **Freigabekontakt** (optional): `switch`, `input_boolean` oder `binary_sensor`. Offen = die Wärmepumpe darf nicht laufen, geschlossen = freigegeben |
+| `show_release` | `false` im Editor | Freigabekontakt anzeigen. In YAML reicht `release_entity`; `show_release: false` schaltet ab |
+| `release_top` / `release_left` / `release_scale` | `84` / `24` / `100` | Lage und Größe der Freigabe-Anzeige in % des Bildes |
 | `label_text` | – | Freitext-Badge auf dem Bild |
-| `show_power_button` / `show_power` / `show_current` / `show_target` / `show_fan` | `true` | Einzelne Elemente abwählen — abgewählt heißt: keine Felder im Editor und keine Schlüssel in der Config |
-| Positionsfelder | – | `power_*`, `current_*`, `target_*`, `label_*`, `power_btn_*` — im Editor je Element per Schieberegler |
+| `show_power_button` / `show_power` / `show_current` / `show_target` / `show_fan` / `show_release` | `true` (`show_release`: nur mit Entity) | Einzelne Elemente abwählen — abgewählt heißt: keine Felder im Editor und keine Schlüssel in der Config |
+| Positionsfelder | – | `power_*`, `current_*`, `target_*`, `label_*`, `power_btn_*`, `release_*` — im Editor je Element per Schieberegler |
 
-Mindestens **eine** der vier Entities sollte gesetzt sein; sonst zeigt der Kasten einen Hinweis.
+Mindestens **eine** Entity sollte gesetzt sein; sonst zeigt der Kasten einen Hinweis.
+
+#### Freigabekontakt (`release_entity`)
+
+Der Freigabekontakt ist der potentialfreie Eingang der Wärmepumpe: **offen = sie darf nicht
+laufen**, egal was an ihrem eigenen Bedienteil eingestellt ist — **geschlossen = freigegeben**,
+sie arbeitet nach ihrer eigenen Logik weiter. Damit sperrt oder gibt man sie von außen frei
+(PV-Überschuss, Zeitfenster, Nachtruhe), ohne an ihren Einstellungen zu drehen.
+
+Auf der Card sitzt dafür eine kleine Anzeige mit Kontaktsymbol: **grün + geschlossener Kontakt
+= „Frei“**, **rot + abgehobener Hebel = „Gesperrt“**. Ist der Kontakt offen, steht der Lüfter
+still — auch wenn der Schalter an ist und Watt anliegen; die Card zeigt damit, dass die
+Wärmepumpe gar nicht laufen *kann*. Ein Klick schaltet `switch`/`input_boolean` um, ein
+`binary_sensor` wird nur angezeigt. Ohne `release_entity` ändert sich nichts am bisherigen
+Verhalten.
 
 ### Slot `pump`
 
