@@ -2747,7 +2747,7 @@ check("UV-Wabern: jede Boost-Formel faellt bei 0 auf den alten Wert", () => {
   /* alle Vorkommen von --glow-boost haben den Fallback 0 */
   const ohneFallback = css.match(/var\(--glow-boost\)/g);
   assert.equal(ohneFallback, null);
-  assert.match(css, /inset:\s*calc\(-18% - var\(--glow-boost, 0\) \* 45%\)/);
+  assert.match(css, /inset:\s*calc\(-18% - var\(--glow-boost, 0\) \* 22%\)/);
   assert.match(css, /animation-duration:\s*calc\(3\.7s \/ \(1 \+ var\(--glow-boost, 0\) \* 1\.5\)\)/);
 });
 check("UV: Wabern ist sanft — ungleiche Perioden, kein Blinken, reduced-motion", () => {

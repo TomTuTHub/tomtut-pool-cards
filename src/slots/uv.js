@@ -245,18 +245,18 @@ export class TomtutPoolSlotUv extends SlotBase {
         animation-duration: calc(5.3s / (1 + var(--glow-boost, 0) * 1.5));
       }
       .glow.wabert::after {
-        inset: calc(-18% - var(--glow-boost, 0) * 45%) calc(-8% - var(--glow-boost, 0) * 8%);
+        inset: calc(-18% - var(--glow-boost, 0) * 22%) calc(-8% - var(--glow-boost, 0) * 4%);
         background: radial-gradient(
           ellipse at center,
           rgba(190, 160, 255, 0.75) 0%,
           rgba(130, 120, 255, 0.35) 45%,
           rgba(104, 128, 255, 0) 100%
         );
-        filter: blur(calc(0.5em + var(--glow-boost, 0) * 0.5em))
-          saturate(calc(1 + var(--glow-boost, 0) * 1.5));
+        filter: blur(calc(0.5em + var(--glow-boost, 0) * 0.3em))
+          saturate(calc(1 + var(--glow-boost, 0) * 1.8));
         /* Zusatz-Schein nur mit Boost — bei 0 ist er unsichtbar (Radius und
            Deckkraft 0), der alte Look bleibt also exakt */
-        box-shadow: 0 0 calc(var(--glow-boost, 0) * 0.9em) calc(var(--glow-boost, 0) * 0.15em)
+        box-shadow: 0 0 calc(var(--glow-boost, 0) * 0.6em) 0
           rgba(140, 100, 255, calc(var(--glow-boost, 0) * 0.8));
         opacity: 0;
         animation: uvWabern 3.7s ease-in-out infinite alternate;
@@ -286,22 +286,22 @@ export class TomtutPoolSlotUv extends SlotBase {
         0% {
           opacity: calc(var(--glow-pulse, 0) * 0.2 * (1 - var(--glow-boost, 0)));
           transform: scale(
-            calc(0.97 - var(--glow-boost, 0) * 0.07),
-            calc(0.94 - var(--glow-boost, 0) * 0.09)
+            calc(0.97 - var(--glow-boost, 0) * 0.05),
+            calc(0.94 - var(--glow-boost, 0) * 0.08)
           );
         }
         55% {
           opacity: calc(var(--glow-pulse, 0) * (0.7 + var(--glow-boost, 0) * 0.3));
           transform: scale(
-            calc(1.03 + var(--glow-boost, 0) * 0.12),
-            calc(1.08 + var(--glow-boost, 0) * 0.17)
+            calc(1.03 + var(--glow-boost, 0) * 0.05),
+            calc(1.08 + var(--glow-boost, 0) * 0.07)
           );
         }
         100% {
           opacity: calc(var(--glow-pulse, 0) * (0.95 + var(--glow-boost, 0) * 0.05));
           transform: scale(
-            calc(1.06 + var(--glow-boost, 0) * 0.22),
-            calc(1.14 + var(--glow-boost, 0) * 0.31)
+            calc(1.06 + var(--glow-boost, 0) * 0.08),
+            calc(1.14 + var(--glow-boost, 0) * 0.1)
           );
         }
       }
