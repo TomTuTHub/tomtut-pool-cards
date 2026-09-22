@@ -52,6 +52,27 @@ export const seit = (iso, now = Date.now()) => {
   return d <= 1 ? "seit 1 Tag" : `seit ${d} Tagen`;
 };
 
+/*
+ * Wie `seit`, aber minutengenau unter einem Tag (Iteration 14, Freigabe-
+ * kontakt): "seit 4 Min", "seit 2 Std 10 Min", "seit 3 Tagen". Unter einer
+ * Minute "seit < 1 Min" — der Text läuft nur minütlich mit.
+ */
+export const seitMinuten = (iso, now = Date.now()) => {
+  if (!iso) return "";
+  const t = Date.parse(iso);
+  if (isNaN(t)) return "";
+  const min = Math.floor(Math.max(0, now - t) / 60000);
+  if (min < 1) return "seit < 1 Min";
+  if (min < 60) return `seit ${min} Min`;
+  if (min < 24 * 60) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return m ? `seit ${h} Std ${m} Min` : `seit ${h} Std`;
+  }
+  const d = Math.floor(min / (24 * 60));
+  return d <= 1 ? "seit 1 Tag" : `seit ${d} Tagen`;
+};
+
 /* Domain einer Entity-ID ("switch.pumpe" -> "switch") */
 export const domainOf = (id) => String(id || "").split(".")[0];
 

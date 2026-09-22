@@ -26,9 +26,9 @@ export { TomtutPoolDashboardCard, TomtutPoolDashboardEditor };
 
 /* Für den Smoke-Test (und alles, was gegen das Bundle prüfen will) */
 export { PUMP_DEFAULTS, fanDuration, stageFromWatt } from "./slots/pump.js";
-export { HEATPUMP_DEFAULTS, HP_MODES, MODE_FARBEN, modeFromState } from "./slots/heatpump.js";
+export { HEATPUMP_DEFAULTS, HP_MODES, MODE_FARBEN, MODE_WOERTER, modeFromState, modeAuto, modeWort, modeBadge } from "./slots/heatpump.js";
 export { FAN_DESIGNS, FAN_DESIGN_DEFAULT } from "./shared/slot-base.js";
-export { UV_DEFAULTS } from "./slots/uv.js";
+export { UV_DEFAULTS, GLOW_PULSE_MAX, glowPulsWerte } from "./slots/uv.js";
 export {
   passFaktor,
   normGrad,
@@ -55,5 +55,5 @@ export {
   ASSET_VERSION,
   imagePath,
 } from "./shared/assets.js";
-export { numText, numOf, toWatt } from "./shared/util.js";
+export { numText, numOf, toWatt, seit, seitMinuten } from "./shared/util.js";
 export { applyPatch } from "./editor/dashboard-editor.js";

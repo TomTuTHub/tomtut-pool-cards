@@ -1,7 +1,7 @@
 import { html, css, nothing } from "lit";
 import { SlotBase } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
-import { fmt, isOn, numOf } from "../shared/util.js";
+import { fmt, isOn, numOf, seitMinuten } from "../shared/util.js";
 import { fanDuration } from "./pump.js";
 
 /*
@@ -44,6 +44,13 @@ export const HEATPUMP_DEFAULTS = {
   release_top: 84,
   release_left: 24,
   release_scale: 100,
+  /* "seit …" unter dem Freigabe-Badge (Iteration 14) — ab Werk aus */
+  show_release_since: false,
+  /* Betriebsmodus-Badge (Iteration 14) — rechts neben dem Freigabekontakt,
+     unter der Soll-Box */
+  mode_top: 86,
+  mode_left: 64,
+  mode_scale: 100,
   /* Stromverbrauch */
   power_top: 22,
   power_left: 62,
@@ -91,9 +98,15 @@ export const HP_MODES = [
 /* Farben für "Rad nach Modus einfärben" */
 export const MODE_FARBEN = { heizen: "#e0452c", kuehlen: "#2f7fd0" };
 
+/* Umlaute werden gefaltet (Iteration 14): LocalTuya liefert bei Thomas'
+   Inverpower "Kuehlen Smart", die Vorgabe heisst "Kühlen Smart". */
 const normZustand = (s) =>
   String(s ?? "")
     .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
     .replace(/[\s_-]+/g, " ")
     .trim();
 
@@ -107,11 +120,147 @@ export const modeZustaende = (c = {}, mode) => {
   return mode.zustaende;
 };
 
-/* Gerätezustand -> Modus-Eintrag aus HP_MODES (oder null) */
+/*
+ * Automatische Zuordnung (Iteration 14): ein Gerätezustand, der eine
+ * Heiz-/Kühl-Angabe UND eine Stufe enthält, wird ohne Liste erkannt —
+ * "Kuehlen Power" = Kühlen Boost, "heat_eco" = Heizen Smart. Beides muss
+ * drinstehen; "Auto" oder "Heizen" allein bleiben unerkannt (dann zeigt das
+ * Badge den Klartext, Tempo/Farbe bleiben neutral). Hintergrund: LocalTuya
+ * legt seine Rohwert->Anzeigename-Tabelle im Config-Entry ab, den das
+ * Frontend nicht lesen kann — sichtbar sind nur Zustand und `options` der
+ * Select-Entity, also die Anzeigenamen. Daran setzt diese Erkennung an.
+ */
+const AUTO_ART = [
+  ["heizen", /heiz|heat/],
+  ["kuehlen", /kuehl|cool/],
+];
+const AUTO_STUFE = [
+  ["silent", /silent|leise|quiet|mute/],
+  ["smart", /smart|eco/],
+  ["boost", /boost|power|turbo|max|strong/],
+  ["auto", /auto/],
+];
+export const modeAuto = (state) => {
+  const s = normZustand(state);
+  if (!s) return null;
+  const arten = AUTO_ART.filter(([, re]) => re.test(s)).map(([a]) => a);
+  if (arten.length !== 1) return null;
+  const stufe = AUTO_STUFE.find(([, re]) => re.test(s));
+  if (!stufe) return null;
+  const key = `${arten[0] === "heizen" ? "heiz" : "kuehl"}_${stufe[0]}`;
+  return HP_MODES.find((m) => m.key === key) || null;
+};
+
+/* Hat der Nutzer die Zuordnung eines Modus selbst gesetzt? */
+const eigeneZuordnung = (c, m) => {
+  const eigen = c?.[`mode_map_${m.key}`];
+  return (typeof eigen === "string" && !!eigen.trim()) || (Array.isArray(eigen) && eigen.length > 0);
+};
+
+/*
+ * Gerätezustand -> Modus-Eintrag aus HP_MODES (oder null).
+ * Reihenfolge: eigene/Vorgabe-Liste, dann die automatische Erkennung — die
+ * greift aber nie für einen Modus, dessen Liste der Nutzer selbst gesetzt
+ * hat (eigene Zuordnung ist verbindlich).
+ */
 export const modeFromState = (state, c = {}) => {
   const s = normZustand(state);
   if (!s) return null;
-  return HP_MODES.find((m) => modeZustaende(c, m).some((z) => normZustand(z) === s)) || null;
+  const liste = HP_MODES.find((m) => modeZustaende(c, m).some((z) => normZustand(z) === s));
+  if (liste) return liste;
+  const auto = modeAuto(state);
+  return auto && !eigeneZuordnung(c, auto) ? auto : null;
+};
+
+/*
+ * Betriebsmodus als Klartext (Iteration 14) — fürs Badge auf der Card.
+ * Übersetzt die üblichen HA-Werte (hvac_mode, preset_mode) ins Deutsche;
+ * alles Unbekannte kommt als Rohwert durch (lieber "Abtauen" oder
+ * "defrost" zeigen als gar nichts).
+ */
+export const MODE_WOERTER = {
+  off: "Aus",
+  aus: "Aus",
+  heat: "Heizen",
+  heating: "Heizen",
+  heizen: "Heizen",
+  cool: "Kühlen",
+  cooling: "Kühlen",
+  kuehlen: "Kühlen",
+  kühlen: "Kühlen",
+  auto: "Auto",
+  "heat cool": "Heizen/Kühlen",
+  dry: "Entfeuchten",
+  "fan only": "Nur Lüfter",
+  idle: "Bereit",
+  standby: "Standby",
+  silent: "Silent",
+  smart: "Smart",
+  boost: "Boost",
+  turbo: "Turbo",
+  powerful: "Power",
+  eco: "Eco",
+  comfort: "Komfort",
+  away: "Abwesend",
+  sleep: "Nacht",
+  home: "Zuhause",
+  activity: "Aktiv",
+};
+
+/* Grund-Art eines Werts: heizen / kuehlen / aus — sonst null (neutral) */
+const MODE_ART = {
+  off: "aus",
+  aus: "aus",
+  heat: "heizen",
+  heating: "heizen",
+  heizen: "heizen",
+  cool: "kuehlen",
+  cooling: "kuehlen",
+  kuehlen: "kuehlen",
+  kühlen: "kuehlen",
+};
+
+const totWert = (s) => ["", "unknown", "unavailable", "none"].includes(normZustand(s));
+
+export const modeWort = (s) => {
+  const n = normZustand(s);
+  return Object.prototype.hasOwnProperty.call(MODE_WOERTER, n)
+    ? MODE_WOERTER[n]
+    : String(s ?? "").trim();
+};
+
+/*
+ * Entity-Zustand -> { text, art } fürs Badge (art: heizen|kuehlen|aus|null).
+ *   1. Trifft der Wert einen der acht Modi (HP_MODES), gilt dessen Label —
+ *      exakt das, woraus auch Tempo und Farbe des Rads kommen.
+ *   2. Bei climate.* wird hvac_mode (Zustand) mit preset_mode kombiniert:
+ *      erst als Modus-Kombination ("heat" + "silent" = Heizen Silent), sonst
+ *      als "Heizen · Eco". "off" ist immer "Aus", egal welches Preset.
+ *   3. Sonst übersetzt, und was keiner kennt, als Rohwert.
+ * Ohne brauchbaren Wert (unknown/unavailable): "—".
+ */
+export const modeBadge = (e, c = {}) => {
+  if (!e) return null;
+  const attr = String(c.mode_attribute || "").trim();
+  const roh = attr ? e.attributes?.[attr] : e.state;
+  const m = modeFromState(roh, c);
+  if (m) return { text: m.label, art: m.art };
+  const climate = String(c.mode_entity || "").startsWith("climate.");
+  let basis = roh;
+  let preset = null;
+  if (climate && (!attr || attr === "preset_mode")) {
+    basis = e.state;
+    preset = attr ? roh : e.attributes?.preset_mode;
+  }
+  if (totWert(basis) && totWert(preset)) return { text: "—", art: null };
+  const art = MODE_ART[normZustand(basis)] || null;
+  if (art === "aus") return { text: "Aus", art };
+  if (!totWert(basis) && !totWert(preset)) {
+    const kombi = modeFromState(`${basis} ${preset}`, c);
+    if (kombi) return { text: kombi.label, art: kombi.art };
+  }
+  const teile = [basis, preset].filter((x) => !totWert(x)).map(modeWort);
+  return { text: teile.join(" · "), art };
 };
 
 /*
@@ -149,8 +298,51 @@ export const heatpumpHasEntity = (c = {}) =>
   );
 
 export class TomtutPoolSlotHeatpump extends SlotBase {
+  static properties = {
+    ...SlotBase.properties,
+    _tick: { state: true },
+  };
+
   get defaults() {
     return HEATPUMP_DEFAULTS;
+  }
+
+  /*
+   * "seit …" am Freigabekontakt läuft minütlich mit — der Timer existiert
+   * nur, solange die Option an ist und die Card im DOM hängt.
+   */
+  get _seitAn() {
+    const c = this.config || {};
+    return c.show_release_since === true && c.show_release !== false && !!c.release_entity;
+  }
+
+  _seitTimerPruefen() {
+    const soll = this.isConnected && this._seitAn;
+    if (soll && !this._seitTimer) {
+      this._seitTimer = setInterval(() => {
+        this._tick = Date.now();
+      }, 60000);
+      if (typeof this._seitTimer?.unref === "function") this._seitTimer.unref();
+    } else if (!soll && this._seitTimer) {
+      clearInterval(this._seitTimer);
+      this._seitTimer = undefined;
+    }
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._seitTimerPruefen();
+  }
+
+  disconnectedCallback() {
+    clearInterval(this._seitTimer);
+    this._seitTimer = undefined;
+    super.disconnectedCallback();
+  }
+
+  updated(changed) {
+    super.updated?.(changed);
+    this._seitTimerPruefen();
   }
 
   get powerEntityId() {
@@ -233,6 +425,11 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
           <span class="val">${freigabe === null ? "—" : gesperrt ? "Gesperrt" : "Frei"}</span>
           <span class="unit">Freigabe</span>
         </span>
+        ${this._seitAn && freigabe !== null
+          ? html`<span class="release-seit"
+              >${seitMinuten(this._ent(this.config.release_entity)?.last_changed)}</span
+            >`
+          : nothing}
       </div>
     `;
   }
@@ -287,6 +484,37 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     const attr = String(c.mode_attribute || "").trim();
     const roh = attr ? e.attributes?.[attr] : e.state;
     return modeFromState(roh, c);
+  }
+
+  /* Badge-Inhalt (Iteration 14) — null, wenn kein Modus ausgewertet wird */
+  get _modusBadge() {
+    const c = this.config || {};
+    if (c.show_mode === false || c.show_mode_badge === false || !c.mode_entity) return null;
+    return modeBadge(this._ent(c.mode_entity), c) || { text: "—", art: null };
+  }
+
+  /*
+   * Betriebsmodus als Text-Badge — einzeilig (Punkt + Wort), damit es
+   * auch in schmalen Spalten neben den Freigabekontakt passt. Farbe = dieselbe Palette wie das Rad
+   * (MODE_FARBEN, über die CSS-Variable --tt-mode-farbe); Aus/unbekannt
+   * bleibt neutral im Box-Look. Reine Anzeige, kein Klick.
+   */
+  _renderModeBadge(b) {
+    const farbe = MODE_FARBEN[b.art] || "";
+    return html`
+      <div
+        class="mode-badge ${b.art || "neutral"}"
+        style="top:${this._v("mode_top")}%; left:${this._v(
+          "mode_left"
+        )}%; transform:translateX(-50%) scale(${(this._v("mode_scale") ?? 100) / 100});${farbe
+          ? ` --tt-mode-farbe:${farbe};`
+          : ""}"
+        title="Betriebsmodus: ${b.text}"
+      >
+        <span class="mode-punkt"></span>
+        <span class="val">${b.text}</span>
+      </div>
+    `;
   }
 
   /* Umlaufzeit des Rads: aus dem Modus, sonst der alte 0..100-Regler */
@@ -368,6 +596,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     const showTarget = c.show_target !== false && !!c.target_entity;
     const showCurrent = c.show_current !== false && !!c.current_entity;
     const labelText = c.label_text || "";
+    const modusBadge = this._modusBadge;
 
     const fanDur = this._fanDur;
     const target = this._target;
@@ -399,6 +628,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
             })
           : nothing}
         ${showRelease ? this._renderRelease() : nothing}
+        ${modusBadge ? this._renderModeBadge(modusBadge) : nothing}
         ${showPower
           ? this.renderValueBox({
               value: this.wattText(c.power_entity),
@@ -593,6 +823,61 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
       .release-badge.gesperrt svg,
       .release-badge.gesperrt .val {
         color: #ef5350;
+      }
+
+      /* "seit …" klein unter dem Freigabe-Badge (Iteration 14) */
+      .release-badge .release-seit {
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        margin-top: 0.15em;
+        padding: 0.05em 0.45em;
+        border-radius: 0.5em;
+        background: var(--tt-box-bg);
+        color: var(--tt-box-fg);
+        font-size: 0.72em;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      /*
+       * Betriebsmodus-Badge (Iteration 14). Gleicher Kasten wie der
+       * Freigabekontakt; Rand, Punkt und Wort nehmen die Modusfarbe des
+       * Rads an (--tt-mode-farbe aus MODE_FARBEN). Ohne Farbe: Box-Look.
+       */
+      .mode-badge {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 0.45em;
+        padding: 0.35em 0.7em;
+        border-radius: 0.7em;
+        background: var(--tt-box-bg);
+        color: var(--tt-box-fg);
+        border: 1.5px solid var(--tt-mode-farbe, var(--tt-line));
+        line-height: 1.15;
+        white-space: nowrap;
+        backdrop-filter: blur(4px);
+        pointer-events: none;
+        z-index: 4;
+      }
+      .mode-badge .mode-punkt {
+        width: 0.75em;
+        height: 0.75em;
+        border-radius: 50%;
+        background: var(--tt-mode-farbe, var(--tt-line));
+        flex: none;
+      }
+      .mode-badge .val {
+        font-size: 1.05em;
+        color: var(--tt-mode-farbe, inherit);
+      }
+      .mode-badge .unit {
+        margin-top: 0;
+      }
+      .mode-badge.aus {
+        opacity: 0.75;
       }
     `,
   ];

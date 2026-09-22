@@ -2719,11 +2719,36 @@ check("UV: Wabern 0 -> ruhig, statisch wie frueher", () => {
   assert.ok(g.classList.contains("ruhig"));
   assert.ok(!g.classList.contains("wabert"));
 });
-const uvMax = await mountUv({ ...UV_CONFIG, glow_pulse: 250, glow_intensity: 100 });
-check("UV: Wabern wird auf 0..100 geklemmt, Leuchtstaerke bleibt am Kern", () => {
+const uvMax = await mountUv({ ...UV_CONFIG, glow_pulse: 999, glow_intensity: 100 });
+check("UV: Wabern wird auf 0..300 geklemmt, Leuchtstaerke bleibt am Kern", () => {
   const stil = uvMax.shadowRoot.querySelector(".glow").getAttribute("style");
-  assert.match(stil, /--glow-pulse:1(;|$)/);
+  assert.match(stil, /--glow-pulse:1;/);
+  assert.match(stil, /--glow-boost:1(;|$)/);
   assert.match(stil, /opacity:1(;|$)/);
+});
+/* Iteration 14: Bereich 0..300 — alte Werte muessen exakt gleich bleiben */
+check("UV-Wabern: alte Werte 0..100 rechnen exakt wie vorher, ohne Boost", () => {
+  assert.equal(pkg.GLOW_PULSE_MAX, 300);
+  for (const alt of [0, 1, 25, 40, 60, 99, 100]) {
+    assert.deepEqual(pkg.glowPulsWerte(alt), { puls: alt / 100, boost: 0 }, `Wert ${alt}`);
+  }
+  assert.deepEqual(pkg.glowPulsWerte(200), { puls: 1, boost: 0.5 });
+  assert.deepEqual(pkg.glowPulsWerte(300), { puls: 1, boost: 1 });
+  assert.deepEqual(pkg.glowPulsWerte(-5), { puls: 0, boost: 0 });
+  assert.deepEqual(pkg.glowPulsWerte("x"), { puls: 0, boost: 0 });
+});
+check("UV-Wabern: alter Stil bleibt Zeichen fuer Zeichen (kein --glow-boost bis 100)", () => {
+  const stil = uv.shadowRoot.querySelector(".glow").getAttribute("style");
+  assert.ok(!/--glow-boost/.test(stil));
+  assert.match(stil, /--glow-pulse:0\.4;$/);
+});
+check("UV-Wabern: jede Boost-Formel faellt bei 0 auf den alten Wert", () => {
+  const css = cssOf("tomtut-pool-slot-uv");
+  /* alle Vorkommen von --glow-boost haben den Fallback 0 */
+  const ohneFallback = css.match(/var\(--glow-boost\)/g);
+  assert.equal(ohneFallback, null);
+  assert.match(css, /inset:\s*calc\(-18% - var\(--glow-boost, 0\) \* 45%\)/);
+  assert.match(css, /animation-duration:\s*calc\(3\.7s \/ \(1 \+ var\(--glow-boost, 0\) \* 1\.5\)\)/);
 });
 check("UV: Wabern ist sanft — ungleiche Perioden, kein Blinken, reduced-motion", () => {
   const css = cssOf("tomtut-pool-slot-uv");
@@ -2866,11 +2891,11 @@ check("Editor: Waermepumpe — Blatt-Design, Farbe, Modus-Entity, 8 Tempi, 8 Zuo
     assert.ok(feld9(0, `mode_map_${m.key}`), `Zuordnung ${m.key} fehlt`);
   }
 });
-check("Editor: UV — Regler 'Wabern / Glimmen' 0..100", () => {
+check("Editor: UV — Regler 'Wabern / Glimmen' 0..300 (seit Iteration 14)", () => {
   const r = feld9(2, "glow_pulse");
   assert.ok(r);
   assert.equal(r.getAttribute("min"), "0");
-  assert.equal(r.getAttribute("max"), "100");
+  assert.equal(r.getAttribute("max"), "300");
   assert.equal(r.value, "40");
 });
 let ed9Fired = null;
@@ -3163,6 +3188,222 @@ check("Umlaute: auch die Card-Beschreibung im Kartenwaehler", () => {
   const eintrag = window.customCards.find((c) => c.type === "tomtut-pool-dashboard");
   assert.ok(!ERSATZ.test(eintrag.name + " " + eintrag.description));
 });
+
+/* ------------------------------------------------------------------ */
+/* Iteration 14: Betriebsmodus-Badge, "seit" am Freigabekontakt,       */
+/* automatische Modus-Zuordnung (LocalTuya-Anzeigenamen)               */
+/* ------------------------------------------------------------------ */
+
+const WP_SEL = "select.wp_modus_tuya";
+const TUYA_OPTIONEN = [
+  "Auto", "Heizen Power", "Kuehlen Power", "Heizen Smart", "Kuehlen Smart", "Heizen Silent", "Kuehlen Silent",
+];
+const badgeVon = (zustand, c = {}, attrs = {}) =>
+  pkg.modeBadge({ state: zustand, attributes: attrs }, { mode_entity: WP_SEL, ...c });
+
+check("Modus automatisch: Thomas' LocalTuya-Optionen landen alle bis auf 'Auto'", () => {
+  const erkannt = Object.fromEntries(TUYA_OPTIONEN.map((o) => [o, pkg.modeFromState(o)?.key || null]));
+  assert.deepEqual(erkannt, {
+    Auto: null,
+    "Heizen Power": "heiz_boost",
+    "Kuehlen Power": "kuehl_boost",
+    "Heizen Smart": "heiz_smart",
+    "Kuehlen Smart": "kuehl_smart",
+    "Heizen Silent": "heiz_silent",
+    "Kuehlen Silent": "kuehl_silent",
+  });
+});
+check("Modus automatisch: braucht Art UND Stufe", () => {
+  assert.equal(pkg.modeAuto("Heizen"), null);
+  assert.equal(pkg.modeAuto("Auto"), null);
+  assert.equal(pkg.modeAuto("heat_cool"), null);
+  assert.equal(pkg.modeAuto("cool_eco").key, "kuehl_smart");
+  assert.equal(pkg.modeAuto("HEAT-TURBO").key, "heiz_boost");
+});
+check("Modus automatisch: Umlaute gefaltet — 'Kuehlen Smart' trifft die Vorgabe 'Kühlen Smart'", () =>
+  assert.equal(pkg.modeFromState("Kuehlen Smart").label, "Kühlen Smart")
+);
+check("Modus automatisch: eigene Liste schlaegt die Automatik fuer diesen Modus", () =>
+  assert.equal(pkg.modeFromState("Heizen Power", { mode_map_heiz_boost: "Volldampf" }), null)
+);
+
+check("Modus-Badge: Mapping auf deutschen Klartext", () => {
+  assert.deepEqual(badgeVon("Heizen Boost"), { text: "Heizen Boost", art: "heizen" });
+  assert.deepEqual(badgeVon("Kuehlen Power"), { text: "Kühlen Boost", art: "kuehlen" });
+  assert.deepEqual(badgeVon("off"), { text: "Aus", art: "aus" });
+  assert.deepEqual(badgeVon("Auto"), { text: "Auto", art: null });
+  assert.deepEqual(badgeVon("fan_only"), { text: "Nur Lüfter", art: null });
+  assert.deepEqual(badgeVon("unavailable"), { text: "—", art: null });
+});
+check("Modus-Badge: unbekannter Wert kommt als Rohwert, nicht versteckt", () =>
+  assert.deepEqual(badgeVon("Abtauen"), { text: "Abtauen", art: null })
+);
+check("Modus-Badge: climate = hvac_mode + Preset", () => {
+  const cl = { mode_entity: "climate.wp" };
+  assert.deepEqual(pkg.modeBadge({ state: "heat", attributes: { preset_mode: "eco" } }, cl), {
+    text: "Heizen Smart",
+    art: "heizen",
+  });
+  assert.deepEqual(pkg.modeBadge({ state: "heat", attributes: { preset_mode: "comfort" } }, cl), {
+    text: "Heizen · Komfort",
+    art: "heizen",
+  });
+  assert.deepEqual(pkg.modeBadge({ state: "cool", attributes: { preset_mode: "none" } }, cl), {
+    text: "Kühlen",
+    art: "kuehlen",
+  });
+  assert.deepEqual(pkg.modeBadge({ state: "off", attributes: { preset_mode: "boost" } }, cl), {
+    text: "Aus",
+    art: "aus",
+  });
+});
+
+const MODUS_SEL = { ...HP_CONFIG, show_mode: true, mode_entity: WP_SEL };
+const selHass = (zustand, extra = {}) =>
+  makeHass({
+    [WP_SEL]: { state: zustand, attributes: { options: TUYA_OPTIONEN }, last_changed: iso(60) },
+    ...extra,
+  });
+const badge = (slot) => slot.shadowRoot.querySelector(".mode-badge");
+
+check("Modus-Badge: Vorgaben fuer Lage und Groesse", () => {
+  const d = pkg.HEATPUMP_DEFAULTS;
+  assert.equal(d.mode_top, 86);
+  assert.equal(d.mode_left, 64);
+  assert.equal(d.mode_scale, 100);
+});
+const hpKuehl = await mountSlotTyp({ ...MODUS_SEL, fan_color_mode: "modus" }, selHass("Kuehlen Smart"));
+check("Modus-Badge: zeigt Klartext in der Farbe des Rads", () => {
+  const b = badge(hpKuehl);
+  assert.ok(b, "kein Badge");
+  assert.equal(b.querySelector(".val").textContent.trim(), "Kühlen Smart");
+  assert.ok(b.classList.contains("kuehlen"));
+  assert.match(b.getAttribute("style"), new RegExp(`--tt-mode-farbe:${pkg.MODE_FARBEN.kuehlen}`));
+  assert.equal(farbeVon(hpKuehl), pkg.MODE_FARBEN.kuehlen, "Rad und Badge nicht gleich gefaerbt");
+  assert.match(b.getAttribute("style"), /top:86%; left:64%/);
+});
+const hpRoh = await mountSlotTyp(MODUS_SEL, selHass("Abtauen"));
+check("Modus-Badge: unbekannt -> Rohwert, neutral ohne Farbe", () => {
+  const b = badge(hpRoh);
+  assert.equal(b.querySelector(".val").textContent.trim(), "Abtauen");
+  assert.ok(b.classList.contains("neutral"));
+  assert.ok(!/--tt-mode-farbe/.test(b.getAttribute("style")));
+});
+const hpBadgeAus = await mountSlotTyp(
+  { ...MODUS_SEL, fan_color_mode: "modus", show_mode_badge: false },
+  selHass("Heizen Power")
+);
+check("Modus-Badge: show_mode_badge false blendet nur das Badge aus, das Rad bleibt rot", () => {
+  assert.equal(badge(hpBadgeAus), null);
+  assert.equal(farbeVon(hpBadgeAus), pkg.MODE_FARBEN.heizen);
+});
+const hpModusGanzAus = await mountSlotTyp({ ...MODUS_SEL, show_mode: false }, selHass("Heizen Power"));
+check("Modus-Badge: ohne Modus-Auswertung (show_mode false / keine Entity) kein Badge", () => {
+  assert.equal(badge(hpModusGanzAus), null);
+  assert.equal(badge(hp), null);
+});
+const hpLage = await mountSlotTyp({ ...MODUS_SEL, mode_top: 10, mode_left: 30, mode_scale: 150 }, selHass("Auto"));
+check("Modus-Badge: Lage und Groesse einstellbar", () =>
+  assert.match(badge(hpLage).getAttribute("style"), /top:10%; left:30%; transform:translateX\(-50%\) scale\(1\.5\)/)
+);
+check("Modus-Badge: liegt in der z-index-Leiter (<= 10)", () => {
+  const z = zIndexVon(cssOf("tomtut-pool-slot-heatpump"), ".mode-badge");
+  assert.ok(z > 0 && z <= 10, `z-index ${z}`);
+});
+
+/* ---- "seit" am Freigabekontakt ---- */
+
+check("seit (minutengenau): Format", () => {
+  const jetzt = Date.parse("2026-09-22T12:00:00Z");
+  const vor = (min) => new Date(jetzt - min * 60000).toISOString();
+  assert.equal(pkg.seitMinuten(vor(0.5), jetzt), "seit < 1 Min");
+  assert.equal(pkg.seitMinuten(vor(4), jetzt), "seit 4 Min");
+  assert.equal(pkg.seitMinuten(vor(120), jetzt), "seit 2 Std");
+  assert.equal(pkg.seitMinuten(vor(130), jetzt), "seit 2 Std 10 Min");
+  assert.equal(pkg.seitMinuten(vor(24 * 60 + 5), jetzt), "seit 1 Tag");
+  assert.equal(pkg.seitMinuten(vor(3 * 24 * 60 + 70), jetzt), "seit 3 Tagen");
+  assert.equal(pkg.seitMinuten("", jetzt), "");
+});
+const seitHass = () =>
+  makeHass({ [FREI_ENT]: { state: "on", attributes: {}, last_changed: iso(4 * 60 + 5) } });
+check("Freigabe-seit: ab Werk aus", () => {
+  assert.equal(pkg.HEATPUMP_DEFAULTS.show_release_since, false);
+  assert.equal(hpFrei.shadowRoot.querySelector(".release-seit"), null);
+  assert.equal(hpFrei._seitTimer, undefined, "Timer laeuft ohne Option");
+});
+const hpSeit = await mountSlotTyp({ ...HP_FREI, show_release_since: true }, seitHass());
+check("Freigabe-seit: an -> 'seit 4 Min' unter dem Badge, Timer laeuft", () => {
+  const s = hpSeit.shadowRoot.querySelector(".release-badge .release-seit");
+  assert.ok(s, "kein seit-Text");
+  assert.equal(s.textContent.trim(), "seit 4 Min");
+  assert.ok(hpSeit._seitTimer, "kein Minuten-Timer");
+});
+{
+  /* Minuten-Takt: der Timer stoesst ein Neuzeichnen an */
+  const vorher = hpSeit._tick;
+  hpSeit._tick = Date.now() + 1;
+  await hpSeit.updateComplete;
+  check("Freigabe-seit: Takt zeichnet neu", () => assert.notEqual(hpSeit._tick, vorher));
+}
+hpSeit.remove();
+check("Freigabe-seit: Card entfernt -> Timer abgeraeumt", () =>
+  assert.equal(hpSeit._seitTimer, undefined)
+);
+
+/* ---- Editor ---- */
+
+const ed14 = new Editor();
+ed14.setConfig({
+  hero: { enabled: false },
+  slots: [
+    { type: "heatpump", show_mode: true, mode_entity: WP_SEL, show_release: true, release_entity: FREI_ENT },
+    { type: "heatpump", show_mode: true, mode_entity: "select.wp_modus_fremd" },
+  ],
+});
+ed14.hass = selHass("Heizen Smart", {
+  [FREI_ENT]: { state: "on", attributes: {}, last_changed: iso(60) },
+  "select.wp_modus_fremd": { state: "Abtauen", attributes: { options: ["Abtauen"] }, last_changed: iso(60) },
+});
+document.body.appendChild(ed14);
+await ed14.updateComplete;
+const karten14 = () => [...ed14.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")];
+const erweitert14 = (i) =>
+  [...karten14()[i].querySelectorAll("details.section")].find((d) =>
+    /Erweitert: Modus-Namen anpassen/.test(d.querySelector("summary").textContent)
+  );
+
+check("Editor: Freigabe hat den Schalter 'Zeit seit dem letzten Wechsel', ab Werk aus", () => {
+  const t = karten14()[0].querySelector('[data-key="show_release_since"]');
+  assert.ok(t);
+  assert.equal(t.checked, false);
+});
+check("Editor: Abschnitt heisst 'Erweitert: Modus-Namen anpassen' und ist zu, wenn erkannt", () => {
+  const d = erweitert14(0);
+  assert.ok(d, "Abschnitt fehlt");
+  assert.equal(d.open, false);
+  assert.ok(!/Zuordnung Gerätezustand/.test(ed14.shadowRoot.textContent), "alter Titel noch da");
+});
+check("Editor: Live-Befund 'meldet gerade … erkannt als … ✓' plus Optionsliste", () => {
+  const d = erweitert14(0);
+  const zeile = d.querySelector(".modus-befund").textContent.replace(/\s+/g, " ");
+  assert.match(zeile, /Deine Pumpe meldet gerade: Heizen Smart → erkannt als Heizen Smart ✓/);
+  const li = [...d.querySelectorAll(".modus-optionen li")].map((x) => x.textContent.replace(/\s+/g, " ").trim());
+  assert.equal(li.length, 7);
+  assert.ok(li.includes("Kuehlen Power → Kühlen Boost ✓"), li.join(" | "));
+  assert.ok(li.includes("Auto → nicht erkannt ✗"));
+});
+check("Editor: nicht erkannt -> Hinweis, und der Abschnitt klappt von selbst auf", () => {
+  const d = erweitert14(1);
+  assert.equal(d.open, true);
+  assert.match(d.querySelector(".modus-befund").textContent, /nicht erkannt ✗ – bitte unten zuordnen/);
+});
+check("Editor: Badge-Schalter und drei Regler beim Betriebsmodus", () => {
+  for (const k of ["show_mode_badge", "mode_top", "mode_left", "mode_scale"]) {
+    assert.ok(karten14()[0].querySelector(`[data-key="${k}"]`), `${k} fehlt`);
+  }
+  assert.equal(karten14()[0].querySelector('[data-key="show_mode_badge"]').checked, true);
+});
+ed14.remove();
 
 /* ------------------------------------------------------------------ */
 

@@ -2,7 +2,7 @@ import { html, nothing } from "lit";
 import { section, elementsGroup } from "../shared/fields.js";
 import { SHAPES } from "../shared/assets.js";
 import { FAN_SPEED_MIN, FAN_SPEED_MAX } from "../slots/pump.js";
-import { HP_MODES } from "../slots/heatpump.js";
+import { HP_MODES, modeFromState } from "../slots/heatpump.js";
 import { FAN_DESIGNS } from "../shared/slot-base.js";
 import { GROESSE_MIN, GROESSE_MAX } from "../shared/bild.js";
 
@@ -161,6 +161,75 @@ export const heroFields = (f) => html`
 
 /* ---------------- Wärmepumpe ---------------- */
 
+/*
+ * Live-Befund der Modus-Erkennung (Iteration 14): was meldet die gewählte
+ * Entity gerade, und welcher der acht Modi wird daraus? Dazu — wenn die
+ * Entity sie hat — alle ihre Optionen (select: `options`, climate:
+ * `preset_modes` bzw. `hvac_modes`) mit ihrer Zuordnung. Mehr sieht das
+ * Frontend nicht: die Rohwert-Tabelle von LocalTuya liegt im Config-Entry.
+ */
+export const modusBefund = (hass, c = {}) => {
+  const id = c.mode_entity;
+  const e = id ? hass?.states?.[id] : null;
+  if (!e) return null;
+  const attr = String(c.mode_attribute || "").trim();
+  const roh = attr ? e.attributes?.[attr] : e.state;
+  const a = e.attributes || {};
+  const optionen = Array.isArray(a.options)
+    ? a.options
+    : attr === "preset_mode" && Array.isArray(a.preset_modes)
+    ? a.preset_modes
+    : !attr && Array.isArray(a.hvac_modes)
+    ? a.hvac_modes
+    : [];
+  return {
+    roh: roh ?? "",
+    modus: modeFromState(roh, c),
+    optionen: optionen.map((o) => ({ wert: String(o), modus: modeFromState(o, c) })),
+  };
+};
+
+const modusZuordnungFelder = (f) => {
+  const b = modusBefund(f.hass, f.config);
+  const zeile = !b
+    ? html`<div class="modus-befund">Wähle oben die Modus-Entity — dann steht hier, was sie meldet.</div>`
+    : html`<div class="modus-befund ${b.modus ? "ok" : "nein"}">
+        Deine Pumpe meldet gerade: <b>${String(b.roh) || "—"}</b> →
+        ${b.modus
+          ? html`erkannt als <b>${b.modus.label}</b> ✓`
+          : html`nicht erkannt ✗ – bitte unten zuordnen`}
+      </div>`;
+  const liste =
+    b && b.optionen.length
+      ? html`<div class="modus-optionen">
+          <small>Die Entity kennt diese Werte (automatisch zugeordnet):</small>
+          <ul>
+            ${b.optionen.map(
+              (o) =>
+                html`<li class="${o.modus ? "ok" : "nein"}">
+                  ${o.wert} → ${o.modus ? html`${o.modus.label} ✓` : html`nicht erkannt ✗`}
+                </li>`
+            )}
+          </ul>
+        </div>`
+      : nothing;
+  return section(
+    "Erweitert: Modus-Namen anpassen",
+    html`
+      ${zeile} ${liste}
+      ${HP_MODES.map((m) => f.text(m.label, `mode_map_${m.key}`, "", m.zustaende.join(", ")))}
+      <small>
+        Normalerweise nicht nötig: Werte mit Heizen/Kühlen und einer Stufe (Silent, Smart/Eco,
+        Auto, Boost/Power/Turbo) erkennt die Card selbst, auch ohne Umlaute geschrieben. Nur
+        wenn oben etwas „nicht erkannt" ist: hier die Zustände als Kommaliste eintragen. Eine
+        eigene Liste ersetzt für diesen Modus Vorgabe und Automatik. Leer = Vorgabe (grau).
+      </small>
+    `,
+    /* zu — außer die aktuelle Meldung wird nicht erkannt: dann braucht man ihn */
+    !!b && !b.modus && String(b.roh) !== "" && !["unknown", "unavailable"].includes(String(b.roh))
+  );
+};
+
 export const heatpumpFields = (f) => html`
   ${elementsGroup(html`
     ${f.element("⏻ Powerbutton", "show_power_button", [
@@ -173,7 +242,7 @@ export const heatpumpFields = (f) => html`
     ${f.element(
       "🔌 Freigabekontakt",
       "show_release",
-      ["release_entity", "release_top", "release_left", "release_scale"],
+      ["release_entity", "release_top", "release_left", "release_scale", "show_release_since"],
       false
     )}
     ${f.element("⚡ Stromverbrauch", "show_power", [
@@ -220,6 +289,10 @@ export const heatpumpFields = (f) => html`
       [
         "mode_entity",
         "mode_attribute",
+        "show_mode_badge",
+        "mode_top",
+        "mode_left",
+        "mode_scale",
         ...HP_MODES.flatMap((m) => [`mode_speed_${m.key}`, `mode_map_${m.key}`]),
       ],
       false
@@ -266,6 +339,8 @@ export const heatpumpFields = (f) => html`
             ${f.slider("Größe", "release_scale", 50, 200)}
           `
         )}
+        ${f.toggle("Zeit seit dem letzten Wechsel anzeigen", "show_release_since", false)}
+        <small>Klein unter dem Badge, z.B. „seit 2 Std 10 Min" — läuft minütlich mit.</small>
       `
     : nothing}
   ${f.shown("show_power")
@@ -419,6 +494,19 @@ export const heatpumpFields = (f) => html`
           "z.B. preset_mode"
         )}
         ${section(
+          "Betriebsmodus — Anzeige auf der Card",
+          html`
+            ${f.toggle("Modus als Badge anzeigen", "show_mode_badge", true)}
+            ${f.slider("Von oben", "mode_top", 0, 100, "%", 0.5)}
+            ${f.slider("Von links", "mode_left", 0, 100, "%", 0.5)}
+            ${f.slider("Größe", "mode_scale", 50, 200)}
+            <small>
+              Klartext wie Heizen, Kühlen, Auto, Aus — bei climate.* mit Preset (z.B.
+              Heizen · Eco). Unbekannte Werte erscheinen unübersetzt. Farbe wie das Rad.
+            </small>
+          `
+        )}
+        ${section(
           "Betriebsmodus — Tempo je Modus",
           html`
             ${HP_MODES.map((m) =>
@@ -428,18 +516,7 @@ export const heatpumpFields = (f) => html`
           `,
           true
         )}
-        ${section(
-          "Betriebsmodus — Zuordnung Gerätezustand → Modus",
-          html`
-            ${HP_MODES.map((m) =>
-              f.text(m.label, `mode_map_${m.key}`, "", m.zustaende.join(", "))
-            )}
-            <small>
-              Kommaliste der Zustände, die dieser Modus heißt. Leer = Vorgabe (grau).
-              Groß-/Kleinschreibung, Leerzeichen und _ sind egal.
-            </small>
-          `
-        )}
+        ${modusZuordnungFelder(f)}
       `
     : nothing}
   ${f.text("Freitext auf der Card (optional)", "label_text", "", "z.B. Pool-Wärmepumpe")}
@@ -727,10 +804,11 @@ export const uvFields = (f) => html`
           ${f.slider("Dicke", "glow_thickness", 2, 60, "%", 0.5)}
           ${f.slider("Neigung", "glow_angle", -90, 90, "°", 1)}
           ${f.slider("Leuchtstärke", "glow_intensity", 10, 100)}
-          ${f.slider("Wabern / Glimmen", "glow_pulse", 0, 100)}
+          ${f.slider("Wabern / Glimmen", "glow_pulse", 0, 300)}
           <small>
             Leuchtet nur, solange der Schalter an ist. „Wabern" lässt den Schein sanft
-            atmen — 0 = ruhig und statisch. Wer im System „Bewegung reduzieren" eingestellt
+            atmen — 0 = ruhig und statisch, bis 100 sanft, darüber bis 300 richtig kräftig
+            (größerer Hof, schnellerer Puls). Wer im System „Bewegung reduzieren" eingestellt
             hat, sieht ihn immer ruhig.
           </small>
         `

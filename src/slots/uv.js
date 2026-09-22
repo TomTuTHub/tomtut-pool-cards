@@ -64,8 +64,26 @@ export const UV_DEFAULTS = {
   glow_thickness: 13,
   glow_angle: -15,
   glow_intensity: 80,
-  /* Wabern/Glimmen, 0 = aus (statisch wie vor Iteration 9) */
+  /* Wabern/Glimmen, 0 = aus (statisch wie vor Iteration 9). Bereich seit
+     Iteration 14 0–300: bis 100 exakt die alte Kurve, darüber Verstärkung. */
   glow_pulse: 40,
+};
+
+/*
+ * Wabern-Regler -> CSS-Größen (Iteration 14).
+ *   puls  0..1 = Wert/100, gedeckelt bei 1 — der ALTE Regler. Alles bis 100
+ *              rechnet exakt wie vorher, gesetzte Configs sehen gleich aus.
+ *   boost 0..1 = (Wert-100)/200 — nur über 100: größerer, hellerer Hof,
+ *              mehr Amplitude, leichtes Skalieren, schnellerer Puls.
+ * 300 ist das neue Maximum; das alte (100) liegt bei einem Drittel.
+ */
+export const GLOW_PULSE_MAX = 300;
+export const glowPulsWerte = (wert) => {
+  const v = Math.min(GLOW_PULSE_MAX, Math.max(0, isFinite(Number(wert)) ? Number(wert) : 0));
+  return {
+    puls: Math.min(1, v / 100),
+    boost: v > 100 ? Math.round(((v - 100) / (GLOW_PULSE_MAX - 100)) * 1000) / 1000 : 0,
+  };
 };
 
 export const uvHasEntity = (c = {}) => !!(c.switch_entity || c.power_entity || c.temp_entity);
@@ -102,8 +120,7 @@ export class TomtutPoolSlotUv extends SlotBase {
     const verhaeltnis = Math.round(((laenge * deviceRatio("uv")) / dicke) * 1000) / 1000;
     const roh = Number(this._v("glow_intensity"));
     const staerke = Math.min(100, Math.max(0, isFinite(roh) ? roh : 80)) / 100;
-    const pulsRoh = Number(this._v("glow_pulse"));
-    const puls = Math.min(100, Math.max(0, isFinite(pulsRoh) ? pulsRoh : 0)) / 100;
+    const { puls, boost } = glowPulsWerte(this._v("glow_pulse"));
     const stil = [
       `top:${this._v("glow_top")}%`,
       `left:${this._v("glow_left")}%`,
@@ -112,6 +129,8 @@ export class TomtutPoolSlotUv extends SlotBase {
       `opacity:${staerke}`,
       `transform:translate(-50%, -50%) rotate(${Number(this._v("glow_angle")) || 0}deg)`,
       `--glow-pulse:${Math.round(puls * 100) / 100}`,
+      /* nur über 100 — darunter bleibt der Stil Zeichen für Zeichen der alte */
+      ...(boost > 0 ? [`--glow-boost:${boost}`] : []),
     ].join("; ");
     return html`<div class="glow ${puls > 0 ? "wabert" : "ruhig"}" style="${stil};"></div>`;
   }
@@ -190,6 +209,12 @@ export class TomtutPoolSlotUv extends SlotBase {
        * Zwei ungleiche Perioden (5,3 s / 3,7 s) überlagern sich zu einem
        * Muster, das sich erst nach Minuten wiederholt — organisch statt
        * Metronom. Die Stärke kommt aus --glow-pulse (0..1).
+       *
+       * Iteration 14: --glow-boost (0..1, nur bei Regler > 100) legt oben
+       * drauf — Hof größer und weicher, Amplituden bis zur vollen Deckkraft,
+       * mehr Skalierung, bis 2,5× schnellerer Puls, satteres Violett plus
+       * violetter Zusatz-Schein (box-shadow).
+       * Jede Formel ist so gebaut, dass boost = 0 exakt die alten Werte ergibt.
        */
       .glow {
         position: absolute;
@@ -217,51 +242,67 @@ export class TomtutPoolSlotUv extends SlotBase {
         background: inherit;
         opacity: 0;
         animation: uvGlimmen 5.3s ease-in-out infinite;
+        animation-duration: calc(5.3s / (1 + var(--glow-boost, 0) * 1.5));
       }
       .glow.wabert::after {
-        inset: -18% -8%;
+        inset: calc(-18% - var(--glow-boost, 0) * 45%) calc(-8% - var(--glow-boost, 0) * 8%);
         background: radial-gradient(
           ellipse at center,
           rgba(190, 160, 255, 0.75) 0%,
           rgba(130, 120, 255, 0.35) 45%,
           rgba(104, 128, 255, 0) 100%
         );
-        filter: blur(0.5em);
+        filter: blur(calc(0.5em + var(--glow-boost, 0) * 0.5em))
+          saturate(calc(1 + var(--glow-boost, 0) * 1.5));
+        /* Zusatz-Schein nur mit Boost — bei 0 ist er unsichtbar (Radius und
+           Deckkraft 0), der alte Look bleibt also exakt */
+        box-shadow: 0 0 calc(var(--glow-boost, 0) * 0.9em) calc(var(--glow-boost, 0) * 0.15em)
+          rgba(140, 100, 255, calc(var(--glow-boost, 0) * 0.8));
         opacity: 0;
         animation: uvWabern 3.7s ease-in-out infinite alternate;
+        animation-duration: calc(3.7s / (1 + var(--glow-boost, 0) * 1.5));
       }
       @keyframes uvGlimmen {
         0% {
-          opacity: calc(var(--glow-pulse, 0) * 0.55);
+          opacity: calc(var(--glow-pulse, 0) * (0.55 + var(--glow-boost, 0) * 0.45));
         }
         23% {
           opacity: calc(var(--glow-pulse, 0) * 0.15);
         }
         41% {
-          opacity: calc(var(--glow-pulse, 0) * 0.45);
+          opacity: calc(var(--glow-pulse, 0) * (0.45 + var(--glow-boost, 0) * 0.55));
         }
         67% {
           opacity: 0;
         }
         84% {
-          opacity: calc(var(--glow-pulse, 0) * 0.35);
+          opacity: calc(var(--glow-pulse, 0) * (0.35 + var(--glow-boost, 0) * 0.55));
         }
         100% {
-          opacity: calc(var(--glow-pulse, 0) * 0.55);
+          opacity: calc(var(--glow-pulse, 0) * (0.55 + var(--glow-boost, 0) * 0.45));
         }
       }
       @keyframes uvWabern {
         0% {
-          opacity: calc(var(--glow-pulse, 0) * 0.2);
-          transform: scale(0.97, 0.94);
+          opacity: calc(var(--glow-pulse, 0) * 0.2 * (1 - var(--glow-boost, 0)));
+          transform: scale(
+            calc(0.97 - var(--glow-boost, 0) * 0.07),
+            calc(0.94 - var(--glow-boost, 0) * 0.09)
+          );
         }
         55% {
-          opacity: calc(var(--glow-pulse, 0) * 0.7);
-          transform: scale(1.03, 1.08);
+          opacity: calc(var(--glow-pulse, 0) * (0.7 + var(--glow-boost, 0) * 0.3));
+          transform: scale(
+            calc(1.03 + var(--glow-boost, 0) * 0.12),
+            calc(1.08 + var(--glow-boost, 0) * 0.17)
+          );
         }
         100% {
-          opacity: calc(var(--glow-pulse, 0) * 0.95);
-          transform: scale(1.06, 1.14);
+          opacity: calc(var(--glow-pulse, 0) * (0.95 + var(--glow-boost, 0) * 0.05));
+          transform: scale(
+            calc(1.06 + var(--glow-boost, 0) * 0.22),
+            calc(1.14 + var(--glow-boost, 0) * 0.31)
+          );
         }
       }
       @media (prefers-reduced-motion: reduce) {

@@ -603,6 +603,127 @@ check("Freigabekontakt: schaltbar zeigt den Zeigefinger, binary_sensor nicht", (
   assert.equal(freigabe.meldung.zeiger, "default");
 });
 
+/* ---- Iteration 14: Modus-Badge, "seit" am Freigabekontakt, UV-Wabern max ---- */
+
+let it14 = null;
+await checkAsync("Iteration 14: Modus-Badge, seit-Text und UV-Wabern sind messbar", async () => {
+  it14 = await page.evaluate(async () => {
+    const S = window.demo.DEMO_HASS.states;
+    S["select.it14_modus"] = { state: "Kuehlen Smart", attributes: { options: ["Kuehlen Smart"] }, last_changed: new Date().toISOString() };
+    S["input_boolean.wp_freigabe"] = {
+      ...(S["input_boolean.wp_freigabe"] || { state: "on", attributes: {} }),
+      last_changed: new Date(Date.now() - 130 * 60000).toISOString(),
+    };
+    const bauen = async (slotCfg, typ) => {
+      document.body.innerHTML = "";
+      const buehne = document.createElement("div");
+      buehne.style.width = "600px";
+      document.body.appendChild(buehne);
+      const card = document.createElement("tomtut-pool-dashboard");
+      card.setConfig({ hero: { enabled: false }, slots: [slotCfg] });
+      card.hass = window.demo.DEMO_HASS;
+      buehne.appendChild(card);
+      await card.updateComplete;
+      const slot = card.shadowRoot.querySelector(`tomtut-pool-slot-${typ}`);
+      await slot.updateComplete;
+      await Promise.all(
+        [...slot.shadowRoot.querySelectorAll("img")].map((img) =>
+          img.complete && img.naturalWidth > 0
+            ? null
+            : new Promise((f) => {
+                img.addEventListener("load", f, { once: true });
+                img.addEventListener("error", f, { once: true });
+              })
+        )
+      );
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return slot;
+    };
+    const masse = (el) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { links: r.left, oben: r.top, rechts: r.right, unten: r.bottom, breit: r.width, hoch: r.height };
+    };
+    const wp = await bauen(
+      {
+        ...window.demo.allesConfig(0, false).slots[0],
+        show_mode: true,
+        mode_entity: "select.it14_modus",
+        fan_color_mode: "modus",
+        show_release_since: true,
+      },
+      "heatpump"
+    );
+    const q = (s) => wp.shadowRoot.querySelector(s);
+    const wpMasse = {
+      flaeche: masse(q(".bild-flaeche")),
+      modus: masse(q(".mode-badge")),
+      modusText: q(".mode-badge")?.textContent.trim() || "",
+      modusFarbe: q(".mode-badge") ? getComputedStyle(q(".mode-badge")).borderTopColor : "",
+      radFarbe: q(".fan-overlay") ? getComputedStyle(q(".fan-overlay")).getPropertyValue("--tt-fan-color").trim() : "",
+      freigabe: masse(q(".release-badge")),
+      seit: masse(q(".release-seit")),
+      seitText: q(".release-seit")?.textContent.trim() || "",
+      andere: [...wp.shadowRoot.querySelectorAll(".value-box, .power-badge, .label-badge")].map(masse),
+    };
+    const uvWerte = async (pulse) => {
+      const uv = await bauen({ ...window.demo.uvSlot(0, false), glow_intensity: 100, glow_pulse: pulse }, "uv");
+      const g = uv.shadowRoot.querySelector(".glow");
+      const hof = getComputedStyle(g, "::after");
+      const kern = getComputedStyle(g, "::before");
+      return {
+        glow: masse(g),
+        flaeche: masse(uv.shadowRoot.querySelector(".bild-flaeche")),
+        hofDauer: parseFloat(hof.animationDuration),
+        kernDauer: parseFloat(kern.animationDuration),
+        hofLinks: parseFloat(hof.left),
+        hofOben: parseFloat(hof.top),
+      };
+    };
+    return { wp: wpMasse, uvAlt: await uvWerte(100), uvNeu: await uvWerte(300), uv40: await uvWerte(40) };
+  });
+  assert.ok(it14.wp.modus, "Modus-Badge fehlt");
+});
+
+const ueberlappt = (a, b) =>
+  a.links < b.rechts - 1 && b.links < a.rechts - 1 && a.oben < b.unten - 1 && b.oben < a.unten - 1;
+
+check("Modus-Badge: liegt im Bild, Klartext, Farbe wie das Rad", () => {
+  const { flaeche, modus, modusText, modusFarbe } = it14.wp;
+  assert.ok(modus.links >= flaeche.links - 1 && modus.rechts <= flaeche.rechts + 1, "ragt seitlich raus");
+  assert.ok(modus.oben >= flaeche.oben - 1 && modus.unten <= flaeche.unten + 1, "ragt oben/unten raus");
+  assert.equal(modusText, "Kühlen Smart");
+  assert.equal(modusFarbe, "rgb(47, 127, 208)", "Rahmen nicht in Kuehl-Blau");
+});
+check("Modus-Badge: kollidiert weder mit Freigabe (samt seit-Text) noch mit anderen Kaestchen", () => {
+  const { modus, freigabe, seit, andere } = it14.wp;
+  assert.ok(!ueberlappt(modus, freigabe), "Modus liegt auf dem Freigabekontakt");
+  assert.ok(!ueberlappt(modus, seit), "Modus liegt auf dem seit-Text");
+  andere.forEach((m, i) => assert.ok(!ueberlappt(modus, m), `Modus liegt auf Kaestchen ${i}`));
+});
+check("Freigabe-seit: steht unter dem Badge, im Bild, 'seit 2 Std 10 Min'", () => {
+  const { flaeche, freigabe, seit, seitText } = it14.wp;
+  assert.equal(seitText, "seit 2 Std 10 Min");
+  assert.ok(seit.oben >= freigabe.unten - 2, "seit-Text nicht unter dem Badge");
+  assert.ok(seit.unten <= flaeche.unten + 1, "seit-Text ragt unten aus dem Bild");
+});
+check("UV-Wabern: bis 100 exakt die alte Kurve (3,7 s / 5,3 s, alter Hof)", () => {
+  for (const w of [it14.uv40, it14.uvAlt]) {
+    assert.equal(w.hofDauer, 3.7);
+    assert.equal(w.kernDauer, 5.3);
+  }
+  assert.equal(Math.round(it14.uvAlt.hofLinks * 100), Math.round(it14.uv40.hofLinks * 100));
+});
+check("UV-Wabern bei Maximum (300): schneller, groesserer Hof, Glow bleibt im Bild", () => {
+  const { uvAlt, uvNeu } = it14;
+  assert.ok(uvNeu.hofDauer < uvAlt.hofDauer / 2, `Hof-Puls nur ${uvNeu.hofDauer}s`);
+  assert.ok(uvNeu.kernDauer < uvAlt.kernDauer / 2, `Kern-Puls nur ${uvNeu.kernDauer}s`);
+  assert.ok(uvNeu.hofLinks < uvAlt.hofLinks, "Hof nicht breiter");
+  assert.ok(uvNeu.hofOben < uvAlt.hofOben, "Hof nicht hoeher");
+  const { glow, flaeche } = uvNeu;
+  assert.ok(glow.links >= flaeche.links - 1 && glow.rechts <= flaeche.rechts + 1, "Glow ragt raus");
+});
+
 /* ---- Kopfleiste: nichts schiebt sich beim Scrollen darueber ---- */
 
 /*

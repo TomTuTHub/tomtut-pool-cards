@@ -308,6 +308,26 @@ export const editorStyles = css`
     display: block;
     width: 100%;
   }
+  /* Modus-Erkennung live (Iteration 14) */
+  .modus-befund {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--divider-color, rgba(127, 127, 127, 0.4));
+    font-size: 0.95em;
+  }
+  .modus-befund.ok {
+    border-color: var(--success-color, #43a047);
+  }
+  .modus-befund.nein {
+    border-color: var(--error-color, #db4437);
+  }
+  .modus-optionen ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+  }
+  .modus-optionen li.nein {
+    color: var(--error-color, #db4437);
+  }
   small {
     color: var(--secondary-text-color, #888);
     font-weight: 400;

@@ -325,13 +325,16 @@ sind davon unberührt — die Reihenfolge ist reine Anzeige.
 | `mode_entity` | – | Modus-Quelle: `sensor`, `select`, `input_select` oder `climate` |
 | `mode_attribute` | – | Statt des Zustands ein Attribut lesen, z.B. `preset_mode` bei `climate.*` |
 | `mode_speed_<modus>` | Silent `3` · Smart `5` · Auto `6` · Boost `9` | Tempo je Modus auf der Skala 1–10 (wie die Poolpumpe). `<modus>` = `heiz_silent`, `heiz_smart`, `heiz_auto`, `heiz_boost`, `kuehl_silent`, `kuehl_smart`, `kuehl_auto`, `kuehl_boost` |
-| `mode_map_<modus>` | z.B. `Heizen Silent, heat_silent, …` | Welche Gerätezustände dieser Modus heißt — Kommaliste, Groß-/Kleinschreibung, Leerzeichen, `_` und `-` egal. Leer = Vorgabe |
+| `mode_map_<modus>` | z.B. `Heizen Silent, heat_silent, …` | Welche Gerätezustände dieser Modus heißt — Kommaliste, Groß-/Kleinschreibung, Leerzeichen, `_` und `-` egal. Leer = Vorgabe. Meist unnötig: seit Iteration 14 erkennt die Card Zustände mit Heizen/Kühlen **und** Stufe (Silent, Smart/Eco, Auto, Boost/Power/Turbo) selbst, Umlaute auch als ae/oe/ue. Eine eigene Liste ersetzt für diesen Modus Vorgabe und Automatik. Im Editor unter „Erweitert: Modus-Namen anpassen“, mit Live-Anzeige, was die Entity gerade meldet |
+| `show_mode_badge` | `true` | **Betriebsmodus-Badge** (Iteration 14): Klartext wie „Heizen Boost“, „Kühlen“, „Auto“, „Aus“, bei `climate.*` mit Preset („Heizen · Komfort“); Unbekanntes erscheint als Rohwert. Farbe wie das Rad (Heizen rot, Kühlen blau). Braucht `mode_entity`; `false` blendet nur das Badge aus, Tempo/Farbe bleiben |
+| `mode_top` / `mode_left` / `mode_scale` | `86` / `64` / `100` | Lage und Größe des Modus-Badges in % des Bildes |
 | `release_entity` | – | **Freigabekontakt** (optional): `switch`, `input_boolean` oder `binary_sensor`. Offen = die Wärmepumpe darf nicht laufen, geschlossen = freigegeben |
 | `show_release` | `false` im Editor | Freigabekontakt anzeigen. In YAML reicht `release_entity`; `show_release: false` schaltet ab |
 | `release_top` / `release_left` / `release_scale` | `84` / `24` / `100` | Lage und Größe der Freigabe-Anzeige in % des Bildes |
+| `show_release_since` | `false` | Klein unter der Freigabe-Anzeige, wie lange der letzte Wechsel her ist („seit 4 Min“, „seit 2 Std 10 Min“, „seit 3 Tagen“, aus `last_changed`); läuft minütlich mit |
 | `label_text` | – | Freitext-Badge auf dem Bild |
 | `show_power_button` / `show_power` / `show_current` / `show_target` / `show_fan` / `show_release` | `true` (`show_release`: nur mit Entity) | Einzelne Elemente abwählen — abgewählt heißt: keine Felder im Editor und keine Schlüssel in der Config |
-| Positionsfelder | – | `power_*`, `current_*`, `target_*`, `label_*`, `power_btn_*`, `release_*` — im Editor je Element per Schieberegler |
+| Positionsfelder | – | `power_*`, `current_*`, `target_*`, `label_*`, `power_btn_*`, `release_*`, `mode_*` — im Editor je Element per Schieberegler |
 
 Mindestens **eine** Entity sollte gesetzt sein; sonst zeigt der Kasten einen Hinweis.
 
@@ -419,7 +422,7 @@ Alle drei Entities sind optional; es reicht eine.
 | `glow_size` / `glow_thickness` | `40` / `13` | Länge und Dicke des Glühbereichs in % |
 | `glow_angle` | `-15` | Neigung des Glühbereichs in ° (Neigung des Rohrs im Artwork) |
 | `glow_intensity` | `80` | Leuchtstärke in % |
-| `glow_pulse` | `40` | Wabern/Glimmen `0`–`100`; `0` = ruhig und statisch |
+| `glow_pulse` | `40` | Wabern/Glimmen `0`–`300`; `0` = ruhig und statisch, bis `100` sanft (Kurve wie vor Iteration 14), darüber kräftig: größerer Hof, mehr Amplitude, bis 2,5× schnellerer Puls |
 | `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `9` / `76` / `100` / `true` / `true` | Watt-Box |
 | `temp_top` / `temp_left` / `temp_scale` | `19` / `40` / `110` | Thermometer |
 | `power_btn_top` / `power_btn_left` / `power_btn_scale` | `30` / `11` / `120` | Powerbutton |
