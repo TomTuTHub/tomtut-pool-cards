@@ -2162,8 +2162,9 @@ const komposition = JSON.parse(
 );
 
 check("Solar: das Feld ist die Komposition aus drei OKU-Panels", () => {
-  /* seit Iteration 9 Thomas' eigenes Foto statt Selinas Zeichnung */
-  assert.equal(komposition.quelle, "OKU.png");
+  /* Selinas gezeichnetes Panel — Iteration 9 hatte kurz Thomas' Echtfoto
+     OKU.png, seit Iteration 13 ist die Card wieder durchgehend gezeichnet */
+  assert.equal(komposition.quelle, "OKU_Panel.png");
   assert.equal(komposition.panels, 3);
   assert.equal(komposition.datei, pkg.DEVICE_IMAGES.solar);
   const [breit, hoch] = komposition.panel_groesse;

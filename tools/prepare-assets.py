@@ -16,13 +16,13 @@ gewinnt. Typischer Aufruf auf der Werkbank:
 
     python3 tools/prepare-assets.py \\
         /mnt/nas/proxmox-container/studio/vorgaenge/ka-973/assets/selina \\
-        /mnt/nas/proxmox-container/studio/vorgaenge/ka-973/assets/generiert \\
-        /mnt/nas/proxmox-container/studio/vorgaenge/ka-973/assets/thomas-fotos
+        /mnt/nas/proxmox-container/studio/vorgaenge/ka-973/assets/generiert
 
 (Die Becken ausser dem Oval liegen noch im zweiten Ordner; alle Geraete,
-Sprites und Marker kommen aus dem ersten. Das Solar-Panel ist seit
-Iteration 9 Thomas' eigenes Foto OKU.png aus dem dritten — schwarzer
-Absorber, freigestellt.)
+Sprites, Marker UND das Solar-Panel kommen aus dem ersten. Der Ordner
+assets/thomas-fotos wird seit Iteration 13 nicht mehr gebraucht: das
+Solarfeld ist wieder Selinas Zeichnung OKU_Panel.png statt Thomas' Foto
+OKU.png — die Card ist durchgehend im Zeichenstil, ein Foto faellt heraus.)
 
 Was passiert:
   * Becken   — auf max. 1280 px Breite skaliert, auf eine Palette reduziert
@@ -31,7 +31,7 @@ Was passiert:
                und dunkle Varianten gibt es seit Iteration 2 nicht mehr: der
                Hintergrund kommt aus der Card-Option `frame.fill`.
   * Solar    — KEIN eigenes Bild, sondern eine Komposition aus drei
-               OKU-Panels (s.u.)
+               gezeichneten OKU-Panels (s.u.)
   * Sprites  — Skimmer, Bodenablauf und Einlaufduese liegen nur klein auf dem
                Becken (HERO_SPRITES in src/shared/assets.js) -> 640 px reichen
   * Marker   — die beiden Richtungspfeile des Solar-Slots, klein (200 px) und
@@ -108,7 +108,7 @@ MARKER = [
 #
 # Es gibt kein einzelnes Solar-Artwork: eine Solarheizung ist ein FELD aus
 # mehreren Absorbern. Deshalb wird das ausgelieferte Bild deterministisch aus
-# drei Kopien von OKU.png (Thomas' Foto, seit Iteration 9) gebaut — nebeneinander in Perspektive, jedes
+# drei Kopien von OKU_Panel.png gebaut — nebeneinander in Perspektive, jedes
 # um UEBERLAPP der Panelbreite ueber seinem linken Nachbarn und um VERSATZ_HOCH
 # der Panelhoehe tiefer. Gezeichnet wird von hinten nach vorne (das hinterste,
 # oberste, am weitesten links liegende Panel zuerst), damit der vordere Rand
@@ -119,7 +119,12 @@ MARKER = [
 # setzt UEBERLAPP auf 0,88 — dann liegen die Panels fast deckungsgleich
 # uebereinander und das Bild wird hochkant (und der Slot entsprechend hoch).
 # ---------------------------------------------------------------------------
-SOLAR_PANEL = "OKU.png"
+# Quelle ist Selinas handgezeichnetes Panel (assets/selina). In Iteration 9
+# stand hier kurz Thomas' Echtfoto OKU.png; seit Iteration 13 ist es wieder die
+# Zeichnung, weil der Rest der Card durchgehend Selinas Strich ist und das Foto
+# sichtbar herausfiel. Beide Motive sind fast gleich proportioniert (~0,55
+# Breite/Hoehe getrimmt), die Komposition bleibt damit unveraendert.
+SOLAR_PANEL = "OKU_Panel.png"
 SOLAR_ZIEL = "solar_transparent.png"
 SOLAR_ANZAHL = 3
 SOLAR_UEBERLAPP = 0.12
@@ -153,7 +158,7 @@ def save(im, pfad):
 
 
 def solarfeld(quellen):
-    """Drei OKU-Panels nebeneinander in Perspektive — eine reine Rechnung."""
+    """Drei gezeichnete OKU-Panels nebeneinander in Perspektive — reine Rechnung."""
     # Das Panel wird VORHER so weit verkleinert, dass das ganze Feld in
     # MAX_DEVICE_WIDTH passt — so wird nur einmal skaliert, und die Leinwand
     # ist exakt Panel + 2 Versaetze (das prueft der Smoke-Test nach).

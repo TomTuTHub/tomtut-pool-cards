@@ -153,7 +153,7 @@ export const DEVICE_RATIOS = {
   heatpump: 988 / 725,
   pump: 1126 / 756,
   uv: 947 / 384,
-  solar: 1198 / 852,
+  solar: 1001 / 710,
 };
 
 /*

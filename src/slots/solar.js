@@ -17,7 +17,12 @@ import { numText } from "../shared/util.js";
  *
  * Das Bild ist seit Iteration 7 keine einzelne Zeichnung mehr, sondern ein
  * FELD: drei OKU-Panels nebeneinander in Perspektive, zusammengesetzt von
- * tools/prepare-assets.py. Dazu kommen zwei statische Richtungsmarker —
+ * tools/prepare-assets.py. Quelle ist Selinas handgezeichnetes Panel
+ * (OKU_Panel.png) — Iteration 9 hatte kurz Thomas' Echtfoto OKU.png, seit
+ * Iteration 13 ist die Card wieder durchgehend im Zeichenstil. Die
+ * Komposition und damit alle Overlay-Defaults unten sind gleich geblieben
+ * (beide Motive haben praktisch dasselbe Seitenverhaeltnis).
+ * Dazu kommen zwei statische Richtungsmarker —
  * blau am oberen Anschluss (kaltes Wasser hinein), rot am unteren (warmes
  * Wasser hinaus). Statisch ist Absicht: die Fliessrichtung eines Absorbers
  * kehrt sich nicht um, sie muss nur einmal erklärt werden.
