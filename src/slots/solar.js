@@ -11,8 +11,8 @@ import { numText } from "../shared/util.js";
  * die Absorber frei. Entsprechend schlank ist der Slot; alle Entities sind
  * optional:
  *   switch_entity     Solarventil oder -pumpe — Powerbutton mit Rückfrage
- *   temp_in_entity    Vorlauf  (ins Feld) — Thermometer am oberen Anschluss
- *   temp_out_entity   Rücklauf (zurück ins Becken) — am unteren Anschluss
+ *   temp_in_entity    Vorlauf  (ins Feld) — Thermometer am Zulauf links unten
+ *   temp_out_entity   Rücklauf (zurück ins Becken) — am Ablauf rechts oben
  *   power_entity      Leistung der Solarpumpe in W/kW — Watt-Box
  *
  * Das Bild ist seit Iteration 7 keine einzelne Zeichnung mehr, sondern ein
@@ -22,37 +22,42 @@ import { numText } from "../shared/util.js";
  * Iteration 13 ist die Card wieder durchgehend im Zeichenstil. Die
  * Komposition und damit alle Overlay-Defaults unten sind gleich geblieben
  * (beide Motive haben praktisch dasselbe Seitenverhaeltnis).
- * Dazu kommen zwei statische Richtungsmarker —
- * blau am oberen Anschluss (kaltes Wasser hinein), rot am unteren (warmes
- * Wasser hinaus). Statisch ist Absicht: die Fliessrichtung eines Absorbers
- * kehrt sich nicht um, sie muss nur einmal erklärt werden.
+ * Dazu kommen zwei statische Richtungsmarker, beide waagerecht nach rechts
+ * (seit Iteration 14, vorher senkrecht nach unten): blau links unten am
+ * ersten Panel (kaltes Wasser hinein), rot rechts oben am dritten (warmes
+ * Wasser hinaus) — so wie ein Absorberfeld tatsaechlich durchstroemt wird,
+ * von unten nach oben quer durchs Feld. Statisch ist Absicht: die
+ * Fliessrichtung eines Absorbers kehrt sich nicht um.
  *
- * Die Thermometer sitzen ab Werk neben ihrem Pfeil (oben Vorlauf, unten
- * Rücklauf) und sind im Editor frei verschiebbar.
+ * Die Thermometer sitzen ab Werk neben ihrem Pfeil (links unten Vorlauf,
+ * rechts oben Rücklauf) und sind im Editor frei verschiebbar. Die Watt-Box
+ * ist dafür ein Stück nach rechts gerückt (33 -> 42 %), damit sie auch in
+ * schmalen Spalten nicht am Vorlauf-Wert klebt.
  */
 export const SOLAR_DEFAULTS = {
   /* Powerbutton — freie Fläche auf dem hintersten Panel */
   power_btn_top: 45,
   power_btn_left: 8,
   power_btn_scale: 110,
-  /* Richtungsmarker: blau oben hinein, rot unten hinaus */
-  arrow_in_top: 20,
-  arrow_in_left: 11,
-  arrow_in_size: 6.5,
-  arrow_out_top: 86,
-  arrow_out_left: 82,
-  arrow_out_size: 6.5,
-  /* Vorlauf — oberer Anschluss, neben dem blauen Pfeil */
-  temp_in_top: 21,
-  temp_in_left: 32,
+  /* Richtungsmarker (waagerecht, Spitze nach rechts): blau links unten
+     hinein, rot rechts oben hinaus. size = Pfeillänge in % der Bildbreite. */
+  arrow_in_top: 86,
+  arrow_in_left: 8,
+  arrow_in_size: 12,
+  arrow_out_top: 12.5,
+  arrow_out_left: 91,
+  arrow_out_size: 12,
+  /* Vorlauf — Zulauf links unten, über dem blauen Pfeil */
+  temp_in_top: 70,
+  temp_in_left: 14,
   temp_in_scale: 105,
-  /* Rücklauf — unterer Anschluss, neben dem roten Pfeil */
-  temp_out_top: 79,
-  temp_out_left: 66,
+  /* Rücklauf — Ablauf rechts oben, unter dem roten Pfeil */
+  temp_out_top: 25,
+  temp_out_left: 72,
   temp_out_scale: 105,
   /* Stromverbrauch (Solarpumpe) */
   power_bottom: 8,
-  power_left: 33,
+  power_left: 42,
   power_scale: 100,
   power_box: true,
   power_label: true,
@@ -77,7 +82,7 @@ export class TomtutPoolSlotSolar extends SlotBase {
   }
 
   /*
-   * Ein Richtungsmarker. Das PNG zeigt bereits nach unten (gedreht beim
+   * Ein Richtungsmarker. Das PNG zeigt bereits nach rechts (gedreht beim
    * Bauen der Assets), hier wird es nur platziert — keine Animation, kein
    * Zustand, nichts, was sich bewegen könnte.
    */

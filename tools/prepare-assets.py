@@ -35,8 +35,9 @@ Was passiert:
   * Sprites  — Skimmer, Bodenablauf und Einlaufduese liegen nur klein auf dem
                Becken (HERO_SPRITES in src/shared/assets.js) -> 640 px reichen
   * Marker   — die beiden Richtungspfeile des Solar-Slots, klein (200 px) und
-               um 180 Grad gedreht, damit sie im Bild nach UNTEN zeigen
-               (Fliessrichtung oben hinein, unten hinaus)
+               um 90 Grad im Uhrzeigersinn gedreht, damit sie im Bild nach
+               RECHTS zeigen (seit Iteration 14: links unten hinein, rechts
+               oben hinaus)
   * Trim     — transparente Raender werden weggeschnitten, damit die
                Prozent-Positionen der Overlays am Motiv haengen und nicht am
                Rand der Leinwand
@@ -96,7 +97,8 @@ SPRITES = [
 ]
 
 # Richtungspfeile des Solar-Slots. Gezeichnet zeigen sie nach oben; geliefert
-# werden sie gedreht (Spitze nach unten) — so braucht das Markup keine
+# werden sie gedreht (seit Iteration 14 Spitze nach rechts: kalt links unten
+# hinein, warm rechts oben hinaus) — so braucht das Markup keine
 # Transformation und der Render-Test misst genau das, was zu sehen ist.
 MARKER = [
     ("Pfeil_Blau_1.png", "pfeil_blau.png"),
@@ -219,7 +221,7 @@ def main():
 
     for quelle, name in MARKER:
         schreiben(
-            load(finde(quellen, quelle), trim=True, max_width=MAX_MARKER_WIDTH, drehen=180), name
+            load(finde(quellen, quelle), trim=True, max_width=MAX_MARKER_WIDTH, drehen=-90), name
         )
 
     # Beleg fuer den Test: dasselbe Rezept muss dasselbe Bild ergeben.

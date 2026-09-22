@@ -1700,14 +1700,14 @@ check("Solar: Vorlauf, Ruecklauf, Watt und Powerbutton", () => {
   assert.match(solar.shadowRoot.querySelector(".slot-title").textContent, /Solarheizung/);
 });
 /*
- * Iteration 7 dreht die Leserichtung um: das Feld wird OBEN gespeist und
- * gibt UNTEN ab (so haengen die drei Panels im Bild zusammen). Vorlauf
- * steht deshalb oben, Ruecklauf unten — jeweils neben seinem Pfeil.
+ * Iteration 14: das Feld wird LINKS UNTEN gespeist und gibt RECHTS OBEN ab
+ * (quer durchs Feld, wie ein Absorber real durchstroemt wird). Vorlauf
+ * steht deshalb links unten, Ruecklauf rechts oben — jeweils bei seinem Pfeil.
  */
-check("Solar: Vorlauf oben, Ruecklauf unten am Anschluss", () => {
+check("Solar: Vorlauf links unten, Ruecklauf rechts oben", () => {
   const d = pkg.SOLAR_DEFAULTS;
-  assert.ok(d.temp_in_top < 30, "Vorlauf nicht am oberen Anschluss");
-  assert.ok(d.temp_out_top > 70, "Ruecklauf nicht am unteren Anschluss");
+  assert.ok(d.temp_in_top > 60 && d.temp_in_left < 40, "Vorlauf nicht links unten");
+  assert.ok(d.temp_out_top < 40 && d.temp_out_left > 60, "Ruecklauf nicht rechts oben");
   const stile = Array.from(solar.shadowRoot.querySelectorAll(".thermo")).map((t) =>
     t.getAttribute("style")
   );
@@ -1716,7 +1716,7 @@ check("Solar: Vorlauf oben, Ruecklauf unten am Anschluss", () => {
 });
 check("Solar: jedes Thermometer steht neben seinem Pfeil", () => {
   const d = pkg.SOLAR_DEFAULTS;
-  const nah = (a, b) => Math.abs(a - b) <= 12;
+  const nah = (a, b) => Math.abs(a - b) <= 16;
   assert.ok(nah(d.temp_in_top, d.arrow_in_top), "Vorlauf steht nicht beim blauen Pfeil");
   assert.ok(nah(d.temp_out_top, d.arrow_out_top), "Ruecklauf steht nicht beim roten Pfeil");
 });
@@ -2194,7 +2194,7 @@ const solarPfeile = (el) =>
     stil: x.getAttribute("style"),
   }));
 
-check("Solar: blauer Pfeil oben hinein, roter unten hinaus", () => {
+check("Solar: blauer Pfeil links unten hinein, roter rechts oben hinaus", () => {
   const pfeile = solarPfeile(solar);
   assert.equal(pfeile.length, 2, "zwei Marker erwartet");
   assert.equal(pfeile[0].src, bild(pkg.FLOW_MARKERS.in));
@@ -2204,7 +2204,11 @@ check("Solar: blauer Pfeil oben hinein, roter unten hinaus", () => {
   assert.match(pfeile[0].stil, new RegExp(`left:${d.arrow_in_left}%`));
   assert.match(pfeile[0].stil, new RegExp(`width:${d.arrow_in_size}%`));
   assert.match(pfeile[1].stil, new RegExp(`top:${d.arrow_out_top}%`));
-  assert.ok(d.arrow_in_top < d.arrow_out_top, "der blaue Pfeil sitzt nicht oben");
+  assert.match(pfeile[1].stil, new RegExp(`left:${d.arrow_out_left}%`));
+  assert.ok(d.arrow_in_top > d.arrow_out_top, "der blaue Pfeil sitzt nicht unten");
+  assert.ok(d.arrow_in_left < d.arrow_out_left, "der blaue Pfeil sitzt nicht links");
+  assert.ok(d.arrow_in_left < 20 && d.arrow_in_top > 75, "blau nicht am ersten Panel unten");
+  assert.ok(d.arrow_out_left > 80 && d.arrow_out_top < 25, "rot nicht am dritten Panel oben");
 });
 check("Solar: die Marker liegen ueber dem Bild, aber unter den Messwerten", () => {
   const css = cssOf("tomtut-pool-slot-solar");

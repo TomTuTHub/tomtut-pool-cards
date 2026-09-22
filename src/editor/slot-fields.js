@@ -784,7 +784,7 @@ export const solarFields = (f) => html`
       "temp_out_left",
       "temp_out_scale",
     ])}
-    ${f.element("⬇ Richtungspfeile", "show_arrows", [
+    ${f.element("➡ Richtungspfeile", "show_arrows", [
       "arrow_in_top",
       "arrow_in_left",
       "arrow_in_size",
@@ -804,7 +804,7 @@ export const solarFields = (f) => html`
   <small>
     Die Solarheizung heizt nicht selbst — sie gibt nur den Weg über die Absorber frei. Der
     Vergleich Vorlauf/Rücklauf zeigt, ob sie gerade etwas bringt. Das Bild zeigt ein Feld aus
-    drei Absorbern; der blaue Pfeil oben ist der Zulauf, der rote unten der Rücklauf.
+    drei Absorbern; der blaue Pfeil links unten ist der Zulauf, der rote rechts oben der Rücklauf.
   </small>
   ${f.text("Überschrift (optional)", "label", "", "z.B. Solarheizung")}
   ${f.shown("show_power_button")
@@ -831,7 +831,7 @@ export const solarFields = (f) => html`
         ${f.entity(
           "Vorlauf-Temperatur",
           "temp_in_entity",
-          "Wasser, das zum Absorber läuft — oberer Anschluss (blauer Pfeil).",
+          "Wasser, das zum Absorber läuft — Zulauf links unten (blauer Pfeil).",
           ...MESSWERT
         )}
         ${section(
@@ -849,7 +849,7 @@ export const solarFields = (f) => html`
         ${f.entity(
           "Rücklauf-Temperatur",
           "temp_out_entity",
-          "Wasser, das zurück ins Becken läuft — unterer Anschluss (roter Pfeil).",
+          "Wasser, das zurück ins Becken läuft — Ablauf rechts oben (roter Pfeil).",
           ...MESSWERT
         )}
         ${section(
@@ -888,8 +888,8 @@ export const solarFields = (f) => html`
           ${f.slider("Rücklauf (rot) — Von links", "arrow_out_left", 0, 100, "%", 0.5)}
           ${f.slider("Rücklauf (rot) — Größe", "arrow_out_size", 2, 20, "%", 0.5)}
           <small>
-            Beide Pfeile zeigen nach unten: oben läuft kaltes Wasser ins Feld, unten warmes
-            heraus. Sie sind reine Beschriftung und ändern sich nie.
+            Beide Pfeile zeigen nach rechts: links unten läuft kaltes Wasser ins Feld, rechts
+            oben warmes heraus. Sie sind reine Beschriftung und ändern sich nie.
           </small>
         `
       )

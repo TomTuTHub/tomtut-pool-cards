@@ -51,7 +51,7 @@ eine Herstellerintegration in Home Assistant landen.
   Lampe so im Kasten liegt wie in der Anlage.
 - **Solarheizungs-Kasten** — ein **Feld aus drei Absorbern** mit Vorlauf- und
   Rücklauf-Thermometer, optionalem Stromverbrauch und Powerbutton (Solarventil oder -pumpe)
-  mit Rückfrage. Zwei Pfeile zeigen die Fließrichtung: blau oben hinein, rot unten hinaus.
+  mit Rückfrage. Zwei Pfeile zeigen die Fließrichtung: blau links unten hinein, rot rechts oben hinaus.
   Der Vergleich der beiden Temperaturen zeigt auf einen Blick, ob die Sonne gerade etwas
   bringt.
 - **Zubehör am Becken** — Skimmer, Einlaufdüse und Bodenablauf liegen als eigene kleine
@@ -463,22 +463,22 @@ Entities sind optional; es reicht eine.
 | `label` | – | Überschrift über dem Bild |
 | `switch_entity` | – | Solarventil oder Solarpumpe → Powerbutton (`switch`, `input_boolean`, `light`) |
 | `confirm_off` | `true` | Vor dem Ausschalten nachfragen. `false` = sofort aus |
-| `temp_in_entity` | – | Vorlauf (Wasser zum Absorber) → Thermometer am **oberen** Anschluss, beim blauen Pfeil |
-| `temp_out_entity` | – | Rücklauf (Wasser zurück ins Becken) → Thermometer am **unteren** Anschluss, beim roten Pfeil |
+| `temp_in_entity` | – | Vorlauf (Wasser zum Absorber) → Thermometer am Zulauf **links unten**, beim blauen Pfeil |
+| `temp_out_entity` | – | Rücklauf (Wasser zurück ins Becken) → Thermometer am Ablauf **rechts oben**, beim roten Pfeil |
 | `power_entity` | – | Leistung der Solarpumpe in W oder kW → Watt-Box |
 | `show_power_button` / `show_temp_in` / `show_temp_out` / `show_power` | `true` | Einzelne Elemente abschalten |
 | `show_arrows` | `true` | Die beiden Richtungspfeile abschalten |
 | `power_btn_top` / `power_btn_left` / `power_btn_scale` | `45` / `8` / `110` | Powerbutton |
-| `arrow_in_top` / `arrow_in_left` / `arrow_in_size` | `20` / `11` / `6.5` | Blauer Pfeil (Zulauf) in % des Bildes |
-| `arrow_out_top` / `arrow_out_left` / `arrow_out_size` | `86` / `82` / `6.5` | Roter Pfeil (Rücklauf) in % des Bildes |
-| `temp_in_top` / `temp_in_left` / `temp_in_scale` | `21` / `32` / `105` | Vorlauf-Thermometer |
-| `temp_out_top` / `temp_out_left` / `temp_out_scale` | `79` / `66` / `105` | Rücklauf-Thermometer |
-| `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `8` / `33` / `100` / `true` / `true` | Watt-Box |
+| `arrow_in_top` / `arrow_in_left` / `arrow_in_size` | `86` / `8` / `12` | Blauer Pfeil (Zulauf), waagerecht; Größe = Pfeillänge in % der Bildbreite |
+| `arrow_out_top` / `arrow_out_left` / `arrow_out_size` | `12.5` / `91` / `12` | Roter Pfeil (Rücklauf), waagerecht |
+| `temp_in_top` / `temp_in_left` / `temp_in_scale` | `70` / `14` / `105` | Vorlauf-Thermometer |
+| `temp_out_top` / `temp_out_left` / `temp_out_scale` | `25` / `72` / `105` | Rücklauf-Thermometer |
+| `power_bottom` / `power_left` / `power_scale` / `power_box` / `power_label` | `8` / `42` / `100` / `true` / `true` | Watt-Box |
 
-**Das Bild ist ein Feld, kein Einzelstück:** drei OKU-Absorber (seit Iteration 9 Thomas' eigenes Foto) stehen nebeneinander in
+**Das Bild ist ein Feld, kein Einzelstück:** drei OKU-Absorber (Selinas Zeichnung) stehen nebeneinander in
 Perspektive (siehe [Artwork](#artwork)). Die Fließrichtung steht fest und wird nur
-beschriftet: der **blaue Pfeil oben** zeigt ins Feld hinein (kaltes Wasser), der **rote unten**
-vom Feld weg (warmes Wasser). Beide sind statisch — eine Fließrichtung kehrt sich nicht um.
+beschriftet: der **blaue Pfeil links unten** zeigt ins Feld hinein (kaltes Wasser), der **rote rechts oben**
+vom Feld weg (warmes Wasser) — beide waagerecht nach rechts, quer durchs Feld. Beide sind statisch — eine Fließrichtung kehrt sich nicht um.
 Die Thermometer sitzen ab Werk neben ihrem Pfeil; verschieben geht im Editor.
 
 ### Slot `custom` — Freifeld (benutzerdefiniert)
@@ -564,7 +564,7 @@ python3 tools/prepare-assets.py <ordner-mit-originalen> [weiterer ordner ...]
 | Becken | max. 1280 px | Palette reduziert |
 | Geräte | max. 1200 px | Palette reduziert, transparenter Rand abgeschnitten |
 | Sprites am Becken | max. 640 px | dito — sie werden nie groß angezeigt |
-| Richtungspfeile | max. 200 px | dito, zusätzlich um 180° gedreht (sie zeigen im Bild nach unten) |
+| Richtungspfeile | max. 200 px | dito, zusätzlich um 90° im Uhrzeigersinn gedreht (sie zeigen im Bild nach rechts) |
 
 **Die Solarheizung ist eine Komposition.** Eine Solarheizung ist in Wirklichkeit ein Feld aus
 mehreren Absorbern, kein einzelnes Gerät — deshalb gibt es dafür auch kein einzelnes Bild.

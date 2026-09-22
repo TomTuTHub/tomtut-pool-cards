@@ -472,6 +472,8 @@ await checkAsync("Solar: die Richtungsmarker sind messbar", async () => {
       blau: masse(slot.shadowRoot.querySelector("img.flow-in")),
       rot: masse(slot.shadowRoot.querySelector("img.flow-out")),
       thermos: thermos.map(masse),
+      knopf: masse(slot.shadowRoot.querySelector(".power-badge")),
+      watt: masse(slot.shadowRoot.querySelector(".value-box")),
       geladen: [...slot.shadowRoot.querySelectorAll("img")].every((i) => i.naturalWidth > 0),
     };
   });
@@ -479,18 +481,37 @@ await checkAsync("Solar: die Richtungsmarker sind messbar", async () => {
   assert.ok(solarMarker.geladen, "ein Bild des Solar-Slots laedt nicht");
 });
 
-check("Solar: beide Marker liegen im Bild, blau oben, rot unten", () => {
+/* Iteration 14: waagerechte Pfeile, blau links unten hinein, rot rechts oben hinaus */
+check("Solar: beide Marker liegen im Bild, blau links unten, rot rechts oben", () => {
   const { feld, blau, rot, thermos } = solarMarker;
   for (const [name, m] of [["blau", blau], ["rot", rot]]) {
     assert.ok(m.links >= feld.links - 1 && m.rechts <= feld.rechts + 1, `${name} ragt seitlich raus`);
     assert.ok(m.oben >= feld.oben - 1 && m.unten <= feld.unten + 1, `${name} ragt oben/unten raus`);
-    assert.ok(m.breit > 0 && m.hoch > m.breit, `${name} ist kein stehender Pfeil`);
+    assert.ok(m.hoch > 0 && m.breit > m.hoch, `${name} ist kein liegender Pfeil`);
   }
-  assert.ok(blau.unten < rot.oben, "die Marker stehen nicht ueber- sondern nebeneinander");
-  /* jedes Thermometer steht auf der Hoehe seines Markers */
+  const mitteX = (feld.links + feld.rechts) / 2;
+  const mitteY = (feld.oben + feld.unten) / 2;
+  assert.ok(blau.rechts < mitteX && blau.oben > mitteY, "blau sitzt nicht links unten");
+  assert.ok(rot.links > mitteX && rot.unten < mitteY, "rot sitzt nicht rechts oben");
+  /* jedes Thermometer steht bei seinem Marker */
   assert.equal(thermos.length, 2);
-  assert.ok(thermos[0].oben < blau.unten, "Vorlauf steht nicht oben beim blauen Pfeil");
-  assert.ok(thermos[1].unten > rot.oben, "Ruecklauf steht nicht unten beim roten Pfeil");
+  assert.ok(thermos[0].links < mitteX && thermos[0].oben > mitteY, "Vorlauf steht nicht links unten");
+  assert.ok(thermos[1].rechts > mitteX && thermos[1].unten < mitteY, "Ruecklauf steht nicht rechts oben");
+  assert.ok(thermos[0].unten <= blau.oben + 2, "Vorlauf-Thermometer liegt auf dem blauen Pfeil");
+  assert.ok(thermos[1].oben >= rot.unten - 2, "Ruecklauf-Thermometer liegt auf dem roten Pfeil");
+});
+check("Solar: Pfeile, Thermometer, Watt-Box und Knopf ueberlappen sich nicht", () => {
+  const { blau, rot, thermos, knopf, watt } = solarMarker;
+  const teile = { blau, rot, vorlauf: thermos[0], ruecklauf: thermos[1], knopf, watt };
+  const namen = Object.keys(teile);
+  for (let i = 0; i < namen.length; i++)
+    for (let j = i + 1; j < namen.length; j++) {
+      const a = teile[namen[i]];
+      const b = teile[namen[j]];
+      const ueber =
+        a.links < b.rechts - 1 && b.links < a.rechts - 1 && a.oben < b.unten - 1 && b.oben < a.unten - 1;
+      assert.ok(!ueber, `${namen[i]} ueberlappt ${namen[j]}`);
+    }
 });
 
 /* ---- Freigabekontakt: Anzeige und Wirkung aufs Rad (Iteration 12) ---- */
