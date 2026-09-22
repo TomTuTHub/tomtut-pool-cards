@@ -328,6 +328,7 @@ sind davon unberührt — die Reihenfolge ist reine Anzeige.
 | `mode_map_<modus>` | z.B. `Heizen Silent, heat_silent, …` | Welche Gerätezustände dieser Modus heißt — Kommaliste, Groß-/Kleinschreibung, Leerzeichen, `_` und `-` egal. Leer = Vorgabe. Meist unnötig: seit Iteration 14 erkennt die Card Zustände mit Heizen/Kühlen **und** Stufe (Silent, Smart/Eco, Auto, Boost/Power/Turbo) selbst, Umlaute auch als ae/oe/ue. Eine eigene Liste ersetzt für diesen Modus Vorgabe und Automatik. Im Editor unter „Erweitert: Modus-Namen anpassen“, mit Live-Anzeige, was die Entity gerade meldet |
 | `show_mode_badge` | `true` | **Betriebsmodus-Badge** (Iteration 14): Klartext wie „Heizen Boost“, „Kühlen“, „Auto“, „Aus“, bei `climate.*` mit Preset („Heizen · Komfort“); Unbekanntes erscheint als Rohwert. Farbe wie das Rad (Heizen rot, Kühlen blau). Braucht `mode_entity`; `false` blendet nur das Badge aus, Tempo/Farbe bleiben |
 | `mode_top` / `mode_left` / `mode_scale` | `86` / `64` / `100` | Lage und Größe des Modus-Badges in % des Bildes |
+| (Modus wählen) | – | Seit Iteration 15 ist das Badge ein Knopf: Tippen öffnet die Auswahl aller Modi der Entity (deutsche Namen, aktueller mit ✓). Gesetzt wird per `select.select_option` / `input_select.select_option`, bei `climate.*` per `set_hvac_mode` bzw. `set_preset_mode` (Optionen aus `options` / `hvac_modes` / `preset_modes`). `sensor.*` bleibt reine Anzeige. Ein Fehler beim Umschalten steht sichtbar im Dialog |
 | `release_entity` | – | **Freigabekontakt** (optional): `switch`, `input_boolean` oder `binary_sensor`. Offen = die Wärmepumpe darf nicht laufen, geschlossen = freigegeben |
 | `show_release` | `false` im Editor | Freigabekontakt anzeigen. In YAML reicht `release_entity`; `show_release: false` schaltet ab |
 | `release_top` / `release_left` / `release_scale` | `84` / `24` / `100` | Lage und Größe der Freigabe-Anzeige in % des Bildes |
@@ -483,6 +484,23 @@ Perspektive (siehe [Artwork](#artwork)). Die Fließrichtung steht fest und wird 
 beschriftet: der **blaue Pfeil links unten** zeigt ins Feld hinein (kaltes Wasser), der **rote rechts oben**
 vom Feld weg (warmes Wasser) — beide waagerecht nach rechts, quer durchs Feld. Beide sind statisch — eine Fließrichtung kehrt sich nicht um.
 Die Thermometer sitzen ab Werk neben ihrem Pfeil; verschieben geht im Editor.
+
+### Kiosk-Modus (Iteration 15)
+
+Dieselbe Card einmal bedienbar (z.B. Admin-Dashboard) und einmal als reine Anzeige (z.B. Flur-Tablet):
+
+| Feld | Default | Bedeutung |
+|---|---|---|
+| `kiosk` | `false` | `true` = die gewählten Kästen sind nur Anzeige: kein Schalten, kein Modus-Wählen, keine Rückfrage, kein Detail-Dialog (more-info). Cursor normal, kein Hover-/Klick-Feedback, Look sonst identisch |
+| `kiosk_slots` | alle | Für welche Kästen: `becken` und die Kasten-Nummern `1`…`n` (wie im Editor „Kasten 3“). Nicht genannte Kästen bleiben bedienbar |
+
+```yaml
+type: custom:tomtut-pool-dashboard
+kiosk: true
+kiosk_slots: [1, 2, 3]   # Becken bleibt bedienbar
+```
+
+Im Editor steht dafür ganz oben der Kasten „Kiosk-Modus (nur anzeigen)“ mit einer Liste aller Kästen.
 
 ### Slot `custom` — Freifeld (benutzerdefiniert)
 

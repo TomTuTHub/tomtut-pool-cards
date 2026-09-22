@@ -43,7 +43,7 @@ export class TomtutPoolSlotCustom extends SlotBase {
 
   _toggle(entry) {
     const id = entry.entity;
-    if (!id) return;
+    if (!id || !this.bedienbar) return;
     /* toggle gibt es in allen schaltbaren Domains gleichermaßen */
     if (!TOGGLE_DOMAINS.includes(domainOf(id))) return;
     if (entry.confirm_off === true && this._isOn(id)) {

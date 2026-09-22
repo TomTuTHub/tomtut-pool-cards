@@ -308,6 +308,51 @@ export const editorStyles = css`
     display: block;
     width: 100%;
   }
+  /* Kiosk-Modus (Iteration 15) — ganz oben im Editor */
+  .kiosk-block {
+    text-align: left;
+    border: 2px solid var(--divider-color, #ccc);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .kiosk-block.an {
+    border-color: var(--warning-color, #ff9800);
+  }
+  .kiosk-schalter {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+    align-items: center;
+    gap: 12px;
+    font-size: 17px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .kiosk-schalter input {
+    width: 26px;
+    height: 26px;
+    margin: 0;
+  }
+  .kiosk-liste {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 4px;
+  }
+  .kiosk-kasten {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+    font-weight: 400;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
   /* Modus-Erkennung live (Iteration 14) */
   .modus-befund {
     padding: 8px 10px;

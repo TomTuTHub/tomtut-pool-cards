@@ -724,6 +724,96 @@ check("UV-Wabern bei Maximum (300): schneller, groesserer Hof, Glow bleibt im Bi
   assert.ok(glow.links >= flaeche.links - 1 && glow.rechts <= flaeche.rechts + 1, "Glow ragt raus");
 });
 
+/* ---- Iteration 15: Modus-Auswahl und Kiosk im echten Browser ---- */
+
+let it15 = null;
+await checkAsync("Iteration 15: Modus-Auswahl und Kiosk sind messbar", async () => {
+  it15 = await page.evaluate(async () => {
+    const S = window.demo.DEMO_HASS.states;
+    S["select.it15_modus"] = {
+      state: "Heizen Smart",
+      attributes: { options: ["Auto", "Heizen Power", "Kuehlen Power", "Heizen Smart", "Kuehlen Smart", "Heizen Silent", "Kuehlen Silent"] },
+      last_changed: new Date().toISOString(),
+    };
+    const bauen = async (config) => {
+      document.body.innerHTML = "";
+      const buehne = document.createElement("div");
+      buehne.style.width = "600px";
+      document.body.appendChild(buehne);
+      const card = document.createElement("tomtut-pool-dashboard");
+      card.setConfig(config);
+      card.hass = window.demo.DEMO_HASS;
+      buehne.appendChild(card);
+      await card.updateComplete;
+      const slot = card.shadowRoot.querySelector("tomtut-pool-slot-heatpump");
+      await slot.updateComplete;
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return slot;
+    };
+    const masse = (el) => {
+      const r = el.getBoundingClientRect();
+      return { links: r.left, oben: r.top, rechts: r.right, unten: r.bottom };
+    };
+    const wpCfg = { ...window.demo.allesConfig(0, false).slots[0], show_mode: true, mode_entity: "select.it15_modus" };
+    const wp = await bauen({ hero: { enabled: false }, slots: [wpCfg] });
+    const b = wp.shadowRoot.querySelector(".mode-badge");
+    const bm = masse(b);
+    const mitte = [(bm.links + bm.rechts) / 2, (bm.oben + bm.unten) / 2];
+    /* echter Klick an die Stelle, an der das Badge sichtbar ist */
+    const cursorBadge = getComputedStyle(b).cursor;
+    const card = document.querySelector("tomtut-pool-dashboard");
+    b.click();
+    await wp.updateComplete;
+    await new Promise((r) => requestAnimationFrame(r));
+    const ov = wp.shadowRoot.querySelector(".modus-overlay");
+    const panel = wp.shadowRoot.querySelector(".modus-panel");
+    const auswahl = ov
+      ? {
+          slot: masse(wp.shadowRoot.querySelector(".slot")),
+          overlay: masse(ov),
+          panel: masse(panel),
+          optionen: panel.querySelectorAll(".modus-option").length,
+          aktiv: panel.querySelector(".modus-option.aktiv")?.textContent.replace(/\s+/g, " ").trim(),
+          zOverlay: getComputedStyle(ov).zIndex,
+        }
+      : null;
+
+    const kioskSlot = await bauen({ hero: { enabled: false }, kiosk: true, slots: [wpCfg] });
+    const pb = kioskSlot.shadowRoot.querySelector(".power-badge");
+    const pm = masse(pb);
+    const oben = kioskSlot.shadowRoot.elementFromPoint((pm.links + pm.rechts) / 2, (pm.oben + pm.unten) / 2);
+    return {
+      cursorBadge,
+      auswahl,
+      mitte,
+      kiosk: {
+        cursorKnopf: getComputedStyle(pb).cursor,
+        zeigerKnopf: getComputedStyle(pb).pointerEvents,
+        trefferIstKnopf: !!oben && (oben === pb || pb.contains(oben)),
+        badgeWaehlbar: kioskSlot.shadowRoot.querySelector(".mode-badge").classList.contains("waehlbar"),
+      },
+    };
+  });
+  assert.ok(it15.auswahl, "Auswahl ging nicht auf");
+});
+
+check("Modus-Auswahl: Badge zeigt die Hand, Auswahl liegt im Kasten mit 7 Optionen", () => {
+  const { auswahl } = it15;
+  assert.equal(it15.cursorBadge, "pointer");
+  assert.equal(auswahl.optionen, 7);
+  assert.match(auswahl.aktiv, /✓\s*Heizen Smart/);
+  assert.ok(auswahl.panel.links >= auswahl.slot.links - 1 && auswahl.panel.rechts <= auswahl.slot.rechts + 1, "Panel ragt seitlich raus");
+  assert.ok(auswahl.panel.oben >= auswahl.slot.oben - 1 && auswahl.panel.unten <= auswahl.slot.unten + 1, "Panel ragt oben/unten raus");
+  assert.equal(auswahl.zOverlay, "10");
+});
+check("Kiosk: kein Hand-Cursor, Knopf nimmt keine Zeiger an, Badge nicht waehlbar", () => {
+  const { kiosk } = it15;
+  assert.equal(kiosk.cursorKnopf, "default");
+  assert.equal(kiosk.zeigerKnopf, "none");
+  assert.equal(kiosk.trefferIstKnopf, false);
+  assert.equal(kiosk.badgeWaehlbar, false);
+});
+
 /* ---- Kopfleiste: nichts schiebt sich beim Scrollen darueber ---- */
 
 /*

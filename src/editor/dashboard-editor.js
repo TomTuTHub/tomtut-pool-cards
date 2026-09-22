@@ -7,6 +7,7 @@ import { PUMP_DEFAULTS } from "../slots/pump.js";
 import { UV_DEFAULTS } from "../slots/uv.js";
 import { SOLAR_DEFAULTS } from "../slots/solar.js";
 import { heroDefaultsFor } from "../hero.js";
+import { kioskSchluessel, kioskGilt, KIOSK_BECKEN } from "../shared/kiosk.js";
 import {
   heroFields,
   heatpumpFields,
@@ -89,6 +90,67 @@ export class TomtutPoolDashboardEditor extends LitElement {
 
   _slots() {
     return Array.isArray(this._config?.slots) ? this._config.slots : [];
+  }
+
+  /* ---- Kiosk-Modus (Iteration 15) ---- */
+
+  _setKiosk(an) {
+    /* aus = beide Schlüssel raus, die Config bleibt schlank */
+    this._emit(applyPatch(this._config, an ? { kiosk: true } : { kiosk: undefined, kiosk_slots: undefined }));
+  }
+
+  _setKioskKasten(schluessel, an) {
+    const alle = kioskSchluessel(this._config);
+    const gewaehlt = alle.filter((k) =>
+      String(k) === String(schluessel) ? an : kioskGilt({ ...this._config, kiosk: true }, k)
+    );
+    /* alle angehakt = Liste weglassen (Default "alle") */
+    this._emit(
+      applyPatch(this._config, {
+        kiosk_slots: gewaehlt.length === alle.length ? undefined : gewaehlt,
+      })
+    );
+  }
+
+  _renderKiosk() {
+    const an = this._config?.kiosk === true;
+    const alle = kioskSchluessel(this._config);
+    const slots = this._slots();
+    return html`
+      <div class="kiosk-block ${an ? "an" : ""}">
+        <label class="kiosk-schalter">
+          <input
+            type="checkbox"
+            data-key="kiosk"
+            ?checked="${an}"
+            @change="${(e) => this._setKiosk(e.target.checked)}"
+          />
+          <span>Kiosk-Modus (nur anzeigen)</span>
+        </label>
+        <small>
+          Für ein Wand-Tablet o.ä.: die gewählten Kästen zeigen alles an, lassen sich aber nicht
+          bedienen — kein Schalten, kein Modus-Wählen, keine Detail-Dialoge. Dieselbe Card kann
+          woanders ohne Kiosk normal bedienbar stehen.
+        </small>
+        ${an
+          ? html`<div class="kiosk-liste">
+              ${alle.map((k) => {
+                const name =
+                  k === KIOSK_BECKEN ? "Becken" : this._slotKopf(slots[k - 1], k - 1);
+                return html`<label class="kiosk-kasten">
+                  <input
+                    type="checkbox"
+                    data-kiosk-slot="${k}"
+                    ?checked="${kioskGilt(this._config, k)}"
+                    @change="${(e) => this._setKioskKasten(k, e.target.checked)}"
+                  />
+                  <span>${name}</span>
+                </label>`;
+              })}
+            </div>`
+          : nothing}
+      </div>
+    `;
   }
 
   _updateSlot(index, patch) {
@@ -213,6 +275,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
 
     return html`
       <div class="editor">
+        ${this._renderKiosk()}
         <div class="step-head">Schritt 1 — Becken</div>
         <div class="slot-block becken-block" style="--slot-farbe:${slotFarbe("hero")};">
           <div class="slot-ueberschrift">Becken</div>

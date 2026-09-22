@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
 import "./hero.js";
+import { kioskGilt, KIOSK_BECKEN } from "./shared/kiosk.js";
 import "./slots/heatpump.js";
 import "./slots/pump.js";
 import "./slots/uv.js";
@@ -91,11 +92,18 @@ export class TomtutPoolDashboardCard extends LitElement {
       .filter((s) => s.type !== "hidden");
   }
 
+  /* Sichtbare Slots samt Kasten-Nummer (1..n über ALLE Slots, wie im
+     Editor) — die braucht kiosk_slots. */
+  get _slotsMitNummer() {
+    return (this._config?.slots || [])
+      .map((s, i) => ({ slot: { ...(s || {}), type: String(s?.type || "frame").toLowerCase() }, nr: i + 1 }))
+      .filter(({ slot }) => slot.type !== "hidden");
+  }
+
   render() {
     if (!this._config) return nothing;
     const c = this._config;
     const heroOn = c.hero?.enabled !== false;
-    const slots = this.visibleSlots;
 
     return html`
       <ha-card>
@@ -107,9 +115,12 @@ export class TomtutPoolDashboardCard extends LitElement {
                   .hass="${this.hass}"
                   .config="${c.hero}"
                   .frame="${c.frame}"
+                  .kiosk="${kioskGilt(c, KIOSK_BECKEN)}"
                 ></tomtut-pool-hero>`
               : nothing}
-            ${slots.map((slot) => this._renderSlot(slot))}
+            ${this._slotsMitNummer.map(({ slot, nr }) =>
+              this._renderSlot(slot, kioskGilt(c, nr))
+            )}
           </div>
         </div>
       </ha-card>
@@ -121,7 +132,7 @@ export class TomtutPoolDashboardCard extends LitElement {
    * damit Lit die Elemente über Renders hinweg wiederverwendet und der
    * Slot-Zustand (Bestätigungsdialog, optimistische Stufe) erhalten bleibt.
    */
-  _renderSlot(slot) {
+  _renderSlot(slot, kiosk = false) {
     const frame = this._config.frame;
     const type = SLOT_TYPES[slot.type]?.ready ? slot.type : "frame";
     switch (type) {
@@ -130,36 +141,42 @@ export class TomtutPoolDashboardCard extends LitElement {
           .hass="${this.hass}"
           .config="${slot}"
           .frame="${frame}"
+          .kiosk="${kiosk}"
         ></tomtut-pool-slot-heatpump>`;
       case "pump":
         return html`<tomtut-pool-slot-pump
           .hass="${this.hass}"
           .config="${slot}"
           .frame="${frame}"
+          .kiosk="${kiosk}"
         ></tomtut-pool-slot-pump>`;
       case "uv":
         return html`<tomtut-pool-slot-uv
           .hass="${this.hass}"
           .config="${slot}"
           .frame="${frame}"
+          .kiosk="${kiosk}"
         ></tomtut-pool-slot-uv>`;
       case "solar":
         return html`<tomtut-pool-slot-solar
           .hass="${this.hass}"
           .config="${slot}"
           .frame="${frame}"
+          .kiosk="${kiosk}"
         ></tomtut-pool-slot-solar>`;
       case "custom":
         return html`<tomtut-pool-slot-custom
           .hass="${this.hass}"
           .config="${slot}"
           .frame="${frame}"
+          .kiosk="${kiosk}"
         ></tomtut-pool-slot-custom>`;
       default:
         return html`<tomtut-pool-slot-frame
           .hass="${this.hass}"
           .config="${slot}"
           .frame="${frame}"
+          .kiosk="${kiosk}"
           .slotType="${slot.type}"
         ></tomtut-pool-slot-frame>`;
     }

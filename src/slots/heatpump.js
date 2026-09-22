@@ -1,7 +1,7 @@
 import { html, css, nothing } from "lit";
 import { SlotBase } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
-import { fmt, isOn, numOf, seitMinuten } from "../shared/util.js";
+import { fmt, isOn, numOf, seitMinuten, domainOf } from "../shared/util.js";
 import { fanDuration } from "./pump.js";
 
 /*
@@ -288,6 +288,57 @@ export const modeBadge = (e, c = {}) => {
  * switch/input_boolean lassen sich per Klick umschalten, binary_sensor ist
  * nur Anzeige (dort gibt es nichts zu schalten).
  */
+/*
+ * Modus wählen (Iteration 15): welche Werte bietet die Modus-Entity an, und
+ * mit welchem Dienst wird gesetzt? Liefert Gruppen (meist eine):
+ *   select / input_select  -> <domain>.select_option  { option }
+ *   climate                -> climate.set_hvac_mode   { hvac_mode }
+ *                             climate.set_preset_mode { preset_mode }
+ * Mit mode_attribute "preset_mode" nur die Presets; mit einem anderen
+ * Attribut oder bei sensor.* ist nichts wählbar (nur Anzeige).
+ * Anzeigenamen über dasselbe Mapping wie das Badge.
+ */
+const optionText = (wert, c) => modeFromState(wert, c)?.label || modeWort(wert);
+
+export const modusWahl = (e, c = {}) => {
+  const id = c.mode_entity;
+  if (!e || !id) return [];
+  const domain = domainOf(id);
+  const a = e.attributes || {};
+  const attr = String(c.mode_attribute || "").trim();
+  const gruppe = (titel, dienstDomain, dienst, feld, liste, aktuell) =>
+    Array.isArray(liste) && liste.length
+      ? [
+          {
+            titel,
+            domain: dienstDomain,
+            service: dienst,
+            feld,
+            optionen: liste.map((w) => ({
+              wert: String(w),
+              text: optionText(w, c),
+              aktiv: normZustand(w) === normZustand(aktuell),
+            })),
+          },
+        ]
+      : [];
+  if ((domain === "select" || domain === "input_select") && !attr) {
+    return gruppe("Betriebsmodus", domain, "select_option", "option", a.options, e.state);
+  }
+  if (domain === "climate") {
+    if (attr === "preset_mode") {
+      return gruppe("Betriebsmodus", "climate", "set_preset_mode", "preset_mode", a.preset_modes, a.preset_mode);
+    }
+    if (!attr) {
+      return [
+        ...gruppe("Betriebsart", "climate", "set_hvac_mode", "hvac_mode", a.hvac_modes, e.state),
+        ...gruppe("Stufe / Preset", "climate", "set_preset_mode", "preset_mode", a.preset_modes, a.preset_mode),
+      ];
+    }
+  }
+  return [];
+};
+
 export const heatpumpHasEntity = (c = {}) =>
   !!(
     c.switch_entity ||
@@ -301,6 +352,8 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
   static properties = {
     ...SlotBase.properties,
     _tick: { state: true },
+    _modusWahlOffen: { state: true },
+    _modusFehler: { state: true },
   };
 
   get defaults() {
@@ -381,7 +434,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
 
   _onReleaseClick(ev) {
     ev?.stopPropagation();
-    if (!this._releaseSchaltbar) return;
+    if (!this.bedienbar || !this._releaseSchaltbar) return;
     this._call(this.config.release_entity, "toggle");
   }
 
@@ -499,17 +552,94 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
    * (MODE_FARBEN, über die CSS-Variable --tt-mode-farbe); Aus/unbekannt
    * bleibt neutral im Box-Look. Reine Anzeige, kein Klick.
    */
+  /* Gruppen der Modus-Auswahl — leer = nur Anzeige */
+  get _modusGruppen() {
+    const c = this.config || {};
+    return modusWahl(this._ent(c.mode_entity), c);
+  }
+
+  _onModeClick(ev) {
+    ev?.stopPropagation();
+    if (!this.bedienbar || !this._modusGruppen.length) return;
+    this._modusFehler = "";
+    this._modusWahlOffen = true;
+  }
+
+  _modusSchliessen(ev) {
+    ev?.stopPropagation();
+    this._modusWahlOffen = false;
+    this._modusFehler = "";
+  }
+
+  /*
+   * Setzt den gewählten Modus. Ein fehlgeschlagener Dienstaufruf bleibt
+   * sichtbar im Dialog stehen (und landet in der Konsole) — nie still.
+   */
+  async _modusSetzen(gruppe, opt, ev) {
+    ev?.stopPropagation();
+    if (!this.bedienbar || !this.hass) return;
+    this._modusFehler = "";
+    try {
+      await this.hass.callService(gruppe.domain, gruppe.service, {
+        entity_id: this.config.mode_entity,
+        [gruppe.feld]: opt.wert,
+      });
+      this._modusWahlOffen = false;
+    } catch (err) {
+      const grund = err?.message || err?.error?.message || String(err);
+      console.error("tomtut-pool-cards: Modus setzen fehlgeschlagen", err);
+      this._modusFehler = `Umschalten auf „${opt.text}“ fehlgeschlagen: ${grund}`;
+    }
+  }
+
+  _renderModusWahl() {
+    if (!this._modusWahlOffen || !this.bedienbar) return nothing;
+    const gruppen = this._modusGruppen;
+    return html`
+      <div class="confirm-overlay modus-overlay" @click="${this._modusSchliessen}">
+        <div class="confirm-panel modus-panel" @click="${(e) => e.stopPropagation()}">
+          <h3 class="modus-kopf">Betriebsmodus wählen</h3>
+          ${gruppen.map(
+            (g) => html`
+              ${gruppen.length > 1 ? html`<div class="modus-gruppe">${g.titel}</div>` : nothing}
+              <div class="modus-optionen">
+                ${g.optionen.map(
+                  (o) => html`<button
+                    class="modus-option ${o.aktiv ? "aktiv" : ""}"
+                    data-wert="${o.wert}"
+                    aria-pressed="${o.aktiv ? "true" : "false"}"
+                    @click="${(e) => this._modusSetzen(g, o, e)}"
+                  >
+                    <span class="modus-haken">${o.aktiv ? "✓" : ""}</span>${o.text}
+                  </button>`
+                )}
+              </div>
+            `
+          )}
+          ${this._modusFehler
+            ? html`<div class="modus-fehler" role="alert">${this._modusFehler}</div>`
+            : nothing}
+          <div class="confirm-actions">
+            <button class="btn cancel" @click="${this._modusSchliessen}">Schließen</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   _renderModeBadge(b) {
     const farbe = MODE_FARBEN[b.art] || "";
+    const waehlbar = this.bedienbar && this._modusGruppen.length > 0;
     return html`
       <div
-        class="mode-badge ${b.art || "neutral"}"
+        class="mode-badge ${b.art || "neutral"} ${waehlbar ? "waehlbar" : ""}"
         style="top:${this._v("mode_top")}%; left:${this._v(
           "mode_left"
         )}%; transform:translateX(-50%) scale(${(this._v("mode_scale") ?? 100) / 100});${farbe
           ? ` --tt-mode-farbe:${farbe};`
           : ""}"
-        title="Betriebsmodus: ${b.text}"
+        title="Betriebsmodus: ${b.text}${waehlbar ? " — tippen zum Ändern" : ""}"
+        @click="${this._onModeClick}"
       >
         <span class="mode-punkt"></span>
         <span class="val">${b.text}</span>
@@ -556,7 +686,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
 
   _stepTarget(delta) {
     const t = this._target;
-    if (!t || !this.hass) return;
+    if (!this.bedienbar || !t || !this.hass) return;
     let next = Math.round((t.value + delta * t.step) / t.step) * t.step;
     next = Math.min(t.max, Math.max(t.min, next));
     next = Math.round(next * 100) / 100;
@@ -700,7 +830,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
               </div>
             `
           : nothing}
-        ${this.renderConfirm("Wirklich stromlos schalten?")}
+        ${this.renderConfirm("Wirklich stromlos schalten?")} ${this._renderModusWahl()}
       </div>
       ${configured
         ? nothing
@@ -878,6 +1008,70 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
       }
       .mode-badge.aus {
         opacity: 0.75;
+      }
+      /* Iteration 15: mit wählbarer Entity ist das Badge ein Knopf */
+      .mode-badge.waehlbar {
+        pointer-events: auto;
+        cursor: pointer;
+      }
+      .mode-badge.waehlbar:hover {
+        filter: brightness(1.12);
+      }
+
+      /* Modus-Auswahl — sitzt in der Dialog-Stufe (confirm-overlay, z 10) */
+      .modus-panel {
+        padding: 14px 16px;
+      }
+      .modus-panel .modus-kopf {
+        color: var(--primary-text-color, inherit);
+        margin-bottom: 6px;
+      }
+      .modus-gruppe {
+        margin: 6px 0 4px;
+        font-size: 0.8em;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        opacity: 0.7;
+      }
+      .modus-optionen {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(9.5em, 1fr));
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .modus-option {
+        display: flex;
+        align-items: center;
+        gap: 0.4em;
+        padding: 0.4em 0.6em;
+        border-radius: 10px;
+        border: 1.5px solid var(--divider-color, var(--tt-line));
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+      }
+      .modus-option:hover {
+        filter: brightness(1.15);
+      }
+      .modus-option.aktiv {
+        border-color: var(--primary-color, currentColor);
+        background: var(--tt-soft);
+      }
+      .modus-haken {
+        width: 1em;
+        color: var(--primary-color, currentColor);
+      }
+      .modus-fehler {
+        margin: 0 0 12px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--error-color, currentColor);
+        color: var(--error-color, inherit);
+        font-size: 0.9em;
       }
     `,
   ];

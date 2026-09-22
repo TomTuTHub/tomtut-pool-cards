@@ -3406,6 +3406,293 @@ check("Editor: Badge-Schalter und drei Regler beim Betriebsmodus", () => {
 ed14.remove();
 
 /* ------------------------------------------------------------------ */
+/* Iteration 15: Modus waehlen + Kiosk-Modus                           */
+/* ------------------------------------------------------------------ */
+
+const klick = async (el, slot) => {
+  el.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true, composed: true }));
+  await slot.updateComplete;
+};
+
+/* ---- Modus waehlen ---- */
+
+check("Modus waehlen: select -> select_option, Anzeigenamen deutsch, aktueller markiert", () => {
+  const g = pkg.modusWahl(
+    { state: "Heizen Smart", attributes: { options: TUYA_OPTIONEN } },
+    { mode_entity: WP_SEL }
+  );
+  assert.equal(g.length, 1);
+  assert.equal(g[0].domain, "select");
+  assert.equal(g[0].service, "select_option");
+  assert.equal(g[0].feld, "option");
+  assert.deepEqual(
+    g[0].optionen.map((o) => o.text),
+    ["Auto", "Heizen Boost", "Kühlen Boost", "Heizen Smart", "Kühlen Smart", "Heizen Silent", "Kühlen Silent"]
+  );
+  assert.deepEqual(g[0].optionen.filter((o) => o.aktiv).map((o) => o.wert), ["Heizen Smart"]);
+});
+check("Modus waehlen: climate -> hvac_mode + Presets, preset_mode-Attribut -> nur Presets, sensor -> nichts", () => {
+  const cl = { state: "heat", attributes: { hvac_modes: ["heat", "cool", "off"], preset_modes: ["eco", "boost"], preset_mode: "eco" } };
+  const g = pkg.modusWahl(cl, { mode_entity: "climate.wp" });
+  assert.deepEqual(g.map((x) => x.service), ["set_hvac_mode", "set_preset_mode"]);
+  assert.deepEqual(g[0].optionen.map((o) => o.text), ["Heizen", "Kühlen", "Aus"]);
+  assert.equal(g[1].optionen.find((o) => o.aktiv).wert, "eco");
+  const p = pkg.modusWahl(cl, { mode_entity: "climate.wp", mode_attribute: "preset_mode" });
+  assert.deepEqual(p.map((x) => x.feld), ["preset_mode"]);
+  assert.deepEqual(pkg.modusWahl({ state: "Heizen", attributes: {} }, { mode_entity: "sensor.wp_modus" }), []);
+  assert.deepEqual(pkg.modusWahl({ state: "x", attributes: { options: ["x"] } }, { mode_entity: WP_SEL, mode_attribute: "foo" }), []);
+});
+
+const hpWahl = await mountSlotTyp(MODUS_SEL, selHass("Heizen Smart"));
+check("Modus waehlen: Badge ist ein Knopf, Auswahl ab Werk zu", () => {
+  assert.ok(badge(hpWahl).classList.contains("waehlbar"));
+  assert.equal(hpWahl.shadowRoot.querySelector(".modus-overlay"), null);
+});
+await klick(badge(hpWahl), hpWahl);
+check("Modus waehlen: Tippen oeffnet die Auswahl mit allen Optionen, aktueller markiert", () => {
+  const ov = hpWahl.shadowRoot.querySelector(".confirm-overlay.modus-overlay");
+  assert.ok(ov, "keine Auswahl");
+  const opt = [...ov.querySelectorAll(".modus-option")];
+  assert.equal(opt.length, 7);
+  const aktiv = opt.filter((b) => b.classList.contains("aktiv"));
+  assert.equal(aktiv.length, 1);
+  assert.match(aktiv[0].textContent, /✓\s*Heizen Smart/);
+});
+calls.length = 0;
+await klick(hpWahl.shadowRoot.querySelector('.modus-option[data-wert="Kuehlen Power"]'), hpWahl);
+await new Promise((r) => setTimeout(r, 0));
+await hpWahl.updateComplete;
+check("Modus waehlen: ruft select.select_option mit der Roh-Option und schliesst", () => {
+  assert.deepEqual(calls, [
+    { domain: "select", service: "select_option", data: { entity_id: WP_SEL, option: "Kuehlen Power" } },
+  ]);
+  assert.equal(hpWahl.shadowRoot.querySelector(".modus-overlay"), null);
+});
+
+const CL_ENT = "climate.wp_klima";
+const clHass = (extra = {}) =>
+  makeHass({
+    [CL_ENT]: {
+      state: "heat",
+      attributes: { hvac_modes: ["heat", "cool", "off"], preset_modes: ["eco", "boost"], preset_mode: "eco", temperature: 28 },
+      last_changed: iso(60),
+    },
+    ...extra,
+  });
+const hpKlima = await mountSlotTyp({ ...HP_CONFIG, show_mode: true, mode_entity: CL_ENT }, clHass());
+await klick(badge(hpKlima), hpKlima);
+calls.length = 0;
+await klick(hpKlima.shadowRoot.querySelector('.modus-option[data-wert="cool"]'), hpKlima);
+await new Promise((r) => setTimeout(r, 0));
+await klick(badge(hpKlima), hpKlima);
+await klick(hpKlima.shadowRoot.querySelector('.modus-option[data-wert="boost"]'), hpKlima);
+await new Promise((r) => setTimeout(r, 0));
+check("Modus waehlen: climate -> set_hvac_mode bzw. set_preset_mode", () => {
+  assert.deepEqual(calls, [
+    { domain: "climate", service: "set_hvac_mode", data: { entity_id: CL_ENT, hvac_mode: "cool" } },
+    { domain: "climate", service: "set_preset_mode", data: { entity_id: CL_ENT, preset_mode: "boost" } },
+  ]);
+});
+
+const hassFehler = selHass("Heizen Smart");
+hassFehler.callService = () => Promise.reject(new Error("Gerät offline"));
+const hpFehler = await mountSlotTyp(MODUS_SEL, hassFehler);
+const konsoleVorher = console.error;
+const konsole = [];
+console.error = (...a) => konsole.push(a);
+await klick(badge(hpFehler), hpFehler);
+await klick(hpFehler.shadowRoot.querySelector('.modus-option[data-wert="Auto"]'), hpFehler);
+await new Promise((r) => setTimeout(r, 0));
+await hpFehler.updateComplete;
+console.error = konsoleVorher;
+check("Modus waehlen: Fehler beim Dienst wird sichtbar gemeldet, Auswahl bleibt offen", () => {
+  const f = hpFehler.shadowRoot.querySelector(".modus-fehler");
+  assert.ok(f, "kein Fehlerhinweis");
+  assert.equal(f.getAttribute("role"), "alert");
+  assert.match(f.textContent, /Auto.*fehlgeschlagen: Gerät offline/);
+  assert.ok(hpFehler.shadowRoot.querySelector(".modus-overlay"));
+  assert.equal(konsole.length, 1, "nicht in der Konsole protokolliert");
+});
+
+const hpNurSensor = await mountSlotTyp(
+  { ...HP_CONFIG, show_mode: true, mode_entity: "sensor.wp_modus_x" },
+  makeHass({ "sensor.wp_modus_x": { state: "Heizen Boost", attributes: {}, last_changed: iso(60) } })
+);
+await klick(badge(hpNurSensor), hpNurSensor);
+check("Modus waehlen: sensor ist nur Anzeige — kein Knopf, keine Auswahl", () => {
+  assert.ok(!badge(hpNurSensor).classList.contains("waehlbar"));
+  assert.equal(hpNurSensor.shadowRoot.querySelector(".modus-overlay"), null);
+});
+check("Modus waehlen: Auswahl sitzt in der Dialog-Stufe (z-index 10, nicht hoeher)", () => {
+  const css = cssOf("tomtut-pool-slot-heatpump");
+  assert.equal(zIndexVon(css, ".confirm-overlay"), 10);
+  assert.ok(!/z-index:\s*(1[1-9]|[2-9]\d|\d{3,})/.test(css), "z-index > 10");
+});
+
+/* ---- Kiosk-Modus ---- */
+
+const KIOSK_HASS = () =>
+  selHass("Heizen Smart", { [FREI_ENT]: { state: "on", attributes: {}, last_changed: iso(60) } });
+const KIOSK_SLOTS = [
+  { ...MODUS_SEL, release_entity: FREI_ENT, confirm_off: true },
+  PUMP_CONFIG,
+  CUSTOM_BTN(),
+];
+const kioskCard = async (extra) =>
+  mount(Dashboard, { hero: { enabled: true, temp_entity: "sensor.pool_wassertemperatur" }, slots: KIOSK_SLOTS, ...extra }, KIOSK_HASS());
+const slotsVon = async (card) => {
+  const el = [...card.shadowRoot.querySelector(".grid").children];
+  await Promise.all(el.map((e) => e.updateComplete));
+  return el;
+};
+
+/* Alles anklicken, was sich in einem Slot anklicken laesst; zaehlt Dienste,
+   more-info-Events und geoeffnete Dialoge. */
+const allesAnklicken = async (slot) => {
+  const mehrInfo = [];
+  slot.addEventListener("hass-more-info", (e) => mehrInfo.push(e.detail.entityId));
+  const ziele = [
+    ...slot.shadowRoot.querySelectorAll(
+      ".power-badge, .stage-btn, .release-badge, .mode-badge, .step, .value-box, .thermo, .entry, .entry button, [data-entity]"
+    ),
+  ];
+  for (const z of ziele) await klick(z, slot);
+  await new Promise((r) => setTimeout(r, 0));
+  return {
+    ziele: ziele.length,
+    mehrInfo,
+    dialog: !!slot.shadowRoot.querySelector(".confirm-overlay"),
+  };
+};
+
+check("Kiosk: ab Werk aus", () => {
+  assert.equal(pkg.kioskGilt({}, 1), false);
+  assert.equal(pkg.kioskGilt({ kiosk: false }, "becken"), false);
+  assert.equal(pkg.kioskGilt({ kiosk: true }, 3), true);
+  assert.equal(pkg.kioskGilt({ kiosk: true, kiosk_slots: [1, "2"] }, 2), true);
+  assert.equal(pkg.kioskGilt({ kiosk: true, kiosk_slots: [1, "2"] }, "becken"), false);
+  assert.deepEqual(
+    pkg.kioskSchluessel({ slots: [{ type: "pump" }, { type: "hidden" }, { type: "uv" }] }),
+    ["becken", 1, 3]
+  );
+});
+
+const kAus = await kioskCard({});
+const kAusSlots = await slotsVon(kAus);
+calls.length = 0;
+const kAusErgebnis = [];
+for (const s of kAusSlots) kAusErgebnis.push(await allesAnklicken(s));
+check("Kiosk aus: alles bedienbar (Dienste, more-info, Rueckfrage)", () => {
+  assert.ok(calls.length > 0, "keine Dienste");
+  assert.ok(kAusErgebnis.some((e) => e.mehrInfo.length > 0), "kein more-info");
+  assert.ok(!kAusSlots.some((s) => s.shadowRoot.querySelector(".slot.kiosk")));
+});
+
+const kAn = await kioskCard({ kiosk: true });
+const kAnSlots = await slotsVon(kAn);
+calls.length = 0;
+const kAnErgebnis = [];
+for (const s of kAnSlots) kAnErgebnis.push(await allesAnklicken(s));
+check("Kiosk an: KEIN hass.callService, kein more-info, kein Dialog — in keinem Kasten", () => {
+  assert.ok(kAnErgebnis.reduce((n, e) => n + e.ziele, 0) > 8, "zu wenig angeklickt");
+  assert.deepEqual(calls, []);
+  assert.deepEqual(kAnErgebnis.flatMap((e) => e.mehrInfo), []);
+  assert.ok(!kAnErgebnis.some((e) => e.dialog), "Dialog offen");
+});
+check("Kiosk an: Kaesten tragen .kiosk, das Becken auch; Werte bleiben sichtbar", () => {
+  assert.equal(kAnSlots.length, 4);
+  for (const s of kAnSlots) assert.ok(s.kiosk === true && s.shadowRoot.querySelector(".slot.kiosk, .kiosk"), s.tagName);
+  assert.match(kAnSlots[1].shadowRoot.querySelector(".mode-badge").textContent, /Heizen Smart/);
+  assert.ok(!kAnSlots[1].shadowRoot.querySelector(".mode-badge").classList.contains("waehlbar"));
+});
+check("Kiosk: CSS nimmt Cursor und Zeiger-Feedback weg", () => {
+  const css = cssOf("tomtut-pool-slot-heatpump");
+  assert.match(css, /\.slot\.kiosk \*[^}]*pointer-events:\s*none\s*!important/);
+  assert.match(css, /\.slot\.kiosk,\s*\.slot\.kiosk \*[^}]*cursor:\s*default\s*!important/);
+});
+{
+  /* Powerbutton direkt ausloesen (am CSS vorbei, wie ein Skript es koennte) */
+  const wp = kAnSlots[1];
+  calls.length = 0;
+  wp._onPowerClick();
+  wp._stepTarget(1);
+  wp._onReleaseClick();
+  wp._onModeClick();
+  await wp.updateComplete;
+  check("Kiosk: auch direkte Handler-Aufrufe schalten nichts", () => {
+    assert.deepEqual(calls, []);
+    assert.equal(wp.shadowRoot.querySelector(".confirm-overlay"), null);
+  });
+}
+
+const kTeil = await kioskCard({ kiosk: true, kiosk_slots: [2] });
+const kTeilSlots = await slotsVon(kTeil);
+check("Kiosk-Teilmenge: nur Kasten 2 (Pumpe) gesperrt, Becken und die anderen bedienbar", () => {
+  assert.deepEqual(kTeilSlots.map((s) => s.kiosk === true), [false, false, true, false]);
+});
+calls.length = 0;
+await allesAnklicken(kTeilSlots[2]);
+check("Kiosk-Teilmenge: gesperrter Kasten ruft nichts", () => assert.deepEqual(calls, []));
+calls.length = 0;
+await allesAnklicken(kTeilSlots[3]);
+check("Kiosk-Teilmenge: freier Kasten schaltet weiter", () =>
+  assert.ok(calls.some((c) => c.data.entity_id === "switch.poolbeleuchtung"))
+);
+
+/* ---- Editor ---- */
+
+const ed15 = new Editor();
+ed15.setConfig({ hero: { enabled: true }, slots: [{ type: "heatpump", label_text: "WP" }, { type: "pump", label: "Filter" }] });
+ed15.hass = makeHass();
+document.body.appendChild(ed15);
+await ed15.updateComplete;
+let ed15Fired = null;
+ed15.addEventListener("config-changed", (e) => (ed15Fired = e.detail.config));
+const kioskBox = () => ed15.shadowRoot.querySelector('.kiosk-block input[data-key="kiosk"]');
+check("Editor: Kiosk-Kasten steht ganz oben, Schalter aus, keine Liste", () => {
+  const erstes = ed15.shadowRoot.querySelector(".editor").firstElementChild;
+  assert.ok(erstes.classList.contains("kiosk-block"), "nicht ganz oben");
+  assert.match(erstes.textContent, /Kiosk-Modus \(nur anzeigen\)/);
+  assert.equal(kioskBox().checked, false);
+  assert.equal(ed15.shadowRoot.querySelectorAll("[data-kiosk-slot]").length, 0);
+});
+kioskBox().checked = true;
+kioskBox().dispatchEvent(new dom.window.Event("change"));
+await ed15.updateComplete;
+check("Editor: Kiosk an -> kiosk: true, Liste aller Kaesten (Becken + Slots mit Typ/Label), alle angehakt", () => {
+  assert.equal(ed15Fired.kiosk, true);
+  assert.equal(ed15Fired.kiosk_slots, undefined);
+  const boxen = [...ed15.shadowRoot.querySelectorAll("[data-kiosk-slot]")];
+  assert.deepEqual(boxen.map((b) => b.dataset.kioskSlot), ["becken", "1", "2"]);
+  assert.ok(boxen.every((b) => b.checked));
+  assert.match(boxen[1].parentElement.textContent, /Kasten 1 · Wärmepumpe · WP/);
+});
+{
+  const becken = ed15.shadowRoot.querySelector('[data-kiosk-slot="becken"]');
+  becken.checked = false;
+  becken.dispatchEvent(new dom.window.Event("change"));
+  await ed15.updateComplete;
+}
+check("Editor: Becken abhaken -> kiosk_slots [1, 2]", () => assert.deepEqual(ed15Fired.kiosk_slots, [1, 2]));
+{
+  const becken = ed15.shadowRoot.querySelector('[data-kiosk-slot="becken"]');
+  becken.checked = true;
+  becken.dispatchEvent(new dom.window.Event("change"));
+  await ed15.updateComplete;
+}
+check("Editor: wieder alle angehakt -> Liste faellt weg (= alle)", () =>
+  assert.equal("kiosk_slots" in ed15Fired, false)
+);
+kioskBox().checked = false;
+kioskBox().dispatchEvent(new dom.window.Event("change"));
+await ed15.updateComplete;
+check("Editor: Kiosk aus raeumt beide Schluessel", () => {
+  assert.equal("kiosk" in ed15Fired, false);
+  assert.equal("kiosk_slots" in ed15Fired, false);
+});
+ed15.remove();
+
+/* ------------------------------------------------------------------ */
 
 console.log(results.join("\n"));
 console.log(

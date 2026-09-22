@@ -258,7 +258,7 @@ export class TomtutPoolSlotPump extends SlotBase {
   }
 
   _clickStage(i) {
-    if (this.blockedByMain) return;
+    if (!this.bedienbar || this.blockedByMain) return;
     const id = this.stages[i];
     if (!id) return;
     this._optimistic = { i, t: Date.now() };
@@ -274,7 +274,7 @@ export class TomtutPoolSlotPump extends SlotBase {
   }
 
   _clickStop() {
-    if (this.blockedByMain) return;
+    if (!this.bedienbar || this.blockedByMain) return;
     this._optimistic = { i: -1, t: Date.now() };
     this.requestUpdate();
     if (this.mode === "latching") {

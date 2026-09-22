@@ -73,12 +73,14 @@ export const fanDesignSvg = (key) => (FAN_DESIGNS[key] || FAN_DESIGNS[FAN_DESIGN
  *   hass    — Home-Assistant-Objekt
  *   config  — die Slot-Konfiguration (type + typeigene Felder)
  *   frame   — { enabled: bool, fill: "transparent"|"weiss"|"schwarz" }
+ *   kiosk   — true = nur Anzeige (Iteration 15, s. shared/kiosk.js)
  */
 export class SlotBase extends LitElement {
   static properties = {
     hass: { attribute: false },
     config: { attribute: false },
     frame: { attribute: false },
+    kiosk: { attribute: false },
     _confirmOpen: { state: true },
   };
 
@@ -86,6 +88,7 @@ export class SlotBase extends LitElement {
     super();
     this.config = {};
     this.frame = { enabled: true, fill: "transparent" };
+    this.kiosk = false;
     this._confirmOpen = false;
   }
 
@@ -112,12 +115,18 @@ export class SlotBase extends LitElement {
     return toWatt(this._ent(id));
   }
 
+  /* Kiosk = nur Anzeige: hier endet JEDER Schaltwunsch des Slots */
+  get bedienbar() {
+    return this.kiosk !== true;
+  }
+
   _call(entityId, service, extra = {}) {
-    if (!entityId || !this.hass) return;
+    if (!this.bedienbar || !entityId || !this.hass) return;
     this.hass.callService(domainOf(entityId), service, { entity_id: entityId, ...extra });
   }
 
   _moreInfo(ev) {
+    if (!this.bedienbar) return;
     const id = ev?.currentTarget?.dataset?.entity;
     if (!id) return;
     ev.stopPropagation();
@@ -131,7 +140,7 @@ export class SlotBase extends LitElement {
   get _frameClasses() {
     const f = this.frame || {};
     const fill = ["transparent", "weiss", "schwarz"].includes(f.fill) ? f.fill : "transparent";
-    return `slot ${f.enabled === false ? "" : "framed"} fill-${fill}`;
+    return `slot ${f.enabled === false ? "" : "framed"} fill-${fill}${this.bedienbar ? "" : " kiosk"}`;
   }
 
   renderSlot(content) {
@@ -283,6 +292,7 @@ export class SlotBase extends LitElement {
 
   _onPowerClick(ev) {
     ev?.stopPropagation();
+    if (!this.bedienbar) return;
     const id = this.powerEntityId;
     if (!id) return;
     if (this._isOn(id)) {
@@ -305,7 +315,7 @@ export class SlotBase extends LitElement {
   }
 
   renderConfirm(title = "Wirklich stromlos schalten?") {
-    if (!this._confirmOpen) return nothing;
+    if (!this._confirmOpen || !this.bedienbar) return nothing;
     return html`
       <div class="confirm-overlay" @click="${this._cancelOff}">
         <div class="confirm-panel" @click="${(e) => e.stopPropagation()}">

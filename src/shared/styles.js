@@ -73,6 +73,18 @@ export const frameStyles = css`
   .slot.framed {
     border-color: var(--tt-line);
   }
+  /*
+   * Kiosk-Modus (Iteration 15): gleicher Look, aber tot für Zeiger — kein
+   * Hand-Cursor, kein Hover-/Klick-Feedback. Die eigentliche Sperre sitzt
+   * im JS (SlotBase.bedienbar); das hier ist nur die Optik dazu.
+   */
+  .slot.kiosk,
+  .slot.kiosk * {
+    cursor: default !important;
+  }
+  .slot.kiosk * {
+    pointer-events: none !important;
+  }
   .slot-title {
     font-size: 0.95em;
     font-weight: 700;
