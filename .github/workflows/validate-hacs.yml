@@ -5,7 +5,13 @@ on:
   pull_request:
   workflow_dispatch:
 
-permissions: {}
+# Leserecht auf den Inhalt ist Pflicht, solange das Repo privat ist: mit
+# `permissions: {}` darf der GITHUB_TOKEN ein privates Repo nicht einmal
+# lesen, und hacs/action bricht vor jeder Pruefung mit "invalid_token /
+# Resource not accessible by integration" ab (alle Laeufe seit 19.09.2026).
+# Bei oeffentlichen Repos ist das Recht ohnehin implizit — es schadet nicht.
+permissions:
+  contents: read
 
 jobs:
   validate:
