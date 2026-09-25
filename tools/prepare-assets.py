@@ -51,11 +51,14 @@ Motiv nachgemessen werden; nach einem neuen Beckenbild einmal
 uebernehmen und `node tools/becken-zonen.mjs` die Test-Fixture neu schreiben
 lassen.
 
-Benoetigt Pillow (Debian: apt install python3-pil).
+Benoetigt Pillow (Debian: apt install python3-pil) und zopflipng
+(Debian: apt install zopfli) fuer die verlustfreie Nachkompression.
 """
 import hashlib
 import json
 import os
+import shutil
+import subprocess
 import sys
 from PIL import Image
 
@@ -154,8 +157,19 @@ def load(pfad, trim=False, max_width=MAX_WIDTH, drehen=0):
     return im
 
 
+# Verlustfreie Nachkompression (seit dem Prod-Rollout 2026-09-25): zopflipng
+# packt dieselben Palettenpixel nur dichter (~7 % kleiner). --lossy_transparent
+# setzt lediglich die Farbe VOLL transparenter Pixel neu — unsichtbar, jeder
+# sichtbare Pixel bleibt bit-gleich. Deterministisch, damit die Solar-Fixture
+# (sha256) reproduzierbar bleibt.
+ZOPFLIPNG = ["zopflipng", "-y", "-m", "--lossy_transparent"]
+
+
 def save(im, pfad):
     im.quantize(colors=COLORS, method=Image.FASTOCTREE).save(pfad, optimize=True)
+    if not shutil.which(ZOPFLIPNG[0]):
+        raise SystemExit("zopflipng fehlt (Debian: apt install zopfli)")
+    subprocess.run(ZOPFLIPNG + [pfad, pfad], check=True, stdout=subprocess.DEVNULL)
     return os.path.getsize(pfad)
 
 
