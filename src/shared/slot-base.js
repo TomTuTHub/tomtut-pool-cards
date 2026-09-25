@@ -234,13 +234,28 @@ export class SlotBase extends LitElement {
    * damit "Steckdose an, WP aus" lesbar ist. Der Knopf schaltet weiter die
    * Steckdose.
    */
+  /*
+   * Zustand der Knopf-Entity unbekannt (unknown/unavailable/fehlt)? Dann
+   * zeigt der Knopf grau statt rot — "aus" wäre eine Behauptung
+   * (Iteration 18b, gilt für jeden Slot mit Powerbutton).
+   */
+  get _powerUnbekannt() {
+    const id = this.powerEntityId;
+    if (!id) return false;
+    const s = String(this._ent(id)?.state ?? "").toLowerCase();
+    return ["", "unknown", "unavailable"].includes(s);
+  }
+
   renderPowerButton({ on, top, left, scale, standby = false }) {
+    const unbekannt = !on && this._powerUnbekannt;
     return html`
       <div
-        class="power-badge ${on ? "on" : "off"} ${standby ? "standby" : ""}"
+        class="power-badge ${on ? "on" : unbekannt ? "unbekannt" : "off"} ${standby ? "standby" : ""}"
         style="top:${top}%; left:${left}%; transform:scale(${(scale ?? 100) / 100});"
         title="${standby
           ? "Steckdose an, Wärmepumpe aus (Standby) — Steckdose ausschalten (mit Rückfrage)"
+          : unbekannt
+          ? "Zustand unbekannt — Einschalten"
           : on
           ? "Ausschalten (mit Rückfrage)"
           : "Einschalten"}"

@@ -104,8 +104,18 @@ const SEITE = `<!doctype html>
   customElements.define("ha-card", class extends HTMLElement {
     connectedCallback() { this.style.display = "block"; }
   });
+  /* mdi:power als echte Form (Iteration 18b) — sonst wäre ein fehlendes
+     Symbol im Test nicht von einem gefüllten Knopf zu unterscheiden */
+  const MDI_POWER = "M16.56,5.44L15.11,6.89C16.84,7.94 18,9.83 18,12A6,6 0 0,1 12,18A6,6 0 0,1 6,12C6,9.83 7.16,7.94 8.88,6.88L7.44,5.44C5.36,6.88 4,9.28 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12C20,9.28 18.64,6.88 16.56,5.44M13,3H11V13H13";
   customElements.define("ha-icon", class extends HTMLElement {
     connectedCallback() {
+      if (this.getAttribute("icon") === "mdi:power") {
+        this.style.display = "inline-block";
+        this.style.width = "var(--mdc-icon-size, 24px)";
+        this.style.height = "var(--mdc-icon-size, 24px)";
+        this.innerHTML = '<svg viewBox="0 0 24 24" style="width:100%;height:100%;display:block"><path fill="currentColor" d="' + MDI_POWER + '"/></svg>';
+        return;
+      }
       this.style.display = "inline-block";
       this.style.width = "var(--mdc-icon-size, 24px)";
       this.style.height = "var(--mdc-icon-size, 24px)";
@@ -1549,6 +1559,80 @@ for (const breite of [536, 380]) {
     assert.match(r.knopf, /standby/);
   });
   await page.locator("#buehne").screenshot({ path: join(ausgabe, `it18-wp-standby-${breite}.png`), animations: "disabled" });
+}
+
+/*
+ * Iteration 18b: Powerbutton-Symbol sichtbar in jedem Zustand (an, aus,
+ * Standby, unbekannt). Gemessen am Pixel: im Knopf muss das Symbol als
+ * FORM zu sehen sein — ein kleiner Teil der Fläche in Icon-Farbe, der Rest
+ * dunkler Knopf. Ein voll gefüllter Kreis (Symbol fehlt) fällt durch.
+ */
+{
+  const { pngLesen } = await import("../tools/png-lesen.mjs");
+  const FAELLE = {
+    an: { sw: "on", kl: "heat", klasse: "on" },
+    aus: { sw: "off", kl: "heat", klasse: "off" },
+    standby: { sw: "on", kl: "off", klasse: "standby" },
+    unbekannt: { sw: "unavailable", kl: "heat", klasse: "unbekannt" },
+  };
+  for (const [fall, f] of Object.entries(FAELLE)) {
+    await checkAsync(`It18b Powerbutton '${fall}': Symbol sichtbar (Liquid Glass)`, async () => {
+      const info = await page.evaluate(async ({ f, theme }) => {
+        document.body.innerHTML = `<div id="buehne" style="width:536px"></div>`;
+        document.body.style.background = theme.seite;
+        for (const [k, v] of Object.entries(theme.vars)) document.body.style.setProperty(k, v);
+        const card = document.createElement("tomtut-pool-dashboard");
+        const wp = window.demo.miniConfig().slots[0];
+        card.setConfig({ hero: { enabled: false }, slots: [wp] });
+        const st = (s, a = {}) => ({ state: s, attributes: a });
+        card.hass = {
+          ...window.demo.DEMO_HASS,
+          states: {
+            ...window.demo.DEMO_HASS.states,
+            "switch.waermepumpe": st(f.sw),
+            "climate.waermepumpe": st(f.kl, { temperature: 32, current_temperature: 23.6 }),
+          },
+        };
+        document.getElementById("buehne").appendChild(card);
+        await card.updateComplete;
+        const slot = card.shadowRoot.querySelector("tomtut-pool-slot-heatpump");
+        await slot.updateComplete;
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const k = slot.shadowRoot.querySelector(".power-badge");
+        k.id = "knopf-test";
+        const farbe = getComputedStyle(k).color.match(/[\d.]+/g).slice(0, 3).map(Number);
+        return { klasse: k.className, farbe, pfad: !!k.querySelector("ha-icon svg path") };
+      }, { f, theme: I17_THEMES["Liquid Glass"] });
+      assert.ok(info.klasse.includes(f.klasse), `Klasse ${info.klasse}`);
+      assert.ok(info.pfad, "kein Symbol im Knopf");
+      const pfad = join(ausgabe, `it18b-knopf-${fall}.png`);
+      const box = await page.evaluate(() => {
+        const card = document.querySelector("tomtut-pool-dashboard");
+        const k = card.shadowRoot.querySelector("tomtut-pool-slot-heatpump").shadowRoot.querySelector(".power-badge");
+        const r = k.getBoundingClientRect();
+        /* nur der runde Knopf, ohne Standby-Hinweis */
+        const d = Math.min(r.width, r.height);
+        return { x: r.left, y: r.top, width: d, height: d };
+      });
+      await page.screenshot({ path: pfad, clip: box, animations: "disabled" });
+      const bild = pngLesen(pfad);
+      /* Pixel innerhalb des Kreises: wie viele liegen nahe der Icon-Farbe? */
+      const [ir, ig, ib] = info.farbe;
+      let innen = 0, icon = 0;
+      const cx = bild.breite / 2, cy = bild.hoehe / 2, rad = bild.breite / 2 - 2;
+      for (let y = 0; y < bild.hoehe; y++)
+        for (let x = 0; x < bild.breite; x++) {
+          if ((x - cx) ** 2 + (y - cy) ** 2 > rad ** 2) continue;
+          innen++;
+          const i = (y * bild.breite + x) * 4;
+          const dist = Math.abs(bild.rgba[i] - ir) + Math.abs(bild.rgba[i + 1] - ig) + Math.abs(bild.rgba[i + 2] - ib);
+          if (dist < 120) icon++;
+        }
+      const anteil = Math.round((icon / innen) * 1000) / 10;
+      assert.ok(anteil >= 6 && anteil <= 45, `Icon-Anteil ${anteil} % (Symbol fehlt oder Knopf gefüllt)`);
+      results.push(`       Knopf ${fall}: Icon-Farbe rgb(${info.farbe}), ${anteil} % der Knopffläche`);
+    });
+  }
 }
 
 check("It17 Mini: Pooltemperatur mit Wert", () => assert.equal(i17Masse["500-hell"]?.temp, "24,6 °C"));

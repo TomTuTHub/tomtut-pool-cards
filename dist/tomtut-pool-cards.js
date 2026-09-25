@@ -24,11 +24,11 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           <g .innerHTML="${p}"></g>
         </svg>
       </div>
-    `}renderPowerButton({on:e,top:t,left:i,scale:n,standby:r=!1}){return I`
+    `}get _powerUnbekannt(){const e=this.powerEntityId;if(!e)return!1;const t=String(this._ent(e)?.state??"").toLowerCase();return["","unknown","unavailable"].includes(t)}renderPowerButton({on:e,top:t,left:i,scale:n,standby:r=!1}){const s=!e&&this._powerUnbekannt;return I`
       <div
-        class="power-badge ${e?"on":"off"} ${r?"standby":""}"
+        class="power-badge ${e?"on":s?"unbekannt":"off"} ${r?"standby":""}"
         style="top:${t}%; left:${i}%; transform:scale(${(n??100)/100});"
-        title="${r?"Steckdose an, Wärmepumpe aus (Standby) — Steckdose ausschalten (mit Rückfrage)":e?"Ausschalten (mit Rückfrage)":"Einschalten"}"
+        title="${r?"Steckdose an, Wärmepumpe aus (Standby) — Steckdose ausschalten (mit Rückfrage)":s?"Zustand unbekannt — Einschalten":e?"Ausschalten (mit Rückfrage)":"Einschalten"}"
         @click="${this._onPowerClick}"
       >
         <ha-icon icon="mdi:power"></ha-icon>
@@ -302,6 +302,11 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   }
   .power-badge:hover {
     filter: brightness(1.2);
+  }
+  /* Zustand unbekannt (Iteration 18b): grau, nicht rot */
+  .power-badge.unbekannt {
+    color: #9e9e9e;
+    opacity: 0.85;
   }
   /* Steckdose an, Gerät aus (Iteration 18) */
   .power-badge.standby {

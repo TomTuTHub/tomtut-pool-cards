@@ -278,6 +278,11 @@ export const overlayStyles = css`
   .power-badge:hover {
     filter: brightness(1.2);
   }
+  /* Zustand unbekannt (Iteration 18b): grau, nicht rot */
+  .power-badge.unbekannt {
+    color: #9e9e9e;
+    opacity: 0.85;
+  }
   /* Steckdose an, Gerät aus (Iteration 18) */
   .power-badge.standby {
     color: #ffb300;
