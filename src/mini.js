@@ -849,8 +849,11 @@ export const miniStyles = css`
   .k-zeile.kuehlen {
     --k-modus: ${unsafeCSS(MODE_FARBEN.kuehlen)};
   }
+  .k-zeile.badge {
+    font-size: 12.5px;
+  }
   .k-zeile.badge .k-text {
-    padding: 1px 7px;
+    padding: 1px 5px;
     border-radius: 7px;
     background: color-mix(in srgb, var(--k-modus) 26%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k-modus) 75%, transparent);
