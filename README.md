@@ -72,9 +72,9 @@ eine Herstellerintegration in Home Assistant landen.
 - **Rückfrage pro Kasten** — die Warnung vor dem Ausschalten ist in jedem Kasten mit
   Schalter einzeln abwählbar („Vor dem Ausschalten nachfragen"); Freifeld-Buttons können sie
   auf Wunsch bekommen.
-- **Handgezeichnetes Artwork** — jedes Gerät, jedes Becken und jedes Zubehörteil ist eine
-  Zeichnung (© TomTuT). Einzige Ausnahme: das Solarfeld zeigt Thomas' eigenes Foto eines
-  schwarzen Absorbers.
+- **Handgezeichnetes Artwork** — alle Geräte, das Zubehör am Becken, die Richtungspfeile und
+  das ovale Becken sind Zeichnungen (© TomTuT). Die übrigen fünf Beckenformen sind noch
+  generierte Platzhalter im selben Stil.
 
 ---
 
@@ -567,10 +567,11 @@ sechs Formen, ohne dass es je Form eine eigene Bildvariante bräuchte.
 
 ## Artwork
 
-Alles, was diese Card zeigt, ist **handgezeichnet** — Becken, Geräte, Zubehör und die beiden
-Richtungspfeile stammen aus einem gemeinsamen Satz von Tuschezeichnungen (© TomTuT). Es gibt
-in dieser Sammlung **keine KI-generierten Gerätebilder mehr**; die letzten (Poolpumpe,
-Solarheizung, Einlaufdüse) sind in Iteration 7 gegen die Originale getauscht worden.
+Geräte, Zubehör, die beiden Richtungspfeile und das ovale Becken sind **handgezeichnet** und
+stammen aus einem gemeinsamen Satz von Tuschezeichnungen (© TomTuT). Es gibt **keine
+KI-generierten Gerätebilder mehr**; die letzten (Poolpumpe, Solarheizung, Einlaufdüse) sind in
+Iteration 7 gegen die Originale getauscht worden. **Noch generiert** sind die fünf Beckenformen
+außer Oval (Rechteck, Achtform, Rund, Niere, Freiform) — sie warten auf Zeichnungen.
 
 Die Originale liegen bewusst **nicht** im Repo: HACS kopiert den Plugin-Ordner in jede
 Home-Assistant-Installation, deshalb enthält `dist/` nur die optimierten Fassungen. Gebaut
@@ -587,10 +588,13 @@ python3 tools/prepare-assets.py <ordner-mit-originalen> [weiterer ordner ...]
 | Sprites am Becken | max. 640 px | dito — sie werden nie groß angezeigt |
 | Richtungspfeile | max. 200 px | dito, zusätzlich um 90° im Uhrzeigersinn gedreht (sie zeigen im Bild nach rechts) |
 
+Danach packt `zopflipng` (Debian: `apt install zopfli`) jede Datei verlustfrei nach — jeder
+sichtbare Pixel bleibt gleich, die Dateien werden rund 7 % kleiner.
+
 **Die Solarheizung ist eine Komposition.** Eine Solarheizung ist in Wirklichkeit ein Feld aus
 mehreren Absorbern, kein einzelnes Gerät — deshalb gibt es dafür auch kein einzelnes Bild.
-`dist/solar_transparent.png` wird aus **drei Kopien** von `OKU.png` gebaut (Thomas' Foto eines
-schwarzen Absorbers, freigestellt; bis Iteration 8 Selinas `OKU_Panel.png`): jedes Panel
+`dist/solar_transparent.png` wird aus **drei Kopien** von Selinas gezeichnetem `OKU_Panel.png`
+gebaut (Iteration 9–12 kurz Thomas' Foto `OKU.png`, seit Iteration 13 wieder die Zeichnung): jedes Panel
 steht um 12 % seiner Breite überlappend neben dem linken Nachbarn und 4 % seiner Höhe tiefer,
 gezeichnet von hinten nach vorn. Daraus wird eine Querkachel in der Größenordnung der anderen
 Gerätebilder. Die Rechnung steht in `tools/prepare-assets.py` (`SOLAR_UEBERLAPP`,
