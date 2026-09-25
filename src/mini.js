@@ -285,17 +285,23 @@ export const miniKachel = (slotRoh = {}, hass) => {
       const frei = w._freigabe;
       k.gesperrt = frei === false;
       const sw = slot.switch_entity;
-      const laeuft = da(sw) ? an(sw) : w._fanActive;
+      /* Steckdose an, Gerät per climate aus (Standby) = für die Kachel "Aus" —
+         so zeigt es auch das Bedienteil der Wärmepumpe */
+      const klima = [slot.mode_entity, slot.target_entity, slot.current_entity].find(
+        (id) => String(id || "").startsWith("climate.") && da(id)
+      );
+      const klimaAus = !!klima && String(hass.states[klima].state).toLowerCase() === "off";
+      const laeuft = !klimaAus && (da(sw) ? an(sw) : w._fanActive);
       k.zustand = k.gesperrt
         ? "gesperrt"
         : laeuft
         ? "an"
-        : sw || slot.power_entity || slot.fan_entity
+        : sw || slot.power_entity || slot.fan_entity || klima
         ? "aus"
         : "neutral";
       werte = {
         modus: () => {
-          if (da(sw) && !an(sw)) return z("Aus");
+          if ((da(sw) && !an(sw)) || klimaAus) return z("Aus");
           const b = w._modusBadge;
           if (b) return z(b.text, b.art === "heizen" || b.art === "kuehlen" ? { punkt: b.art } : {});
           return z(laeuft ? "An" : "Aus");

@@ -4380,6 +4380,17 @@ check("It17 mini_show Becken: nur temp + rx", () => {
   ed.remove();
 }
 
+check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () => {
+  const k = pkg.miniKachel(
+    MODUS_SEL,
+    selHass("Heizen Smart", {
+      "climate.waermepumpe": { state: "off", attributes: { temperature: 28, current_temperature: 26.4 }, last_changed: iso(60) },
+    })
+  );
+  assert.deepEqual(zeilen(k), ["Aus", "820 W"]);
+  assert.equal(k.zustand, "aus");
+});
+
 /* ------------------------------------------------------------------ */
 
 console.log(results.join("\n"));
