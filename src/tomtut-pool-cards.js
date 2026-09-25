@@ -58,3 +58,10 @@ export {
 export { numText, numOf, toWatt, seit, seitMinuten } from "./shared/util.js";
 export { applyPatch } from "./editor/dashboard-editor.js";
 export { kioskGilt, kioskSchluessel, KIOSK_BECKEN } from "./shared/kiosk.js";
+export {
+  CUSTOM_MAX_ENTRIES,
+  CUSTOM_LAYOUTS,
+  CUSTOM_LAYOUT_DEFAULT,
+  customEintraege,
+  customLayout,
+} from "./slots/custom.js";

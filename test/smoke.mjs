@@ -653,9 +653,9 @@ const customCard = await mount(
 );
 const custom = customCard.shadowRoot.querySelector("tomtut-pool-slot-custom");
 await custom.updateComplete;
-check("Werte-Slot: Ueberschrift + drei Eintraege (mehr wird gekappt)", () => {
+check("Werte-Slot: Ueberschrift + alle vier Eintraege (seit It16 bis 8)", () => {
   assert.match(custom.shadowRoot.querySelector(".slot-title").textContent, /Werte/);
-  assert.equal(custom.shadowRoot.querySelectorAll(".entry").length, 3);
+  assert.equal(custom.shadowRoot.querySelectorAll(".entry").length, 4);
 });
 check("Werte-Slot: Entity-Wert, Button und Freitext", () => {
   const txt = custom.shadowRoot.textContent;
@@ -3691,6 +3691,206 @@ check("Editor: Kiosk aus raeumt beide Schluessel", () => {
   assert.equal("kiosk_slots" in ed15Fired, false);
 });
 ed15.remove();
+
+/* ------------------------------------------------------------------ */
+/* Iteration 16: Freifeld bis 8 Einträge, layout liste/kacheln        */
+/* ------------------------------------------------------------------ */
+
+const I16_HASS = () => {
+  const h = makeHass();
+  const an = (s) => ({ state: s, attributes: {}, last_changed: iso(60) });
+  Object.assign(h.states, {
+    "input_boolean.poolwp_pv_logik_aktivieren": { state: "on", attributes: { friendly_name: "PV Logik aktivieren" }, last_changed: iso(60) },
+    "input_boolean.poolwp_manuell_ein": { state: "off", attributes: { friendly_name: "Pool WP manuell einschalten" }, last_changed: iso(60) },
+    "switch.solarsteuerung_switch": { state: "off", attributes: { friendly_name: "Solarsteuerung", icon: "mdi:power" }, last_changed: iso(60) },
+    "sensor.solarheizung_status": { state: "Bypass", attributes: { friendly_name: "Solarheizung" }, last_changed: iso(60) },
+    "switch.poolroboter_switch_0": an("on"),
+    "switch.gsa_zigbee": an("off"),
+    "switch.poollampe_zigbee": an("off"),
+    "input_boolean.pool_manuell_reinigen": an("on"),
+  });
+  return h;
+};
+const HEIZ = (extra = {}) => ({
+  type: "custom",
+  title: "Pool: Heizsteuerung",
+  layout: "liste",
+  entries: [
+    { kind: "button", entity: "input_boolean.poolwp_pv_logik_aktivieren" },
+    { kind: "button", entity: "input_boolean.poolwp_manuell_ein", confirm_off: true },
+    { kind: "button", entity: "switch.solarsteuerung_switch" },
+    { kind: "entity", entity: "sensor.solarheizung_status" },
+  ],
+  ...extra,
+});
+const mountCustom = async (slot, extra = {}) => {
+  const card = await mount(Dashboard, { hero: { enabled: false }, frame: { enabled: false }, slots: [slot], ...extra }, I16_HASS());
+  const el = card.shadowRoot.querySelector("tomtut-pool-slot-custom");
+  await el.updateComplete;
+  return el;
+};
+
+check("It16: Limit 8, Layouts klassisch/liste/kacheln, Default klassisch", () => {
+  assert.equal(pkg.CUSTOM_MAX_ENTRIES, 8);
+  assert.deepEqual(pkg.CUSTOM_LAYOUTS, ["klassisch", "liste", "kacheln"]);
+  assert.equal(pkg.customLayout({}), "klassisch");
+  assert.equal(pkg.customLayout({ layout: "quatsch" }), "klassisch");
+  assert.equal(pkg.customLayout({ layout: "liste" }), "liste");
+});
+
+{
+  const ohne = await mountCustom({ type: "custom", title: "Alt", entries: [{ kind: "text", text: "a" }] });
+  check("It16: bestehende Config ohne layout rendert klassisch (mittig, .btn-entry-Welt)", () => {
+    assert.ok(ohne.shadowRoot.querySelector(".slot.layout-klassisch"));
+    assert.ok(ohne.shadowRoot.querySelector(".custom.layout-klassisch.align-mitte"));
+    assert.equal(ohne.shadowRoot.querySelector(".zeile, .kachel"), null);
+  });
+}
+
+const heiz = await mountCustom(HEIZ());
+check("It16 liste: Titel + 4 Zeilen, 3 Schalter + 1 Status-Text", () => {
+  const sr = heiz.shadowRoot;
+  assert.match(sr.querySelector(".slot-title").textContent, /Pool: Heizsteuerung/);
+  assert.equal(sr.querySelectorAll(".zeile").length, 4);
+  assert.equal(sr.querySelectorAll(".zeile.schaltbar").length, 3);
+  assert.equal(sr.querySelectorAll(".schalter").length, 3);
+  const wert = sr.querySelector(".zeile.wert");
+  assert.match(wert.querySelector(".z-name").textContent, /Solarheizung/);
+  assert.equal(wert.querySelector(".z-wert").textContent.trim(), "Bypass");
+  assert.ok(sr.querySelector(".custom.layout-liste.align-oben"));
+});
+check("It16 liste: an/aus deutlich — Klasse, aria-checked, Name aus friendly_name", () => {
+  const z = [...heiz.shadowRoot.querySelectorAll(".zeile.schaltbar")];
+  assert.deepEqual(z.map((e) => e.classList.contains("on")), [true, false, false]);
+  assert.deepEqual(z.map((e) => e.getAttribute("aria-checked")), ["true", "false", "false"]);
+  assert.match(z[0].textContent, /PV Logik aktivieren/);
+  const css = cssOf("tomtut-pool-slot-custom");
+  assert.match(css, /\.zeile\.on \.schalter\s*\{[^}]*background:\s*var\(--tt-on\)/);
+  assert.match(css, /\.zeile\.on \.knopf\s*\{[^}]*left:\s*20px/);
+});
+calls.length = 0;
+heiz.shadowRoot.querySelectorAll(".zeile.schaltbar")[2].click();
+await heiz.updateComplete;
+check("It16 liste: Zeile schaltet per toggle", () =>
+  assert.deepEqual(calls, [{ domain: "switch", service: "toggle", data: { entity_id: "switch.solarsteuerung_switch" } }])
+);
+{
+  /* confirm_off pro Eintrag: an Eintrag 2 (aus) -> direkt; an Eintrag 1 (an, ohne confirm) -> direkt */
+  const h = await mountCustom(HEIZ({ entries: [{ kind: "button", entity: "input_boolean.poolwp_pv_logik_aktivieren", confirm_off: true }] }));
+  calls.length = 0;
+  h.shadowRoot.querySelector(".zeile.schaltbar").click();
+  await h.updateComplete;
+  check("It16 liste: confirm_off pro Eintrag öffnet die Rückfrage", () => {
+    assert.deepEqual(calls, []);
+    assert.ok(h.shadowRoot.querySelector(".confirm-overlay"));
+    assert.match(h.shadowRoot.querySelector(".confirm-panel").textContent, /PV Logik aktivieren/);
+  });
+  h.shadowRoot.querySelector(".btn.danger").click();
+  await h.updateComplete;
+  check("It16 liste: nach Bestätigung turn_off", () =>
+    assert.deepEqual(calls, [
+      { domain: "input_boolean", service: "turn_off", data: { entity_id: "input_boolean.poolwp_pv_logik_aktivieren" } },
+    ])
+  );
+}
+
+const ACHT = Array.from({ length: 10 }, (_, i) => ({ kind: "text", text: `T${i + 1}` }));
+{
+  const viele = await mountCustom({ type: "custom", layout: "liste", entries: ACHT });
+  check("It16: bis 8 Einträge sichtbar, darüber sichtbarer Hinweis statt stillem Kappen", () => {
+    assert.equal(viele.shadowRoot.querySelectorAll(".zeile").length, 8);
+    assert.match(viele.shadowRoot.querySelector(".slot-hint.mehr").textContent, /\+2 weitere Einträge ausgeblendet \(höchstens 8\)/);
+  });
+  const genau = await mountCustom({ type: "custom", entries: ACHT.slice(0, 8) });
+  check("It16: genau 8 Einträge -> kein Hinweis (auch klassisch)", () => {
+    assert.equal(genau.shadowRoot.querySelectorAll(".entry").length, 8);
+    assert.equal(genau.shadowRoot.querySelector(".slot-hint.mehr"), null);
+  });
+}
+
+const kach = await mountCustom({
+  type: "custom",
+  title: "Poolschalter",
+  layout: "kacheln",
+  entries: [
+    { kind: "button", entity: "switch.poolroboter_switch_0", label: "Poolroboter" },
+    { kind: "button", entity: "switch.gsa_zigbee", label: "Gegenstromanlage" },
+    { kind: "button", entity: "switch.poollampe_zigbee", label: "Poollampe" },
+    { kind: "entity", entity: "sensor.solarheizung_status" },
+  ],
+});
+check("It16 kacheln: 2-Spalten-Raster, An/Aus-Text, Status-Kachel", () => {
+  const sr = kach.shadowRoot;
+  assert.equal(sr.querySelectorAll(".kacheln > .kachel").length, 4);
+  assert.match(cssOf("tomtut-pool-slot-custom"), /\.kacheln\s*\{[^}]*grid-template-columns:\s*repeat\(2/);
+  const k = [...sr.querySelectorAll(".kachel")];
+  assert.ok(k[0].classList.contains("on"));
+  assert.equal(k[0].querySelector(".k-zustand").textContent.trim(), "An");
+  assert.equal(k[1].querySelector(".k-zustand").textContent.trim(), "Aus");
+  assert.equal(k[3].querySelector(".k-zustand").textContent.trim(), "Bypass");
+});
+
+{
+  const kc = await mount(
+    Dashboard,
+    { hero: { enabled: false }, frame: { enabled: false }, kiosk: true, slots: [HEIZ(), { ...HEIZ(), layout: "kacheln" }] },
+    I16_HASS()
+  );
+  const els = await slotsVon(kc);
+  calls.length = 0;
+  let mehrInfo = 0;
+  for (const s of els) {
+    s.addEventListener("hass-more-info", () => mehrInfo++);
+    for (const z of s.shadowRoot.querySelectorAll(".zeile, .kachel")) await klick(z, s);
+    s._toggle(HEIZ().entries[0]);
+    await s.updateComplete;
+  }
+  check("It16: Kiosk wirkt in liste und kacheln (kein Dienst, kein more-info, kein Dialog)", () => {
+    assert.deepEqual(calls, []);
+    assert.equal(mehrInfo, 0);
+    assert.ok(els.every((s) => s.shadowRoot.querySelector(".slot.kiosk") && !s.shadowRoot.querySelector(".confirm-overlay")));
+  });
+}
+
+check("It16: ohne Rahmenfüllung trägt liste den HA-Kartenhintergrund und die Theme-Schrift", () => {
+  const css = cssOf("tomtut-pool-slot-custom");
+  assert.match(css, /\.slot\.layout-liste\.fill-transparent[^{]*\{[^}]*--tt-bg:\s*var\(--ha-card-background/);
+  assert.match(css, /--tt-fg2:\s*var\(--secondary-text-color/);
+  assert.ok(heiz.shadowRoot.querySelector(".slot.fill-transparent.layout-liste"));
+});
+
+/* ---- Editor ---- */
+{
+  const ed16 = new Editor();
+  ed16.setConfig({ hero: { enabled: false }, slots: [{ type: "custom", layout: "liste", entries: ACHT }] });
+  ed16.hass = makeHass();
+  document.body.appendChild(ed16);
+  await ed16.updateComplete;
+  const txt = ed16.shadowRoot.textContent;
+  check("It16 Editor: sichtbare Warnung bei mehr als 8 Einträgen", () => {
+    const w = ed16.shadowRoot.querySelector(".limit-warnung");
+    assert.ok(w, "keine Warnung");
+    assert.match(w.textContent, /10 Einträge eingetragen/);
+    assert.match(w.textContent, /höchstens 8/);
+    assert.match(w.textContent, /9–10/);
+  });
+  check("It16 Editor: bis zu 8 Eintrag-Blöcke + Darstellung wählbar", () => {
+    assert.match(txt, /Eintrag 8/);
+    assert.doesNotMatch(txt, /Eintrag 9/);
+    const sel = ed16.shadowRoot.querySelector('select[data-key="layout"]');
+    assert.ok(sel);
+    assert.deepEqual([...sel.options].map((o) => o.value), ["klassisch", "liste", "kacheln"]);
+    assert.equal(sel.value, "liste");
+  });
+  ed16.setConfig({ hero: { enabled: false }, slots: [{ type: "custom", entries: ACHT.slice(0, 4) }] });
+  await ed16.updateComplete;
+  check("It16 Editor: 4 Einträge -> 5 Blöcke (einer frei), keine Warnung", () => {
+    assert.equal(ed16.shadowRoot.querySelector(".limit-warnung"), null);
+    assert.match(ed16.shadowRoot.textContent, /Eintrag 5/);
+    assert.doesNotMatch(ed16.shadowRoot.textContent, /Eintrag 6/);
+  });
+  ed16.remove();
+}
 
 /* ------------------------------------------------------------------ */
 

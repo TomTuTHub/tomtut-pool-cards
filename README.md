@@ -59,8 +59,9 @@ eine Herstellerintegration in Home Assistant landen.
   Größe verstellbar und sitzt auf jeder der sechs Formen richtig. Die Einlaufdüse zeigt auf
   Wunsch in einem kleinen Kästchen daneben, wie warm das Wasser ist, das gerade ins Becken
   läuft (`inlet_temp_entity`).
-- **Freifeld (benutzerdefiniert)** — freie Überschrift plus bis zu drei Einträge: Entity-Wert,
-  Schalt-Button oder Freitext.
+- **Freifeld (benutzerdefiniert)** — freie Überschrift plus bis zu acht Einträge: Entity-Wert,
+  Schalt-Button oder Freitext. Als `layout: liste` ein kompakter Schalter-Kasten im Stil der
+  HA-Entities-Karte (Titel + 4 Zeilen in 384 × 268 px), als `layout: kacheln` ein 2-Spalten-Raster.
 - **Eine Optik-Einstellung für alles** — Rahmen an/aus und `fill: transparent | weiss | schwarz`.
   Die Füllung steuert den ganzen Kasten: Hintergrund, Bild, Kästchen, Buttons und Schriftfarbe.
 - **Mobil zuerst** — das Raster stapelt auf schmalen Bildschirmen sauber untereinander,
@@ -507,8 +508,31 @@ Im Editor steht dafür ganz oben der Kasten „Kiosk-Modus (nur anzeigen)“ mit
 | Option | Standard | Beschreibung |
 |---|---|---|
 | `title` | – | Überschrift |
-| `align` | `mitte` | `oben`, `mitte`, `unten` |
-| `entries` | `[]` | Bis zu **drei** Einträge |
+| `layout` | `klassisch` | `klassisch` (mittig gestapelt), `liste` (Zeilen: Icon · Name · Schalter/Wert), `kacheln` (2 Spalten) |
+| `align` | `mitte` (klassisch) / `oben` (liste, kacheln) | `oben`, `mitte`, `unten` |
+| `entries` | `[]` | Bis zu **acht** Einträge. Mehr zeigt der Kasten nicht — er meldet „+N weitere ausgeblendet“, der Editor warnt. |
+
+`liste` und `kacheln` tragen bei `fill: transparent` den Karten-Hintergrund und die Schriftfarben
+des HA-Themes (`--ha-card-background`, `--primary-text-color`, `--secondary-text-color`,
+`--state-icon-color`) und sind damit auf hellem wie dunklem Theme lesbar. Ohne `icon` zeigt jede
+Zeile das Icon der Entity (wie in HA). Kiosk-Modus wirkt auch hier.
+
+```yaml
+# Schalter-Kasten, so hoch wie eine Entities-Karte mit 4 Zeilen
+type: custom:tomtut-pool-dashboard
+hero:
+  enabled: false
+frame:
+  enabled: false
+slots:
+  - type: custom
+    title: Poolschalter
+    layout: liste
+    entries:
+      - { kind: button, entity: switch.poolroboter_switch_0 }
+      - { kind: button, entity: switch.poollampe_zigbee, confirm_off: true }
+      - { kind: entity, entity: sensor.solarheizung_status }
+```
 
 Jeder Eintrag:
 
@@ -517,7 +541,7 @@ Jeder Eintrag:
 | `kind` | `entity` (Wert anzeigen), `button` (schaltet per `toggle`), `text` (Freitext) |
 | `entity` | Entity für `entity` und `button` |
 | `label` | Beschriftung; leer = Name der Entity |
-| `icon` | Icon für `button`, im Editor über den HA-Icon-Picker, z.B. `mdi:lightbulb` |
+| `icon` | Icon (klassisch nur für `button`; liste/kacheln für alle), im Editor über den HA-Icon-Picker, z.B. `mdi:lightbulb` |
 | `text` | Inhalt für `kind: text` |
 | `confirm_off` | Nur `button`: `true` = vor dem Ausschalten nachfragen. Standard `false` (schaltet sofort) |
 

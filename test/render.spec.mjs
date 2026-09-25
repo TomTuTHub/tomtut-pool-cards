@@ -957,6 +957,248 @@ check("Kopfleiste: jedes Overlay verschwindet darunter, keines darueber", () => 
   );
 });
 
+/* ------------------------------------------------------------------ */
+/* Iteration 16: Schalter-Kasten (layout liste) fürs Flur-Tablet       */
+/* ------------------------------------------------------------------ */
+/*
+ * Zusage: Titel + 4 Zeilen `liste` passen bei exakt 384 px Kartenbreite in
+ * 268 px Höhe — so groß sind die zwei Entities-Karten auf Thomas'
+ * Kiosk-Tablet (1280 × 800 @ 1,5), die der Kasten ersetzen soll. Gemessen
+ * in hellem UND dunklem HA-Theme; dazu Lesbarkeit (Kontrast Schrift gegen
+ * Kartenhintergrund) und dass nichts aus dem Kasten ragt.
+ */
+const I16_BREITE = 384;
+const I16_MAX_HOEHE = 268;
+const I16_THEMES = {
+  hell: {
+    seite: "#fafafa",
+    vars: {
+      "--primary-text-color": "#212121",
+      "--secondary-text-color": "#727272",
+      "--ha-card-background": "#ffffff",
+      "--state-icon-color": "#44739e",
+      "--ha-card-box-shadow": "0 2px 2px rgba(0,0,0,.14), 0 1px 5px rgba(0,0,0,.12)",
+      "--ha-card-border-radius": "12px",
+    },
+  },
+  dunkel: {
+    seite: "linear-gradient(180deg, #0b1a33, #121820)",
+    vars: {
+      "--primary-text-color": "#e1e1e1",
+      "--secondary-text-color": "#9b9b9b",
+      "--ha-card-background": "linear-gradient(180deg, #3b4a66, #2b313d)",
+      "--card-background-color": "#2f3747",
+      "--state-icon-color": "#e1e1e1",
+      "--ha-card-box-shadow": "none",
+      "--ha-card-border-radius": "24px",
+    },
+  },
+};
+const I16_KAESTEN = [
+  {
+    type: "custom",
+    title: "Pool: Heizsteuerung",
+    layout: "liste",
+    entries: [
+      { kind: "button", entity: "input_boolean.poolwp_pv_logik_aktivieren", label: "PV Logik aktivieren", icon: "mdi:sun-clock" },
+      { kind: "button", entity: "input_boolean.poolwp_manuell_ein", label: "Pool WP manuell einschalten", icon: "mdi:gesture-tap-button" },
+      { kind: "button", entity: "switch.solarsteuerung_switch", label: "Solarsteuerung", icon: "mdi:power" },
+      { kind: "entity", entity: "sensor.solarheizung_status", label: "Solarheizung", icon: "mdi:solar-power" },
+    ],
+  },
+  {
+    type: "custom",
+    title: "Poolschalter",
+    layout: "liste",
+    entries: [
+      { kind: "button", entity: "switch.poolroboter_switch_0", label: "Poolroboter", icon: "mdi:robot-vacuum" },
+      { kind: "button", entity: "switch.gsa_zigbee", label: "Gegenstromanlage", icon: "mdi:waves-arrow-right" },
+      { kind: "button", entity: "switch.poollampe_zigbee", label: "Poollampe", icon: "mdi:lightbulb-on-outline" },
+      { kind: "button", entity: "input_boolean.pool_manuell_reinigen", label: "Pool manuell reinigen", icon: "mdi:broom", confirm_off: true },
+    ],
+  },
+];
+
+/* Baut beide Kästen (je eine eigene Card, frame aus) untereinander in einer
+   384 px breiten Spalte im gewählten Theme und misst. */
+const i16Bauen = (themeName) =>
+  page.evaluate(
+    async ({ theme, kaesten, breite }) => {
+      document.body.innerHTML = "";
+      document.body.style.background = theme.seite;
+      const buehne = document.createElement("div");
+      buehne.id = "buehne";
+      buehne.style.cssText = `width:${breite}px;margin:0;padding:0;display:flex;flex-direction:column;gap:8px`;
+      for (const [k, v] of Object.entries(theme.vars)) buehne.style.setProperty(k, v);
+      document.body.appendChild(buehne);
+      const s = (st, vor = 60) => ({ state: st, attributes: {}, last_changed: new Date(Date.now() - vor * 1000).toISOString() });
+      const hass = {
+        ...window.demo.DEMO_HASS,
+        states: {
+          ...window.demo.DEMO_HASS.states,
+          "input_boolean.poolwp_pv_logik_aktivieren": s("on"),
+          "input_boolean.poolwp_manuell_ein": s("off"),
+          "switch.solarsteuerung_switch": s("off"),
+          "sensor.solarheizung_status": s("Bypass"),
+          "switch.poolroboter_switch_0": s("on"),
+          "switch.gsa_zigbee": s("off"),
+          "switch.poollampe_zigbee": s("off"),
+          "input_boolean.pool_manuell_reinigen": s("on"),
+        },
+      };
+      const cards = [];
+      for (const slot of kaesten) {
+        const card = document.createElement("tomtut-pool-dashboard");
+        card.setConfig({ hero: { enabled: false }, frame: { enabled: false, fill: "transparent" }, slots: [slot] });
+        card.hass = hass;
+        buehne.appendChild(card);
+        cards.push(card);
+      }
+      await Promise.all(cards.map((c) => c.updateComplete));
+      const slots = cards.map((c) => c.shadowRoot.querySelector("tomtut-pool-slot-custom"));
+      await Promise.all(slots.map((e) => e.updateComplete));
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      /* relative Leuchtdichte -> WCAG-Kontrast */
+      const rgb = (t) => (t.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+      const lum = ([r, g, b]) => {
+        const f = (c) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+      };
+      const kontrast = (a, b) => {
+        const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m);
+        return (x + 0.05) / (y + 0.05);
+      };
+      return slots.map((el) => {
+        const sr = el.shadowRoot;
+        const box = el.getBoundingClientRect();
+        const slotDiv = sr.querySelector(".slot");
+        const cs = getComputedStyle(slotDiv);
+        /* Hintergrund: bei Verlauf die erste Farbe des Verlaufs */
+        const bgBild = cs.backgroundImage !== "none" ? cs.backgroundImage : cs.backgroundColor;
+        const raus = [];
+        for (const t of sr.querySelectorAll(".slot-title, .zeile, .schalter, .z-wert, .z-name")) {
+          const r = t.getBoundingClientRect();
+          if (r.right > box.right + 1 || r.bottom > box.bottom + 1 || r.left < box.left - 1 || r.top < box.top - 1)
+            raus.push(t.className);
+        }
+        return {
+          titel: sr.querySelector(".slot-title")?.textContent,
+          breite: Math.round(box.width * 10) / 10,
+          hoehe: Math.round(box.height * 10) / 10,
+          zeilen: sr.querySelectorAll(".zeile").length,
+          kontrast: Math.round(kontrast(rgb(getComputedStyle(sr.querySelector(".z-name")).color), rgb(bgBild)) * 10) / 10,
+          raus,
+        };
+      });
+    },
+    { theme: I16_THEMES[themeName], kaesten: I16_KAESTEN, breite: I16_BREITE }
+  );
+
+const i16Masse = {};
+for (const themeName of Object.keys(I16_THEMES)) {
+  await checkAsync(`It16: Titel + 4 Zeilen liste bei ${I16_BREITE} px <= ${I16_MAX_HOEHE} px, Theme ${themeName}`, async () => {
+    const m = await i16Bauen(themeName);
+    i16Masse[themeName] = m;
+    for (const k of m) {
+      assert.equal(k.zeilen, 4, k.titel);
+      assert.equal(k.breite, I16_BREITE, `${k.titel}: Breite ${k.breite}`);
+      assert.ok(k.hoehe <= I16_MAX_HOEHE, `${k.titel}: ${k.hoehe} px hoch (max ${I16_MAX_HOEHE})`);
+      assert.deepEqual(k.raus, [], `${k.titel}: ragt heraus`);
+      assert.ok(k.kontrast >= 4.5, `${k.titel}: Kontrast nur ${k.kontrast}:1`);
+    }
+    results.push(
+      `       gemessen (${themeName}): ` + m.map((k) => `${k.titel} ${k.breite}x${k.hoehe} px, Kontrast ${k.kontrast}:1`).join(" · ")
+    );
+  });
+  await page.locator("#buehne").screenshot({ path: join(ausgabe, `it16-schalter-${themeName}.png`) });
+}
+
+/* Beleg: beide Kästen im dunklen Theme neben Thomas' Originalausschnitt
+   (gleicher Maßstab, @1,5 wie das Tablet). Fehlt das Original, entfällt
+   der Beleg — der Test hängt nicht am NAS. */
+const I16_ORIGINAL =
+  process.env.IT16_ORIGINAL ||
+  "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/prod-ist/ausschnitt-kioskflur-heizsteuerung-poolschalter.png";
+const I16_BELEG =
+  process.env.IT16_BELEG || "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/pool-cards-it16-schalter.png";
+await checkAsync("It16: Beleg dunkel neben Original", async () => {
+  let original = null;
+  try {
+    original = (await readFile(I16_ORIGINAL)).toString("base64");
+  } catch {
+    results.push("       ohne Original-Ausschnitt, Beleg nur aus render-out");
+  }
+  const p2 = await browser.newPage({ viewport: { width: 860, height: 200 }, deviceScaleFactor: 1.5 });
+  await p2.goto(`${basis}/seite`);
+  await p2.waitForFunction(() => window.bereit === true, null, { timeout: 15000 });
+  try {
+    /* eigene Seite in @1,5 — Aufbau wie i16Bauen, plus Original daneben */
+    await p2.evaluate(
+      async ({ theme, kaesten, breite, original }) => {
+        document.body.innerHTML = "";
+        document.body.style.cssText = `margin:0;padding:16px;background:${theme.seite};font-family:system-ui,sans-serif`;
+        const reihe = document.createElement("div");
+        reihe.id = "beleg";
+        reihe.style.cssText = "display:flex;gap:24px;align-items:flex-start";
+        document.body.appendChild(reihe);
+        const spalte = (titel) => {
+          const d = document.createElement("div");
+          d.innerHTML = `<div style="color:#e1e1e1;font:600 13px system-ui;margin:0 0 8px">${titel}</div>`;
+          reihe.appendChild(d);
+          return d;
+        };
+        if (original) {
+          const img = document.createElement("img");
+          img.src = "data:image/png;base64," + original;
+          img.style.cssText = `width:${breite}px;display:block`;
+          spalte("Original (HA-Entities-Karten, Prod)").appendChild(img);
+          await img.decode();
+        }
+        const ziel = spalte("tomtut-pool-dashboard · layout: liste (It16)");
+        const buehne = document.createElement("div");
+        buehne.style.cssText = `width:${breite}px;display:flex;flex-direction:column;gap:8px`;
+        for (const [k, v] of Object.entries(theme.vars)) buehne.style.setProperty(k, v);
+        ziel.appendChild(buehne);
+        const s = (st) => ({ state: st, attributes: {}, last_changed: new Date().toISOString() });
+        const hass = {
+          ...window.demo.DEMO_HASS,
+          states: {
+            "input_boolean.poolwp_pv_logik_aktivieren": s("on"),
+            "input_boolean.poolwp_manuell_ein": s("off"),
+            "switch.solarsteuerung_switch": s("off"),
+            "sensor.solarheizung_status": s("Bypass"),
+            "switch.poolroboter_switch_0": s("on"),
+            "switch.gsa_zigbee": s("off"),
+            "switch.poollampe_zigbee": s("off"),
+            "input_boolean.pool_manuell_reinigen": s("on"),
+          },
+        };
+        const cards = kaesten.map((slot) => {
+          const card = document.createElement("tomtut-pool-dashboard");
+          card.setConfig({ hero: { enabled: false }, frame: { enabled: false, fill: "transparent" }, slots: [slot] });
+          card.hass = hass;
+          buehne.appendChild(card);
+          return card;
+        });
+        await Promise.all(cards.map((c) => c.updateComplete));
+        await Promise.all(cards.map((c) => c.shadowRoot.querySelector("tomtut-pool-slot-custom").updateComplete));
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      },
+      { theme: I16_THEMES.dunkel, kaesten: I16_KAESTEN, breite: I16_BREITE, original }
+    );
+    const pfad = join(ausgabe, "it16-beleg.png");
+    await p2.screenshot({ path: pfad, fullPage: true });
+    try {
+      await p2.screenshot({ path: I16_BELEG, fullPage: true });
+    } catch (err) {
+      results.push(`       ohne Beleg auf dem NAS (${err?.message || err})`);
+    }
+  } finally {
+    await p2.close();
+  }
+});
+
 check("keine Fehler in der Browser-Konsole", () =>
   assert.deepEqual(konsolenfehler, [], konsolenfehler.join(" | "))
 );

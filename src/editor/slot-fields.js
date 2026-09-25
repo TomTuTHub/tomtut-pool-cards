@@ -5,6 +5,12 @@ import { FAN_SPEED_MIN, FAN_SPEED_MAX } from "../slots/pump.js";
 import { HP_MODES, modeFromState } from "../slots/heatpump.js";
 import { FAN_DESIGNS } from "../shared/slot-base.js";
 import { GROESSE_MIN, GROESSE_MAX } from "../shared/bild.js";
+import {
+  CUSTOM_MAX_ENTRIES,
+  CUSTOM_LAYOUT_DEFAULT,
+  customEintraege,
+  customLayout,
+} from "../slots/custom.js";
 
 /*
  * Die Feldgruppen der einzelnen Slot-Typen.
@@ -976,20 +982,58 @@ export const solarFields = (f) => html`
 
 /* ---------------- Freifeld (benutzerdefiniert) ---------------- */
 
-export const customFields = (f, entryFields) => html`
-  ${f.text("Überschrift (optional)", "title", "", "z.B. Wetter")}
-  ${f.select(
-    "Ausrichtung",
-    "align",
-    [
-      ["oben", "Oben"],
-      ["mitte", "Mitte"],
-      ["unten", "Unten"],
-    ],
-    "mitte"
-  )}
-  ${[0, 1, 2].map((i) => section(`Eintrag ${i + 1}`, entryFields(i), i === 0))}
-`;
+/*
+ * Seit Iteration 16: bis zu CUSTOM_MAX_ENTRIES Einträge (vorher 3, der Rest
+ * wurde still gekappt) und die Darstellung `layout`. Sichtbar sind die
+ * belegten Einträge plus ein leerer zum Weiterschreiben, mindestens drei.
+ * Wer mehr einträgt, als der Kasten zeigt, bekommt eine Warnung — nichts
+ * verschwindet mehr stillschweigend.
+ */
+export const customFields = (f, entryFields) => {
+  const liste = Array.isArray(f.config?.entries) ? f.config.entries : [];
+  const belegt = customEintraege(f.config).length;
+  const sichtbar = Math.min(CUSTOM_MAX_ENTRIES, Math.max(3, liste.length + 1));
+  const layout = customLayout(f.config);
+  return html`
+    ${f.text("Überschrift (optional)", "title", "", "z.B. Wetter")}
+    ${f.select(
+      "Darstellung",
+      "layout",
+      [
+        ["klassisch", "Klassisch (mittig gestapelt)"],
+        ["liste", "Liste (Zeilen mit Schalter, wie HA-Entities)"],
+        ["kacheln", "Kacheln (2 Spalten)"],
+      ],
+      CUSTOM_LAYOUT_DEFAULT
+    )}
+    ${f.select(
+      "Ausrichtung",
+      "align",
+      [
+        ["oben", "Oben"],
+        ["mitte", "Mitte"],
+        ["unten", "Unten"],
+      ],
+      layout === "klassisch" ? "mitte" : "oben"
+    )}
+    ${belegt > CUSTOM_MAX_ENTRIES
+      ? html`<div class="limit-warnung" role="alert">
+          ⚠ ${belegt} Einträge eingetragen — der Kasten zeigt höchstens ${CUSTOM_MAX_ENTRIES}.
+          Einträge ${CUSTOM_MAX_ENTRIES + 1}–${belegt} werden ausgeblendet. Bitte entfernen oder
+          auf einen zweiten Kasten verteilen.
+        </div>`
+      : nothing}
+    ${layout === "liste" && belegt > 4
+      ? html`<small class="limit-hinweis">
+          Ab 5 Zeilen wird der Kasten höher als eine Standard-Karte (Titel + 4 Zeilen).
+        </small>`
+      : nothing}
+    ${Array.from({ length: sichtbar }, (_, i) =>
+      section(`Eintrag ${i + 1}`, entryFields(i), i === 0)
+    )}
+    <small>Bis zu ${CUSTOM_MAX_ENTRIES} Einträge. Leere Einträge werden nicht angezeigt.</small>
+  `;
+};
 
 export const customEntryFields = (f) => html`
   ${f.select(

@@ -308,6 +308,17 @@ export const editorStyles = css`
     display: block;
     width: 100%;
   }
+  /* Limit überschritten (Iteration 16, Freifeld mit mehr als 8 Einträgen) */
+  .limit-warnung {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 2px solid var(--warning-color, #ff9800);
+    background: rgba(255, 152, 0, 0.1);
+    color: var(--primary-text-color, #111);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
   /* Kiosk-Modus (Iteration 15) — ganz oben im Editor */
   .kiosk-block {
     text-align: left;
