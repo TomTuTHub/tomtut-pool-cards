@@ -371,6 +371,40 @@ export const editorStyles = css`
     background: var(--primary-color, #03a9f4);
     color: var(--text-primary-color, #fff);
   }
+  /* "In Mini anzeigen" je Kasten (Iteration 17) */
+  .mini-wahl {
+    text-align: left;
+    border: 1.5px dashed var(--primary-color, #03a9f4);
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mini-wahl-titel {
+    font-weight: 800;
+  }
+  .mini-wahl-werte {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+  }
+  .mini-wahl-zeile {
+    display: inline-flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+    align-items: center;
+    gap: 6px;
+    font-weight: 400;
+    cursor: pointer;
+  }
+  .mini-wahl-warnung {
+    color: var(--warning-color, #ff9800);
+    font-weight: 600;
+    font-size: 0.9em;
+  }
   .kiosk-block {
     text-align: left;
     border: 2px solid var(--divider-color, #ccc);

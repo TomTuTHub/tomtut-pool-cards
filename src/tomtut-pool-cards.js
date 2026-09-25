@@ -71,6 +71,11 @@ export {
   miniKachel,
   miniBecken,
   kachelName,
+  MINI_WERTE,
+  MINI_WERTE_EMPFOHLEN,
+  miniWahl,
+  miniSichtbar,
+  miniDichte,
 } from "./mini.js";
 export {
   CUSTOM_MAX_ENTRIES,

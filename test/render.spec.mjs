@@ -28,7 +28,7 @@ import { createServer } from "node:http";
 import { readFile, mkdir, rm } from "node:fs/promises";
 import { dirname, join, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
-import { UV_LAGEN, UV_GROESSEN } from "./fixtures/demo.mjs";
+import { UV_LAGEN, UV_GROESSEN, miniConfig } from "./fixtures/demo.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const wurzel = join(here, "..");
@@ -1470,6 +1470,28 @@ for (const [themeName, theme] of Object.entries(I17_THEMES)) {
   }
 }
 
+/* mini_show: WP mit allen 6 Werten, Pumpe mit 4 — Schrift schrumpft,
+   nichts wird abgeschnitten, alles bleibt in der Kachel */
+{
+  const voll = miniConfig().slots.map((sl, i) =>
+    i === 0
+      ? { ...sl, mini_show: ["modus", "watt", "ist", "soll", "freigabe", "status"] }
+      : i === 1
+      ? { ...sl, mini_show: ["stufe", "watt", "temp", "status"] }
+      : sl
+  );
+  for (const breite of [500, 380]) {
+    await checkAsync(`It17 mini_show 6+4 Werte bei ${breite} px, Liquid Glass: nichts abgeschnitten`, async () => {
+      const m = await i17Bauen(page, breite, I17_THEMES["Liquid Glass"], { slots: voll });
+      assert.deepEqual(m.befunde, []);
+      assert.equal(m.texte[0].length, 6);
+      assert.equal(m.texte[1].length, 4);
+      assert.ok(m.minKontrast >= 4.5, `Kontrast ${m.minKontrast}`);
+      results.push(`       mini_show 6+4 bei ${breite} px: Card ${m.breite}x${m.hoehe} px, Kacheln ${m.kachelMasse.join(" ")}`);
+    });
+    await page.locator("#buehne").screenshot({ path: join(ausgabe, `it17-mini-voll-${breite}.png`), animations: "disabled" });
+  }
+}
 check("It17 Mini: Pooltemperatur mit Wert", () => assert.equal(i17Masse["500-hell"]?.temp, "24,6 °C"));
 /* ab hier: 500 px in Liquid Glass (Studio-Tablet) */
 await i17Bauen(page, 500, I17_THEMES["Liquid Glass"]);

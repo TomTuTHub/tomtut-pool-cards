@@ -4200,6 +4200,186 @@ check("It17 Card: getCardSize im Mini-Modus klein", () => {
   ed.remove();
 }
 
+/* ---- It17-Zusatz: mini_show / mini_hidden ---- */
+
+check("It17 mini_show: Schlüssel je Typ wie vereinbart", () => {
+  const k = (t) => pkg.MINI_WERTE[t].map(([x]) => x);
+  assert.deepEqual(k("pump"), ["stufe", "watt", "temp", "status"]);
+  assert.deepEqual(k("heatpump"), ["modus", "watt", "ist", "soll", "freigabe", "status"]);
+  assert.deepEqual(k("solar"), ["vorlauf", "ruecklauf", "watt", "status"]);
+  assert.deepEqual(k("uv"), ["status", "watt", "temp"]);
+  assert.deepEqual(k("hero"), ["temp", "ph", "rx", "zulauf"]);
+  assert.equal(pkg.MINI_WERTE_EMPFOHLEN, 3);
+});
+check("It17 mini_show: Standard = 1–2 Werte, nur was eine Quelle hat", () => {
+  assert.deepEqual(pkg.miniWahl(PUMP_CONFIG).standard, ["stufe", "watt"]);
+  assert.deepEqual(pkg.miniWahl({ ...MODUS_SEL }).standard, ["modus", "watt"]);
+  assert.deepEqual(pkg.miniWahl(SOLAR_MINI).standard, ["vorlauf", "ruecklauf"]);
+  assert.deepEqual(pkg.miniWahl({ type: "uv", switch_entity: "switch.uv_lampe" }).standard, ["status"]);
+  assert.deepEqual(pkg.miniWahl({ type: "uv", switch_entity: "x", temp_entity: "y" }).standard, ["status", "temp"]);
+  assert.deepEqual(pkg.miniWahl(CUSTOM_BTN()).standard, ["1"]);
+  assert.deepEqual(
+    pkg.miniWahl({ temp_entity: "a", rx_entity: "b" }, "hero").verfuegbar.map(([x]) => x),
+    ["temp", "rx"]
+  );
+  /* ohne Quelle nicht wählbar */
+  assert.deepEqual(pkg.miniWahl({ type: "uv", switch_entity: "x" }).verfuegbar.map(([x]) => x), ["status"]);
+});
+check("It17 mini_show: Reihenfolge der Liste, unbekannte/ungedeckte Schlüssel fallen weg", () => {
+  const w = pkg.miniWahl({ ...PUMP_CONFIG, mini_show: ["status", "WATT", "quatsch", "temp"] });
+  assert.deepEqual(w.gewaehlt, ["watt", "temp", "status"]);
+  assert.equal(w.eigen, true);
+});
+check("It17 mini_show Pumpe: temp + status", () => {
+  const k = pkg.miniKachel({ ...PUMP_CONFIG, mini_show: ["temp", "status"] }, makeHass());
+  assert.deepEqual(zeilen(k), ["27,4 °C", "An"]);
+});
+check("It17 mini_show WP: alle sechs Werte, Ist/Soll mit Vorsatz, Freigabe als Warnung", () => {
+  const cfg = { ...MODUS_SEL, release_entity: FREI_ENT, mini_show: ["modus", "watt", "ist", "soll", "freigabe", "status"] };
+  const k = pkg.miniKachel(cfg, selHass("Heizen Smart", { [FREI_ENT]: { state: "off", attributes: {}, last_changed: iso(60) } }));
+  assert.deepEqual(zeilen(k), ["Heizen Smart", "820 W", "26,4 °C", "28 °C", "Gesperrt", "Gesperrt"]);
+  assert.deepEqual(k.zeilen.map((z) => z.name || ""), ["", "", "Ist", "Soll", "", ""]);
+  assert.equal(k.zeilen[4].warn, true);
+  assert.equal(pkg.miniDichte(k.zeilen.length), "eng");
+  assert.deepEqual([1, 2, 3, 4].map(pkg.miniDichte), ["normal", "normal", "dicht", "eng"]);
+});
+check("It17 mini_show Solar: watt + status statt Temperaturen", () => {
+  const k = pkg.miniKachel({ ...SOLAR_MINI, power_entity: "sensor.poolpumpe_power", mini_show: ["watt", "status"] }, solarMiniHass("20"));
+  assert.deepEqual(zeilen(k), ["737 W", "An"]);
+});
+check("It17 mini_show UV: temp statt Watt", () => {
+  const k = pkg.miniKachel({ type: "uv", switch_entity: "switch.uv_lampe", temp_entity: "sensor.uv_lampe_temperatur", mini_show: ["temp"] }, makeHass());
+  assert.deepEqual(zeilen(k), ["31,2 °C"]);
+});
+check("It17 mini_show custom: Einträge 1 und 3 als Zeilen mit Namen", () => {
+  const cfg = {
+    type: "custom",
+    entries: [
+      { kind: "entity", entity: "sensor.pool_lufttemperatur", label: "Luft" },
+      { kind: "button", entity: "switch.poolbeleuchtung", label: "Licht" },
+      { kind: "entity", entity: "sensor.pool_ph", label: "pH" },
+    ],
+    mini_show: [1, 3],
+  };
+  const k = pkg.miniKachel(cfg, makeHass());
+  assert.deepEqual(zeilen(k), ["21,3 °C", "7,1"]);
+  assert.deepEqual(k.zeilen.map((z) => z.name), ["Luft", "pH"]);
+});
+check("It17 mini_show Becken: nur temp + rx", () => {
+  const b = pkg.miniBecken(
+    { temp_entity: "sensor.pool_wassertemperatur", ph_entity: "sensor.pool_ph", rx_entity: "sensor.pool_redox", mini_show: ["temp", "rx"] },
+    makeHass()
+  );
+  assert.equal(b.temp, "24,6 °C");
+  assert.deepEqual(b.chips.map((c) => c.key), ["RX"]);
+  const b2 = pkg.miniBecken({ temp_entity: "sensor.pool_wassertemperatur", ph_entity: "sensor.pool_ph", mini_show: ["ph"] }, makeHass());
+  assert.equal(b2.temp, null);
+});
+{
+  const card = await mount(
+    Dashboard,
+    {
+      view: "mini",
+      hero: { temp_entity: "sensor.pool_wassertemperatur" },
+      slots: [
+        { ...PUMP_CONFIG, mini_hidden: true },
+        { ...MODUS_SEL, mini_show: ["modus", "watt", "ist", "soll"] },
+        { type: "uv", switch_entity: "switch.uv_lampe", power_entity: "sensor.uv_lampe_power" },
+      ],
+    },
+    makeHass()
+  );
+  const k = [...card.shadowRoot.querySelectorAll(".kachel")];
+  check("It17 mini_hidden: Kachel fehlt, Nummern bleiben die aus dem Editor", () => {
+    assert.deepEqual(k.map((x) => x.dataset.mini), ["2", "3"]);
+    assert.equal(card.shadowRoot.querySelector(".mini").style.getPropertyValue("--m-spalten").trim(), "2");
+  });
+  check("It17 mini_show im DOM: 4 Werte -> dichte-eng, Namen als k-name", () => {
+    assert.ok(k[0].classList.contains("dichte-eng"));
+    assert.equal(k[0].querySelectorAll(".k-zeile").length, 4);
+    assert.deepEqual([...k[0].querySelectorAll(".k-name")].map((x) => x.textContent), ["Ist", "Soll"]);
+    assert.ok(k[1].classList.contains("dichte-normal"));
+  });
+  card.setConfig({ view: "mini", hero: { temp_entity: "sensor.pool_wassertemperatur", mini_hidden: true }, slots: [PUMP_CONFIG] });
+  await card.updateComplete;
+  check("It17 mini_hidden am Becken: kein Kopf", () => assert.equal(card.shadowRoot.querySelector(".m-kopf"), null));
+  card.remove();
+}
+
+/* ---- Editor: "In Mini anzeigen" ---- */
+{
+  const ed = new Editor();
+  const basis = { hero: { enabled: true, temp_entity: "sensor.a", ph_entity: "sensor.b" }, slots: [{ ...PUMP_CONFIG }, { type: "frame" }] };
+  ed.setConfig(basis);
+  ed.hass = makeHass();
+  document.body.appendChild(ed);
+  await ed.updateComplete;
+  let fired = null;
+  ed.addEventListener("config-changed", (e) => {
+    fired = e.detail.config;
+    ed.setConfig(fired);
+  });
+  check("It17 Editor: 'In Mini anzeigen' fehlt in der vollen Ansicht", () =>
+    assert.equal(ed.shadowRoot.querySelectorAll(".mini-wahl").length, 0)
+  );
+  ed.shadowRoot.querySelector('[data-ansicht="mini"]').click();
+  await ed.updateComplete;
+  const wahl = (typ) => ed.shadowRoot.querySelector(`.mini-wahl[data-mini-wahl="${typ}"]`);
+  check("It17 Editor: bei Mini je Kasten eine Gruppe (Becken + Pumpe, nicht der leere Rahmen)", () => {
+    assert.deepEqual([...ed.shadowRoot.querySelectorAll(".mini-wahl")].map((x) => x.dataset.miniWahl), ["hero", "pump"]);
+    const boxen = [...wahl("pump").querySelectorAll("[data-mini-show]")];
+    assert.deepEqual(boxen.map((b) => [b.dataset.miniShow, b.checked]), [
+      ["stufe", true],
+      ["watt", true],
+      ["temp", false],
+      ["status", false],
+    ]);
+    assert.match(wahl("pump").textContent, /In Mini anzeigen/);
+    assert.deepEqual([...wahl("hero").querySelectorAll("[data-mini-show]")].map((b) => b.dataset.miniShow), ["temp", "ph"]);
+  });
+  const klickBox = async (typ, key) => {
+    const b = wahl(typ).querySelector(`[data-mini-show="${key}"]`);
+    b.checked = !b.checked;
+    b.dispatchEvent(new dom.window.Event("change"));
+    await ed.updateComplete;
+  };
+  await klickBox("pump", "temp");
+  check("It17 Editor: Haken bei Temperatur -> mini_show [stufe, watt, temp]", () =>
+    assert.deepEqual(fired.slots[0].mini_show, ["stufe", "watt", "temp"])
+  );
+  check("It17 Editor: 3 Werte noch ohne Warnung", () => assert.equal(wahl("pump").querySelector(".mini-wahl-warnung"), null));
+  await klickBox("pump", "status");
+  check("It17 Editor: 4 Werte -> Warnung (Schrift wird kleiner, nichts abgeschnitten)", () => {
+    const w = wahl("pump").querySelector(".mini-wahl-warnung");
+    assert.ok(w);
+    assert.match(w.textContent, /4 Werte/);
+    assert.match(w.textContent, /abgeschnitten wird nichts/);
+  });
+  await klickBox("pump", "temp");
+  await klickBox("pump", "status");
+  check("It17 Editor: zurück auf den Standard -> mini_show fällt weg", () => assert.equal("mini_show" in fired.slots[0], false));
+  await klickBox("hero", "ph");
+  check("It17 Editor: Becken ohne pH -> hero.mini_show [temp]", () => assert.deepEqual(fired.hero.mini_show, ["temp"]));
+  {
+    const b = wahl("pump").querySelector("[data-mini-hidden]");
+    b.checked = false;
+    b.dispatchEvent(new dom.window.Event("change"));
+    await ed.updateComplete;
+  }
+  check("It17 Editor: 'Als Kachel zeigen' aus -> mini_hidden: true, Werte-Haken verschwinden", () => {
+    assert.equal(fired.slots[0].mini_hidden, true);
+    assert.equal(wahl("pump").querySelectorAll("[data-mini-show]").length, 0);
+  });
+  {
+    const b = wahl("pump").querySelector("[data-mini-hidden]");
+    b.checked = true;
+    b.dispatchEvent(new dom.window.Event("change"));
+    await ed.updateComplete;
+  }
+  check("It17 Editor: wieder an -> mini_hidden fällt weg", () => assert.equal("mini_hidden" in fired.slots[0], false));
+  ed.remove();
+}
+
 /* ------------------------------------------------------------------ */
 
 console.log(results.join("\n"));

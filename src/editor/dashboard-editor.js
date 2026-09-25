@@ -8,7 +8,7 @@ import { UV_DEFAULTS } from "../slots/uv.js";
 import { SOLAR_DEFAULTS } from "../slots/solar.js";
 import { heroDefaultsFor } from "../hero.js";
 import { kioskSchluessel, kioskGilt, KIOSK_BECKEN } from "../shared/kiosk.js";
-import { ansichtVon } from "../mini.js";
+import { ansichtVon, miniWahl, MINI_TYPEN, MINI_WERTE_EMPFOHLEN } from "../mini.js";
 import {
   heroFields,
   heatpumpFields,
@@ -122,6 +122,67 @@ export class TomtutPoolDashboardEditor extends LitElement {
           Mini: die ganze Anlage kompakt in einer Card (z.B. kleines Tablet) — Becken oben, Geräte als
           Kacheln. Tipp auf eine Kachel öffnet den vollen Kasten. Dieselbe Einrichtung wie Voll.
         </small>
+      </div>
+    `;
+  }
+
+  /*
+   * "In Mini anzeigen" (Zusatz zu Iteration 17) — nur sichtbar, solange die
+   * Card auf view: mini steht. Pro Kasten: Kachel zeigen ja/nein
+   * (mini_hidden) und welche Werte (mini_show). Entspricht die Auswahl dem
+   * Standard, fällt mini_show wieder weg — die Config bleibt schlank.
+   */
+  _renderMiniWahl(cfg, typRoh, update) {
+    if (ansichtVon(this._config) !== "mini") return nothing;
+    const typ = String(typRoh || "").toLowerCase();
+    if (typ !== "hero" && !MINI_TYPEN.includes(typ)) return nothing;
+    const w = miniWahl(cfg || {}, typ);
+    const versteckt = typ !== "hero" && cfg?.mini_hidden === true;
+    const setzeWert = (key, an) => {
+      const neu = w.verfuegbar.map(([k]) => k).filter((k) => (k === key ? an : w.gewaehlt.includes(k)));
+      const standard = neu.length === w.standard.length && neu.every((k, i) => k === w.standard[i]);
+      update({ mini_show: standard ? undefined : neu });
+    };
+    return html`
+      <div class="mini-wahl" data-mini-wahl="${typ}">
+        <div class="mini-wahl-titel">In Mini anzeigen</div>
+        ${typ === "hero"
+          ? nothing
+          : html`<label class="mini-wahl-zeile">
+              <input
+                type="checkbox"
+                data-mini-hidden
+                .checked="${!versteckt}"
+                @change="${(e) => update({ mini_hidden: e.target.checked ? undefined : true })}"
+              />
+              <span>Als Kachel zeigen</span>
+            </label>`}
+        ${versteckt
+          ? nothing
+          : html`
+              <div class="mini-wahl-werte">
+                ${w.verfuegbar.map(
+                  ([k, label]) => html`<label class="mini-wahl-zeile">
+                    <input
+                      type="checkbox"
+                      data-mini-show="${k}"
+                      .checked="${w.gewaehlt.includes(k)}"
+                      @change="${(e) => setzeWert(k, e.target.checked)}"
+                    />
+                    <span>${label}</span>
+                  </label>`
+                )}
+              </div>
+              ${w.verfuegbar.length === 0
+                ? html`<small>Noch keine Werte — erst oben die Entities wählen.</small>`
+                : nothing}
+              ${typ !== "hero" && w.gewaehlt.length > MINI_WERTE_EMPFOHLEN
+                ? html`<div class="mini-wahl-warnung">
+                    ${w.gewaehlt.length} Werte gewählt — mehr als ${MINI_WERTE_EMPFOHLEN} machen die Kachel
+                    eng: die Schrift wird kleiner, abgeschnitten wird nichts.
+                  </div>`
+                : nothing}
+            `}
       </div>
     `;
   }
@@ -315,6 +376,9 @@ export class TomtutPoolDashboardEditor extends LitElement {
           <div class="slot-ueberschrift">Becken</div>
           <div class="slot-card becken-card">
             ${heroF.toggle("Becken anzeigen", "enabled", true)}
+            ${hero.enabled === false
+              ? nothing
+              : this._renderMiniWahl(hero, "hero", (patch) => this._updateHero(patch))}
             ${hero.enabled === false ? nothing : heroFields(heroF)}
           </div>
         </div>
@@ -365,6 +429,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
                     ✕
                   </button>
                 </div>
+                ${this._renderMiniWahl(slot, slot.type, (patch) => this._updateSlot(i, patch))}
                 ${this._slotBody(i)}
               </div>
             </div>

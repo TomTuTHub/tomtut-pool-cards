@@ -91,10 +91,143 @@ export const kachelName = (slot) =>
 const geraeteBild = (kind) => ({ src: deviceImage(kind), ratio: deviceRatio(kind) });
 
 /*
+ * Was eine Kachel zeigen KANN (`mini_show`, Zusatz zu Iteration 17).
+ * Reihenfolge = Reihenfolge auf der Kachel. Schlüssel sind Teil der Config
+ * und ändern sich nie; die Beschriftung ist nur für den Editor.
+ * `custom` hat keine feste Liste: dort sind es die Einträge 1..n.
+ */
+export const MINI_WERTE = {
+  pump: [
+    ["stufe", "Stufe"],
+    ["watt", "Watt"],
+    ["temp", "Temperatur"],
+    ["status", "Status an/aus"],
+  ],
+  heatpump: [
+    ["modus", "Modus"],
+    ["watt", "Watt"],
+    ["ist", "Ist-Temperatur"],
+    ["soll", "Soll-Temperatur"],
+    ["freigabe", "Freigabe"],
+    ["status", "Status an/aus"],
+  ],
+  solar: [
+    ["vorlauf", "Vorlauf"],
+    ["ruecklauf", "Rücklauf"],
+    ["watt", "Watt"],
+    ["status", "Status an/aus"],
+  ],
+  uv: [
+    ["status", "Status an/aus"],
+    ["watt", "Watt"],
+    ["temp", "Temperatur"],
+  ],
+  hero: [
+    ["temp", "Temperatur"],
+    ["ph", "pH"],
+    ["rx", "RX"],
+    ["zulauf", "Zulauf"],
+  ],
+};
+
+/* Ab hier wird die Kachel eng: Schrift kleiner, Editor warnt */
+export const MINI_WERTE_EMPFOHLEN = 3;
+
+/* Hat der Slot eine Quelle für diesen Wert? `status` gibt es immer. */
+const QUELLE = {
+  pump: {
+    stufe: (s) => pumpHasEntity(s) || !!s.power_entity,
+    watt: (s) => !!s.power_entity,
+    temp: (s) => !!s.temp_entity,
+  },
+  heatpump: {
+    modus: () => true,
+    watt: (s) => !!s.power_entity,
+    ist: (s) => !!s.current_entity,
+    soll: (s) => !!s.target_entity,
+    freigabe: (s) => !!s.release_entity,
+  },
+  solar: {
+    vorlauf: (s) => !!s.temp_in_entity,
+    ruecklauf: (s) => !!s.temp_out_entity,
+    watt: (s) => !!s.power_entity,
+  },
+  uv: { watt: (s) => !!s.power_entity, temp: (s) => !!s.temp_entity },
+  hero: {
+    temp: (h) => !!h.temp_entity && h.show_thermo !== false,
+    ph: (h) => !!h.ph_entity && h.show_ph !== false,
+    rx: (h) => !!h.rx_entity && h.show_rx !== false,
+    zulauf: (h) => !!h.inlet_temp_entity,
+  },
+};
+
+const eintragName = (e, i) =>
+  String(e?.label || e?.text || e?.entity || "").trim() || `Eintrag ${i + 1}`;
+
+/*
+ * Auswahl eines Slots (oder des Beckens, typ "hero"):
+ *   verfuegbar  [[schlüssel, beschriftung]] — was der Slot kennt
+ *   standard    was ohne mini_show gezeigt wird (1–2 Werte, Becken alle)
+ *   gewaehlt    was tatsächlich gezeigt wird
+ *   eigen       true, wenn mini_show gesetzt ist
+ */
+export const miniWahl = (slotRoh = {}, typ = String(slotRoh?.type || "frame").toLowerCase()) => {
+  const slot = slotRoh || {};
+  let verfuegbar;
+  if (typ === "custom") {
+    verfuegbar = customEintraege(slot).map((e, i) => [String(i + 1), eintragName(e, i)]);
+  } else {
+    const q = QUELLE[typ] || {};
+    verfuegbar = (MINI_WERTE[typ] || []).filter(([k]) => (q[k] ? q[k](slot) : true));
+  }
+  const hat = (k) => verfuegbar.some(([x]) => x === k);
+  let standard;
+  switch (typ) {
+    case "pump":
+      standard = [hat("stufe") ? "stufe" : "status", hat("watt") ? "watt" : hat("temp") ? "temp" : null];
+      break;
+    case "heatpump":
+      standard = ["modus", hat("watt") ? "watt" : null];
+      break;
+    case "solar":
+      standard =
+        hat("vorlauf") || hat("ruecklauf")
+          ? ["vorlauf", "ruecklauf"].filter(hat)
+          : ["status", hat("watt") ? "watt" : null];
+      break;
+    case "uv":
+      standard = ["status", hat("watt") ? "watt" : hat("temp") ? "temp" : null];
+      break;
+    case "custom":
+      standard = verfuegbar.length ? ["1"] : [];
+      break;
+    case "hero":
+      standard = verfuegbar.map(([k]) => k);
+      break;
+    default:
+      standard = [];
+  }
+  standard = standard.filter((k) => k && hat(k));
+  const eigen = Array.isArray(slot.mini_show);
+  const wunsch = eigen ? slot.mini_show.map((x) => String(x).trim().toLowerCase()) : standard;
+  /* Reihenfolge immer die der Liste oben — egal, wie sie in der Config steht */
+  const gewaehlt = verfuegbar.map(([k]) => k).filter((k) => wunsch.includes(k));
+  return { verfuegbar, standard, gewaehlt, eigen };
+};
+
+/* Wird der Slot in der Mini-Ansicht gezeigt? */
+export const miniSichtbar = (slot = {}) =>
+  MINI_TYPEN.includes(String(slot?.type || "").toLowerCase()) && slot?.mini_hidden !== true;
+
+const tempText = (t) => (t ? `${fmt(t.value, Number.isInteger(t.value) ? 0 : 1)} ${t.unit}` : MINI_LEER);
+
+/*
  * Slot-Config -> Kachel. Rückgabe:
  *   { typ, name, bild|null, icon|null, zustand: an|aus|gesperrt|neutral,
- *     gesperrt, zeilen: [{ text, punkt?: heizen|kuehlen, pfeil?: in|out }] }
- * Höchstens zwei Zeilen; ein fehlender Wert ist immer MINI_LEER.
+ *     gesperrt, zeilen: [{ text, name?, punkt?: heizen|kuehlen,
+ *     pfeil?: in|out, warn? }] }
+ * Die Zeilen sind die per `mini_show` gewählten Werte (Default 1–2); ein
+ * fehlender Wert ist immer MINI_LEER, abgeschnitten wird nie etwas.
  */
 export const miniKachel = (slotRoh = {}, hass) => {
   const typ = String(slotRoh?.type || "frame").toLowerCase();
@@ -111,47 +244,48 @@ export const miniKachel = (slotRoh = {}, hass) => {
   const z = (text, extra = {}) => ({ text: leer(text), ...extra });
   const da = (id) => !!id && !!hass?.states?.[id];
   const an = (id) => isOn(hass?.states?.[id]?.state);
+  const statusText = () =>
+    k.zustand === "an" ? "An" : k.zustand === "aus" ? "Aus" : k.zustand === "gesperrt" ? "Gesperrt" : MINI_LEER;
+  const { gewaehlt } = miniWahl(slot, typ);
+  /* werte: schlüssel -> () => zeile; erst nach dem Zustand ausgewertet */
+  let werte = {};
 
   switch (typ) {
     case "pump": {
       const p = helfer(TomtutPoolSlotPump, slot, hass);
       k.bild = geraeteBild("pump");
       const st = p.state;
+      let stufe = null;
       if (p.blockedByMain) {
-        k.zeilen.push(z("Aus"));
+        stufe = "Aus";
         k.zustand = "aus";
       } else if (pumpHasEntity(slot) && p.running) {
-        k.zeilen.push(z(p.stageLabels[st.active] || `N${(st.active ?? 0) + 1}`));
+        stufe = p.stageLabels[st.active] || `N${(st.active ?? 0) + 1}`;
         k.zustand = "an";
       } else if (!p.stages.length && !slot.power_entity && slot.main_entity) {
         /* nur Hauptschalter: mehr als an/aus weiß die Card nicht */
-        k.zeilen.push(z(an(slot.main_entity) ? "An" : "Aus"));
+        stufe = an(slot.main_entity) ? "An" : "Aus";
         k.zustand = an(slot.main_entity) ? "an" : "aus";
       } else if (pumpHasEntity(slot) || slot.power_entity) {
-        k.zeilen.push(z("Stopp"));
+        stufe = "Stopp";
         k.zustand = "aus";
-      } else {
-        k.zeilen.push(z(null));
       }
-      if (slot.power_entity) k.zeilen.push(z(watt(hass, slot.power_entity)));
-      else if (slot.temp_entity) k.zeilen.push(z(wert(hass, slot.temp_entity)));
-      return k;
+      werte = {
+        stufe: () => z(stufe),
+        watt: () => z(watt(hass, slot.power_entity)),
+        temp: () => z(wert(hass, slot.temp_entity)),
+        status: () => z(statusText()),
+      };
+      break;
     }
 
     case "heatpump": {
       const w = helfer(TomtutPoolSlotHeatpump, slot, hass);
       k.bild = geraeteBild("heatpump");
-      k.gesperrt = w._freigabe === false;
+      const frei = w._freigabe;
+      k.gesperrt = frei === false;
       const sw = slot.switch_entity;
       const laeuft = da(sw) ? an(sw) : w._fanActive;
-      const badge = w._modusBadge;
-      if (da(sw) && !an(sw)) k.zeilen.push(z("Aus"));
-      else if (badge) {
-        k.zeilen.push(
-          z(badge.text, badge.art === "heizen" || badge.art === "kuehlen" ? { punkt: badge.art } : {})
-        );
-      } else k.zeilen.push(z(laeuft ? "An" : "Aus"));
-      if (slot.power_entity) k.zeilen.push(z(watt(hass, slot.power_entity)));
       k.zustand = k.gesperrt
         ? "gesperrt"
         : laeuft
@@ -159,69 +293,88 @@ export const miniKachel = (slotRoh = {}, hass) => {
         : sw || slot.power_entity || slot.fan_entity
         ? "aus"
         : "neutral";
-      return k;
+      werte = {
+        modus: () => {
+          if (da(sw) && !an(sw)) return z("Aus");
+          const b = w._modusBadge;
+          if (b) return z(b.text, b.art === "heizen" || b.art === "kuehlen" ? { punkt: b.art } : {});
+          return z(laeuft ? "An" : "Aus");
+        },
+        watt: () => z(watt(hass, slot.power_entity)),
+        ist: () => z(tempText(w._current), { name: "Ist" }),
+        soll: () => z(tempText(w._target), { name: "Soll" }),
+        freigabe: () => z(frei === null ? null : frei ? "Frei" : "Gesperrt", frei === false ? { warn: true } : {}),
+        status: () => z(statusText(), k.gesperrt ? { warn: true } : {}),
+      };
+      break;
     }
 
     case "uv": {
       k.bild = geraeteBild("uv");
       const sw = slot.switch_entity;
-      if (sw) {
-        k.zeilen.push(z(da(sw) ? (an(sw) ? "An" : "Aus") : null));
-        if (da(sw)) k.zustand = an(sw) ? "an" : "aus";
-      }
-      if (slot.power_entity) k.zeilen.push(z(watt(hass, slot.power_entity)));
-      else if (slot.temp_entity) k.zeilen.push(z(wert(hass, slot.temp_entity)));
-      if (!k.zeilen.length) k.zeilen.push(z(null));
-      return k;
+      if (da(sw)) k.zustand = an(sw) ? "an" : "aus";
+      werte = {
+        status: () => z(statusText()),
+        watt: () => z(watt(hass, slot.power_entity)),
+        temp: () => z(wert(hass, slot.temp_entity)),
+      };
+      break;
     }
 
     case "solar": {
       k.bild = geraeteBild("solar");
       const sw = slot.switch_entity;
       if (da(sw)) k.zustand = an(sw) ? "an" : "aus";
-      if (slot.temp_in_entity) k.zeilen.push(z(wert(hass, slot.temp_in_entity), { pfeil: "in" }));
-      if (slot.temp_out_entity) k.zeilen.push(z(wert(hass, slot.temp_out_entity), { pfeil: "out" }));
-      if (!k.zeilen.length) {
-        if (sw) k.zeilen.push(z(da(sw) ? (an(sw) ? "An" : "Aus") : null));
-        if (slot.power_entity) k.zeilen.push(z(watt(hass, slot.power_entity)));
-      }
-      if (!k.zeilen.length) k.zeilen.push(z(null));
-      return k;
+      werte = {
+        vorlauf: () => z(wert(hass, slot.temp_in_entity), { pfeil: "in" }),
+        ruecklauf: () => z(wert(hass, slot.temp_out_entity), { pfeil: "out" }),
+        watt: () => z(watt(hass, slot.power_entity)),
+        status: () => z(statusText()),
+      };
+      break;
     }
 
     case "custom": {
-      const e = customEintraege(slot)[0];
-      if (!e) {
+      const eintraege = customEintraege(slot);
+      const e0 = eintraege[Number(gewaehlt[0]) - 1] || eintraege[0];
+      const wertVon = (e) => {
+        const art = e.kind || (e.entity ? "entity" : "text");
+        if (art === "text" || !e.entity) return { text: e.text || e.label, icon: e.icon || "mdi:text" };
+        const ent = hass?.states?.[e.entity];
+        const dom = domainOf(e.entity);
+        const icon = e.icon || ent?.attributes?.icon || DOMAIN_ICONS[dom] || "mdi:circle-medium";
+        if (!ent || TOT.includes(String(ent.state).toLowerCase())) return { text: null, icon, name: e.label || nameOf(ent, e.entity) };
+        const name = e.label || nameOf(ent, e.entity);
+        if (TOGGLE_DOMAINS.includes(dom)) return { text: isOn(ent.state) ? "An" : "Aus", icon, name, schalter: isOn(ent.state) };
+        if (numOf(ent.state) !== null) return { text: stateText(ent), icon, name };
+        try {
+          return { text: hass?.formatEntityState?.(ent) || stateText(ent), icon, name };
+        } catch (err) {
+          console.warn("tomtut-pool-cards: formatEntityState —", err?.message || err);
+          return { text: stateText(ent), icon, name };
+        }
+      };
+      if (!e0) {
         k.icon = "mdi:form-textbox";
         k.zeilen.push(z(slot.title || "Freifeld"));
         return k;
       }
-      const art = e.kind || (e.entity ? "entity" : "text");
-      if (art === "text" || !e.entity) {
-        k.icon = e.icon || "mdi:text";
-        k.zeilen.push(z(e.text || e.label));
-        if (slot.title) k.zeilen.push(z(slot.title));
+      const w0 = wertVon(e0);
+      k.icon = w0.icon;
+      if (w0.schalter !== undefined) k.zustand = w0.schalter ? "an" : "aus";
+      if (gewaehlt.length === 1) {
+        /* ein Eintrag: Wert groß, Name darunter (wie ein Kachel-Titel) */
+        k.zeilen.push(z(w0.text));
+        const unter = w0.name || slot.title;
+        if (unter) k.zeilen.push(z(unter));
         return k;
       }
-      const ent = hass?.states?.[e.entity];
-      const dom = domainOf(e.entity);
-      k.icon = e.icon || ent?.attributes?.icon || DOMAIN_ICONS[dom] || "mdi:circle-medium";
-      let text;
-      if (!ent || TOT.includes(String(ent.state).toLowerCase())) text = null;
-      else if (TOGGLE_DOMAINS.includes(dom)) {
-        text = isOn(ent.state) ? "An" : "Aus";
-        k.zustand = isOn(ent.state) ? "an" : "aus";
-      } else {
-        try {
-          text = hass?.formatEntityState?.(ent) || stateText(ent);
-        } catch (err) {
-          console.warn("tomtut-pool-cards: formatEntityState —", err?.message || err);
-          text = stateText(ent);
-        }
-        if (numOf(ent.state) !== null) text = stateText(ent);
+      for (const key of gewaehlt) {
+        const e = eintraege[Number(key) - 1];
+        if (!e) continue;
+        const w = wertVon(e);
+        k.zeilen.push(z(w.text, w.name ? { name: w.name } : {}));
       }
-      k.zeilen.push(z(text));
-      k.zeilen.push(z(e.label || nameOf(ent, e.entity)));
       return k;
     }
 
@@ -229,18 +382,21 @@ export const miniKachel = (slotRoh = {}, hass) => {
       k.zeilen.push(z(null));
       return k;
   }
+
+  for (const key of gewaehlt) if (werte[key]) k.zeilen.push(werte[key]());
+  return k;
 };
 
-/* Becken für den Kopf der Mini-Ansicht */
+/* Becken für den Kopf der Mini-Ansicht (Auswahl über hero.mini_show) */
 export const miniBecken = (hero = {}, hass) => {
   const h = helfer(TomtutPoolHero, hero || {}, hass);
   const form = shapeOf(hero?.shape);
+  const { gewaehlt } = miniWahl(hero || {}, "hero");
+  const zeig = (k) => gewaehlt.includes(k);
   const chips = [];
-  if (hero?.show_ph !== false && hero?.ph_entity)
-    chips.push({ key: "pH", text: wert(hass, hero.ph_entity), entity: hero.ph_entity });
-  if (hero?.show_rx !== false && hero?.rx_entity)
-    chips.push({ key: "RX", text: wert(hass, hero.rx_entity), entity: hero.rx_entity });
-  if (hero?.inlet_temp_entity && h._spriteAn("inlet"))
+  if (zeig("ph")) chips.push({ key: "pH", text: wert(hass, hero.ph_entity), entity: hero.ph_entity });
+  if (zeig("rx")) chips.push({ key: "RX", text: wert(hass, hero.rx_entity), entity: hero.rx_entity });
+  if (zeig("zulauf"))
     chips.push({ key: "Zulauf", text: wert(hass, hero.inlet_temp_entity), entity: hero.inlet_temp_entity });
   const sprites = Object.values(HERO_SPRITES)
     .filter((sp) => h._spriteAn(sp.anker))
@@ -258,7 +414,7 @@ export const miniBecken = (hero = {}, hass) => {
     bild: imagePath(form.file),
     ratio: shapeRatio(hero?.shape),
     label: form.label,
-    temp: hero?.temp_entity && hero?.show_thermo !== false ? wert(hass, hero.temp_entity) : null,
+    temp: zeig("temp") ? wert(hass, hero.temp_entity) : null,
     chips,
     sprites,
   };
@@ -316,14 +472,30 @@ const renderKopf = (card, b) => html`
   </div>
 `;
 
+/* Schrift-Stufe nach Anzahl der Werte: bis 2 normal, 3 kleiner, ab 4 eng */
+export const miniDichte = (n) => (n <= 2 ? "normal" : n <= MINI_WERTE_EMPFOHLEN ? "dicht" : "eng");
+
+const renderZeile = (x, i) => html`<span
+  class="k-zeile ${i ? "neben" : "haupt"} ${x.punkt ? `badge ${x.punkt}` : ""} ${x.warn ? "warn" : ""}"
+  >${x.pfeil
+    ? html`<img
+        class="k-pfeil"
+        src="${imagePath(FLOW_MARKERS[x.pfeil])}"
+        alt="${x.pfeil === "in" ? "Vorlauf" : "Rücklauf"}"
+      />`
+    : nothing}${x.name ? html`<span class="k-name">${x.name}</span>` : nothing}<span class="k-text"
+    >${x.text}</span
+  ></span
+>`;
+
 const renderKachel = (card, k, nr) => html`
   <div
-    class="kachel ${k.zustand} typ-${k.typ}"
+    class="kachel ${k.zustand} typ-${k.typ} dichte-${miniDichte(k.zeilen.length)}"
     role="button"
     tabindex="0"
     data-mini="${nr}"
     title="${k.name} — tippen für den vollen Kasten"
-    aria-label="${k.name}: ${k.zeilen.map((x) => x.text).join(", ")}"
+    aria-label="${k.name}: ${k.zeilen.map((x) => (x.name ? `${x.name} ${x.text}` : x.text)).join(", ")}"
     @click="${() => card._miniOeffnen(nr)}"
     @keydown="${taste(() => card._miniOeffnen(nr))}"
   >
@@ -335,19 +507,7 @@ const renderKachel = (card, k, nr) => html`
           : html`<ha-icon icon="${k.icon || "mdi:circle-medium"}"></ha-icon>`}
         ${k.gesperrt ? html`<span class="k-sperre">Gesperrt</span>` : nothing}
       </div>
-      <div class="k-werte">
-        ${k.zeilen.slice(0, 2).map(
-          (x, i) => html`<span class="k-zeile ${i ? "neben" : "haupt"} ${x.punkt ? "badge" : ""}"
-            >${x.punkt ? html`<span class="k-punkt ${x.punkt}"></span>` : nothing}${x.pfeil
-              ? html`<img
-                  class="k-pfeil"
-                  src="${imagePath(FLOW_MARKERS[x.pfeil])}"
-                  alt="${x.pfeil === "in" ? "Vorlauf" : "Rücklauf"}"
-                />`
-              : nothing}<span class="k-text">${x.text}</span></span
-          >`
-        )}
-      </div>
+      ${k.zeilen.length ? html`<div class="k-werte">${k.zeilen.map(renderZeile)}</div>` : nothing}
     </div>
   </div>
 `;
@@ -400,8 +560,8 @@ const renderDialog = (card) => {
 export const renderMini = (card) => {
   const c = card._config;
   const hass = card.hass;
-  const heroOn = c.hero?.enabled !== false;
-  const kacheln = card._slotsMitNummer.filter(({ slot }) => MINI_TYPEN.includes(slot.type));
+  const heroOn = c.hero?.enabled !== false && c.hero?.mini_hidden !== true;
+  const kacheln = card._slotsMitNummer.filter(({ slot }) => miniSichtbar(slot));
   return html`
     <ha-card class="mini-karte slot fill-${fillVon(c)} ${c.frame?.enabled === false ? "" : "framed"}">
       <div class="mini" style="--m-spalten:${miniSpalten(kacheln.length)};">
@@ -588,7 +748,7 @@ export const miniStyles = css`
   .k-bild {
     position: relative;
     width: 100%;
-    height: 56px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -619,13 +779,52 @@ export const miniStyles = css`
     gap: 4px;
     max-width: 100%;
     white-space: nowrap;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.1px;
   }
   .k-zeile.neben {
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 600;
+  }
+  /* kleiner Vorsatz vor dem Wert ("Ist", "Soll", Name eines Eintrags) */
+  .k-name {
+    flex: none;
+    font-size: 0.78em;
+    font-weight: 700;
+    opacity: 0.72;
+    letter-spacing: 0.3px;
+  }
+  .k-zeile.warn .k-text {
+    padding: 0 5px;
+    border-radius: 5px;
+    background: #c62828;
+    color: #ffffff;
+  }
+  /* 3 Werte: etwas kleiner; ab 4 eng — lieber kleiner als abgeschnitten */
+  .kachel.dichte-dicht .k-bild {
+    height: 54px;
+  }
+  .kachel.dichte-dicht .k-zeile {
+    font-size: 13px;
+  }
+  .kachel.dichte-dicht .k-zeile.neben {
+    font-size: 12px;
+  }
+  .kachel.dichte-eng .k-bild {
+    height: 42px;
+  }
+  .kachel.dichte-eng .k-zeile {
+    font-size: 12px;
+    line-height: 1.15;
+  }
+  .kachel.dichte-eng .k-zeile.neben {
+    font-size: 11px;
+  }
+  .kachel.dichte-eng .k-werte {
+    gap: 1px;
   }
   .k-text {
     min-width: 0;
@@ -642,18 +841,19 @@ export const miniStyles = css`
     overflow-wrap: normal;
     text-align: center;
   }
-  .k-punkt {
-    flex: none;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: currentColor;
+  /* Modus als getönte Pille in der Farbe des Rads (heizen rot, kühlen
+     blau) — bleibt auch zweizeilig ein ruhiger Block */
+  .k-zeile.heizen {
+    --k-modus: ${unsafeCSS(MODE_FARBEN.heizen)};
   }
-  .k-punkt.heizen {
-    background: ${unsafeCSS(MODE_FARBEN.heizen)};
+  .k-zeile.kuehlen {
+    --k-modus: ${unsafeCSS(MODE_FARBEN.kuehlen)};
   }
-  .k-punkt.kuehlen {
-    background: ${unsafeCSS(MODE_FARBEN.kuehlen)};
+  .k-zeile.badge .k-text {
+    padding: 1px 7px;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--k-modus) 26%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--k-modus) 75%, transparent);
   }
   .k-pfeil {
     flex: none;
@@ -705,7 +905,10 @@ export const miniStyles = css`
     .k-bild {
       flex: 0 0 42%;
       width: 42%;
-      height: 52px;
+      height: 54px;
+    }
+    .kachel.dichte-eng .k-bild {
+      height: 48px;
     }
     .k-werte {
       flex: 1 1 auto;
