@@ -4392,6 +4392,96 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
 });
 
 /* ------------------------------------------------------------------ */
+/* Iteration 18: climate aus = Aus überall, Solar active_entity, Punkt */
+/* ------------------------------------------------------------------ */
+{
+  const klimaAusHass = () =>
+    selHass("Heizen Boost", {
+      "climate.waermepumpe": { state: "off", attributes: { temperature: 32, current_temperature: 23.6 }, last_changed: iso(60) },
+    });
+  check("It18 klimaAus: zentrale Regel (climate off = aus, unknown nicht)", () => {
+    const h = klimaAusHass();
+    assert.equal(pkg.klimaAus(MODUS_SEL, h), true);
+    assert.equal(pkg.klimaAus({ switch_entity: "switch.waermepumpe" }, h), false);
+    assert.equal(pkg.klimaAus(MODUS_SEL, selHass("x")), false);
+    const u = selHass("x", { "climate.waermepumpe": { state: "unavailable", attributes: {}, last_changed: iso(5) } });
+    assert.equal(pkg.klimaAus(MODUS_SEL, u), false);
+  });
+  const wp = await mountSlotTyp({ ...MODUS_SEL, fan_color_mode: "modus" }, klimaAusHass());
+  const sr = wp.shadowRoot;
+  check("It18 voller Kasten: climate off -> Badge 'Aus' grau, Rad steht", () => {
+    assert.equal(sr.querySelector(".mode-badge .val").textContent.trim(), "Aus");
+    assert.ok(sr.querySelector(".mode-badge").classList.contains("aus"));
+    assert.ok(!sr.querySelector(".fan-overlay").classList.contains("spinning"));
+  });
+  check("It18 voller Kasten: Steckdose an + climate off -> Powerbutton 'standby' mit Hinweis", () => {
+    const k = sr.querySelector(".power-badge");
+    assert.ok(k.classList.contains("on") && k.classList.contains("standby"));
+    assert.match(k.querySelector(".power-hinweis").textContent, /Strom an\s*WP aus/);
+    assert.match(k.getAttribute("title"), /Steckdose an, Wärmepumpe aus/);
+  });
+  check("It18 Mini-Kachel und voller Kasten sagen dasselbe", () => {
+    const k = pkg.miniKachel(MODUS_SEL, klimaAusHass());
+    assert.equal(k.zeilen[0].text, sr.querySelector(".mode-badge .val").textContent.trim());
+    assert.equal(k.zustand, "aus");
+  });
+  const wpAn = await mountSlotTyp(MODUS_SEL, selHass("Heizen Smart"));
+  check("It18: climate heat -> kein Standby, Badge wie bisher", () => {
+    assert.ok(!wpAn.shadowRoot.querySelector(".power-badge").classList.contains("standby"));
+    assert.equal(wpAn.shadowRoot.querySelector(".power-hinweis"), null);
+    assert.match(wpAn.shadowRoot.querySelector(".mode-badge").textContent, /Heizen Smart/);
+  });
+  calls.length = 0;
+  wp._onPowerClick();
+  await wp.updateComplete;
+  check("It18: Powerbutton schaltet im Standby weiter die Steckdose (mit Rückfrage)", () =>
+    assert.ok(wp.shadowRoot.querySelector(".confirm-overlay"))
+  );
+}
+{
+  const s = (st) => ({ state: st, attributes: {}, last_changed: iso(60) });
+  const SOL = { type: "solar", switch_entity: "switch.solarventil", active_entity: "binary_sensor.ventil_an", temp_in_entity: "sensor.solar_vorlauf" };
+  check("It18 Solar: Steuerung an, Ventil auf Bypass -> aus (roter Punkt)", () => {
+    const h = makeHass({ "switch.solarventil": s("on"), "binary_sensor.ventil_an": s("off") });
+    assert.equal(pkg.solarAktiv(SOL, h), false);
+    assert.equal(pkg.miniKachel(SOL, h).zustand, "aus");
+  });
+  check("It18 Solar: Ventil an -> an; ohne active_entity zählt der Schalter", () => {
+    assert.equal(pkg.miniKachel(SOL, makeHass({ "switch.solarventil": s("off"), "binary_sensor.ventil_an": s("on") })).zustand, "an");
+    const ohne = { ...SOL, active_entity: undefined };
+    assert.equal(pkg.miniKachel(ohne, makeHass({ "switch.solarventil": s("off") })).zustand, "aus");
+    assert.equal(pkg.miniKachel(ohne, makeHass({ "switch.solarventil": s("on") })).zustand, "an");
+  });
+  check("It18 Punkt: unknown / kein Schalter -> neutral (grau)", () => {
+    assert.equal(pkg.miniKachel(SOL, makeHass({ "switch.solarventil": s("on"), "binary_sensor.ventil_an": s("unknown") })).zustand, "neutral");
+    assert.equal(pkg.miniKachel({ type: "uv", power_entity: "sensor.uv_lampe_power" }, makeHass()).zustand, "neutral");
+    assert.equal(pkg.miniKachel({ type: "uv", switch_entity: "switch.fehlt" }, makeHass()).zustand, "neutral");
+  });
+  const c = await mount(Dashboard, { view: "mini", hero: { enabled: false }, slots: [{ type: "uv", power_entity: "sensor.uv_lampe_power" }] }, makeHass());
+  check("It18 Punkt: auch neutrale Kacheln haben einen (grauen) Punkt", () => {
+    const p = c.shadowRoot.querySelector(".kachel.neutral .k-status");
+    assert.ok(p);
+    assert.equal(p.title, "unbekannt");
+    assert.match(cssOf("tomtut-pool-dashboard"), /\.kachel\.neutral \.k-status\s*\{[^}]*background:\s*var\(--tt-line\)/);
+  });
+  c.remove();
+}
+{
+  const c = await mount(
+    Dashboard,
+    { view: "mini", hero: { temp_entity: "sensor.pool_wassertemperatur", ph_entity: "sensor.pool_ph" }, slots: [] },
+    makeHass({ "sensor.pool_wassertemperatur": { state: "unknown", attributes: {}, last_changed: iso(5) } })
+  );
+  check("It18 Kopf: unknown-Temperatur dezent ('Wasser –'), kein großer Kasten", () => {
+    const t = c.shadowRoot.querySelector(".m-temp");
+    assert.ok(t.classList.contains("leer"));
+    assert.equal(c.shadowRoot.querySelector(".m-temp-wert"), null);
+    assert.match(t.textContent.replace(/\s+/g, " "), /Wasser\s*–/);
+  });
+  c.remove();
+}
+
+/* ------------------------------------------------------------------ */
 
 console.log(results.join("\n"));
 console.log(

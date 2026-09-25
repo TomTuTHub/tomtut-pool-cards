@@ -278,6 +278,32 @@ export const overlayStyles = css`
   .power-badge:hover {
     filter: brightness(1.2);
   }
+  /* Steckdose an, Gerät aus (Iteration 18) */
+  .power-badge.standby {
+    color: #ffb300;
+    box-shadow: 0 0 8px rgba(255, 179, 0, 0.45);
+  }
+  .power-hinweis {
+    position: absolute;
+    left: calc(100% + 0.35em);
+    /* unter der Knopfmitte: so bleibt er unter dem Freitext-Label oben
+       mittig, auch wenn das in schmalen Spalten wächst */
+    top: 58%;
+    display: flex;
+    flex-direction: column;
+    padding: 0.2em 0.45em;
+    border-radius: 0.45em;
+    border: 1px solid var(--tt-line);
+    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
+    color: var(--tt-box-fg);
+    font-size: 0.62em;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .power-hinweis b {
+    color: inherit;
+  }
 
   /* Wertefelder auf dem Bild */
   .value-box {

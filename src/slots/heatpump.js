@@ -339,6 +339,22 @@ export const modusWahl = (e, c = {}) => {
   return [];
 };
 
+/*
+ * Klima-Aus (Iteration 18) — die EINE Regel für volle Ansicht und Mini.
+ * Ist eine der climate-Entities des Kastens (mode/target/current) "off",
+ * ist die Wärmepumpe aus, auch wenn ihre Steckdose (switch_entity) Strom
+ * gibt: Modus-Badge "Aus" (grau), Rad steht, Powerbutton zeigt "Standby".
+ * Unbekannt/nicht erreichbar zählt nicht als aus.
+ */
+export const klimaEntity = (c = {}, hass) =>
+  [c.mode_entity, c.target_entity, c.current_entity].find(
+    (id) => String(id || "").startsWith("climate.") && !!hass?.states?.[id]
+  ) || null;
+export const klimaAus = (c = {}, hass) => {
+  const id = klimaEntity(c, hass);
+  return !!id && String(hass.states[id].state).toLowerCase() === "off";
+};
+
 export const heatpumpHasEntity = (c = {}) =>
   !!(
     c.switch_entity ||
@@ -540,9 +556,21 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
   }
 
   /* Badge-Inhalt (Iteration 14) — null, wenn kein Modus ausgewertet wird */
+  /* climate aus (s. klimaAus) — gilt für Badge, Rad und Powerbutton */
+  get _klimaAus() {
+    return klimaAus(this.config || {}, this.hass);
+  }
+
+  /* Steckdose an, Gerät per climate aus */
+  get _standby() {
+    const sw = this.config?.switch_entity;
+    return this._klimaAus && !!sw && this._isOn(sw);
+  }
+
   get _modusBadge() {
     const c = this.config || {};
     if (c.show_mode === false || c.show_mode_badge === false || !c.mode_entity) return null;
+    if (this._klimaAus) return { text: "Aus", art: "aus" };
     return modeBadge(this._ent(c.mode_entity), c) || { text: "—", art: null };
   }
 
@@ -666,6 +694,8 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     /* Freigabekontakt offen = die Wärmepumpe KANN nicht laufen. Das schlägt
        alles andere: Schalter an, Lüfter-Entity, anliegende Watt — egal. */
     if (this._freigabe === false) return false;
+    /* climate aus = Wärmepumpe aus, egal was die Steckdose sagt */
+    if (this._klimaAus) return false;
     /* Schalter aus = das Rad steht. Immer — egal, was die Watt sagen
        (Nachlauf, träger Sensor, Standby-Verbrauch). */
     const sw = this.config.switch_entity;
@@ -752,6 +782,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
         ${showPowerBtn
           ? this.renderPowerButton({
               on: this._isOn(c.switch_entity),
+              standby: this._standby,
               top: this._v("power_btn_top"),
               left: this._v("power_btn_left"),
               scale: this._v("power_btn_scale"),

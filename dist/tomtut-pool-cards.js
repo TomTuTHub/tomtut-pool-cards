@@ -1,4 +1,4 @@
-const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,i=Symbol(),n=new WeakMap;let r=class{constructor(e,t,n){if(this._$cssResult$=!0,n!==i)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=e,this.t=t}get styleSheet(){let e=this.o;const i=this.t;if(t&&void 0===e){const t=void 0!==i&&1===i.length;t&&(e=n.get(i)),void 0===e&&((this.o=e=new CSSStyleSheet).replaceSync(this.cssText),t&&n.set(i,e))}return e}toString(){return this.cssText}};const s=e=>new r("string"==typeof e?e:e+"",void 0,i),o=(e,...t)=>{const n=1===e.length?e[0]:t.reduce((t,i,n)=>t+(e=>{if(!0===e._$cssResult$)return e.cssText;if("number"==typeof e)return e;throw Error("Value passed to 'css' function must be a 'css' function result: "+e+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+e[n+1],e[0]);return new r(n,e,i)},a=t?e=>e:e=>e instanceof CSSStyleSheet?(e=>{let t="";for(const i of e.cssRules)t+=i.cssText;return s(t)})(e):e,{is:l,defineProperty:c,getOwnPropertyDescriptor:d,getOwnPropertyNames:h,getOwnPropertySymbols:p,getPrototypeOf:u}=Object,m=globalThis,f=m.trustedTypes,g=f?f.emptyScript:"",_=m.reactiveElementPolyfillSupport,b=(e,t)=>e,w={toAttribute(e,t){switch(t){case Boolean:e=e?g:null;break;case Object:case Array:e=null==e?e:JSON.stringify(e)}return e},fromAttribute(e,t){let i=e;switch(t){case Boolean:i=null!==e;break;case Number:i=null===e?null:Number(e);break;case Object:case Array:try{i=JSON.parse(e)}catch(e){i=null}}return i}},$=(e,t)=>!l(e,t),v={attribute:!0,type:String,converter:w,reflect:!1,useDefault:!1,hasChanged:$};Symbol.metadata??=Symbol("metadata"),m.litPropertyMetadata??=new WeakMap;let y=class extends HTMLElement{static addInitializer(e){this._$Ei(),(this.l??=[]).push(e)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(e,t=v){if(t.state&&(t.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(e)&&((t=Object.create(t)).wrapped=!0),this.elementProperties.set(e,t),!t.noAccessor){const i=Symbol(),n=this.getPropertyDescriptor(e,i,t);void 0!==n&&c(this.prototype,e,n)}}static getPropertyDescriptor(e,t,i){const{get:n,set:r}=d(this.prototype,e)??{get(){return this[t]},set(e){this[t]=e}};return{get:n,set(t){const s=n?.call(this);r?.call(this,t),this.requestUpdate(e,s,i)},configurable:!0,enumerable:!0}}static getPropertyOptions(e){return this.elementProperties.get(e)??v}static _$Ei(){if(this.hasOwnProperty(b("elementProperties")))return;const e=u(this);e.finalize(),void 0!==e.l&&(this.l=[...e.l]),this.elementProperties=new Map(e.elementProperties)}static finalize(){if(this.hasOwnProperty(b("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(b("properties"))){const e=this.properties,t=[...h(e),...p(e)];for(const i of t)this.createProperty(i,e[i])}const e=this[Symbol.metadata];if(null!==e){const t=litPropertyMetadata.get(e);if(void 0!==t)for(const[e,i]of t)this.elementProperties.set(e,i)}this._$Eh=new Map;for(const[e,t]of this.elementProperties){const i=this._$Eu(e,t);void 0!==i&&this._$Eh.set(i,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(e){const t=[];if(Array.isArray(e)){const i=new Set(e.flat(1/0).reverse());for(const e of i)t.unshift(a(e))}else void 0!==e&&t.push(a(e));return t}static _$Eu(e,t){const i=t.attribute;return!1===i?void 0:"string"==typeof i?i:"string"==typeof e?e.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(e=>this.enableUpdating=e),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(e=>e(this))}addController(e){(this._$EO??=new Set).add(e),void 0!==this.renderRoot&&this.isConnected&&e.hostConnected?.()}removeController(e){this._$EO?.delete(e)}_$E_(){const e=new Map,t=this.constructor.elementProperties;for(const i of t.keys())this.hasOwnProperty(i)&&(e.set(i,this[i]),delete this[i]);e.size>0&&(this._$Ep=e)}createRenderRoot(){const i=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return((i,n)=>{if(t)i.adoptedStyleSheets=n.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(const t of n){const n=document.createElement("style"),r=e.litNonce;void 0!==r&&n.setAttribute("nonce",r),n.textContent=t.cssText,i.appendChild(n)}})(i,this.constructor.elementStyles),i}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(e=>e.hostConnected?.())}enableUpdating(e){}disconnectedCallback(){this._$EO?.forEach(e=>e.hostDisconnected?.())}attributeChangedCallback(e,t,i){this._$AK(e,i)}_$ET(e,t){const i=this.constructor.elementProperties.get(e),n=this.constructor._$Eu(e,i);if(void 0!==n&&!0===i.reflect){const r=(void 0!==i.converter?.toAttribute?i.converter:w).toAttribute(t,i.type);this._$Em=e,null==r?this.removeAttribute(n):this.setAttribute(n,r),this._$Em=null}}_$AK(e,t){const i=this.constructor,n=i._$Eh.get(e);if(void 0!==n&&this._$Em!==n){const e=i.getPropertyOptions(n),r="function"==typeof e.converter?{fromAttribute:e.converter}:void 0!==e.converter?.fromAttribute?e.converter:w;this._$Em=n;const s=r.fromAttribute(t,e.type);this[n]=s??this._$Ej?.get(n)??s,this._$Em=null}}requestUpdate(e,t,i,n=!1,r){if(void 0!==e){const s=this.constructor;if(!1===n&&(r=this[e]),i??=s.getPropertyOptions(e),!((i.hasChanged??$)(r,t)||i.useDefault&&i.reflect&&r===this._$Ej?.get(e)&&!this.hasAttribute(s._$Eu(e,i))))return;this.C(e,t,i)}!1===this.isUpdatePending&&(this._$ES=this._$EP())}C(e,t,{useDefault:i,reflect:n,wrapped:r},s){i&&!(this._$Ej??=new Map).has(e)&&(this._$Ej.set(e,s??t??this[e]),!0!==r||void 0!==s)||(this._$AL.has(e)||(this.hasUpdated||i||(t=void 0),this._$AL.set(e,t)),!0===n&&this._$Em!==e&&(this._$Eq??=new Set).add(e))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}const e=this.scheduleUpdate();return null!=e&&await e,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(const[e,t]of this._$Ep)this[e]=t;this._$Ep=void 0}const e=this.constructor.elementProperties;if(e.size>0)for(const[t,i]of e){const{wrapped:e}=i,n=this[t];!0!==e||this._$AL.has(t)||void 0===n||this.C(t,void 0,i,n)}}let e=!1;const t=this._$AL;try{e=this.shouldUpdate(t),e?(this.willUpdate(t),this._$EO?.forEach(e=>e.hostUpdate?.()),this.update(t)):this._$EM()}catch(t){throw e=!1,this._$EM(),t}e&&this._$AE(t)}willUpdate(e){}_$AE(e){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(e)),this.updated(e)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(e){return!0}update(e){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(e){}firstUpdated(e){}};y.elementStyles=[],y.shadowRootOptions={mode:"open"},y[b("elementProperties")]=new Map,y[b("finalized")]=new Map,_?.({ReactiveElement:y}),(m.reactiveElementVersions??=[]).push("2.1.2");const k=globalThis,x=e=>e,z=k.trustedTypes,S=z?z.createPolicy("lit-html",{createHTML:e=>e}):void 0,A="$lit$",E=`lit$${Math.random().toFixed(9).slice(2)}$`,B="?"+E,C=`<${B}>`,P=document,T=()=>P.createComment(""),M=e=>null===e||"object"!=typeof e&&"function"!=typeof e,L=Array.isArray,W="[ \t\n\f\r]",K=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,O=/-->/g,N=/>/g,D=RegExp(`>|${W}(?:([^\\s"'>=/]+)(${W}*=${W}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),V=/'/g,R=/"/g,H=/^(?:script|style|textarea|title)$/i,I=(e=>(t,...i)=>({_$litType$:e,strings:t,values:i}))(1),F=Symbol.for("lit-noChange"),j=Symbol.for("lit-nothing"),G=new WeakMap,U=P.createTreeWalker(P,129);function Z(e,t){if(!L(e)||!e.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==S?S.createHTML(t):t}const Q=(e,t)=>{const i=e.length-1,n=[];let r,s=2===t?"<svg>":3===t?"<math>":"",o=K;for(let t=0;t<i;t++){const i=e[t];let a,l,c=-1,d=0;for(;d<i.length&&(o.lastIndex=d,l=o.exec(i),null!==l);)d=o.lastIndex,o===K?"!--"===l[1]?o=O:void 0!==l[1]?o=N:void 0!==l[2]?(H.test(l[2])&&(r=RegExp("</"+l[2],"g")),o=D):void 0!==l[3]&&(o=D):o===D?">"===l[0]?(o=r??K,c=-1):void 0===l[1]?c=-2:(c=o.lastIndex-l[2].length,a=l[1],o=void 0===l[3]?D:'"'===l[3]?R:V):o===R||o===V?o=D:o===O||o===N?o=K:(o=D,r=void 0);const h=o===D&&e[t+1].startsWith("/>")?" ":"";s+=o===K?i+C:c>=0?(n.push(a),i.slice(0,c)+A+i.slice(c)+E+h):i+E+(-2===c?t:h)}return[Z(e,s+(e[i]||"<?>")+(2===t?"</svg>":3===t?"</math>":"")),n]};class X{constructor({strings:e,_$litType$:t},i){let n;this.parts=[];let r=0,s=0;const o=e.length-1,a=this.parts,[l,c]=Q(e,t);if(this.el=X.createElement(l,i),U.currentNode=this.el.content,2===t||3===t){const e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;null!==(n=U.nextNode())&&a.length<o;){if(1===n.nodeType){if(n.hasAttributes())for(const e of n.getAttributeNames())if(e.endsWith(A)){const t=c[s++],i=n.getAttribute(e).split(E),o=/([.?@])?(.*)/.exec(t);a.push({type:1,index:r,name:o[2],strings:i,ctor:"."===o[1]?te:"?"===o[1]?ie:"@"===o[1]?ne:ee}),n.removeAttribute(e)}else e.startsWith(E)&&(a.push({type:6,index:r}),n.removeAttribute(e));if(H.test(n.tagName)){const e=n.textContent.split(E),t=e.length-1;if(t>0){n.textContent=z?z.emptyScript:"";for(let i=0;i<t;i++)n.append(e[i],T()),U.nextNode(),a.push({type:2,index:++r});n.append(e[t],T())}}}else if(8===n.nodeType)if(n.data===B)a.push({type:2,index:r});else{let e=-1;for(;-1!==(e=n.data.indexOf(E,e+1));)a.push({type:7,index:r}),e+=E.length-1}r++}}static createElement(e,t){const i=P.createElement("template");return i.innerHTML=e,i}}function q(e,t,i=e,n){if(t===F)return t;let r=void 0!==n?i._$Co?.[n]:i._$Cl;const s=M(t)?void 0:t._$litDirective$;return r?.constructor!==s&&(r?._$AO?.(!1),void 0===s?r=void 0:(r=new s(e),r._$AT(e,i,n)),void 0!==n?(i._$Co??=[])[n]=r:i._$Cl=r),void 0!==r&&(t=q(e,r._$AS(e,t.values),r,n)),t}class J{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){const{el:{content:t},parts:i}=this._$AD,n=(e?.creationScope??P).importNode(t,!0);U.currentNode=n;let r=U.nextNode(),s=0,o=0,a=i[0];for(;void 0!==a;){if(s===a.index){let t;2===a.type?t=new Y(r,r.nextSibling,this,e):1===a.type?t=new a.ctor(r,a.name,a.strings,this,e):6===a.type&&(t=new re(r,this,e)),this._$AV.push(t),a=i[++o]}s!==a?.index&&(r=U.nextNode(),s++)}return U.currentNode=P,n}p(e){let t=0;for(const i of this._$AV)void 0!==i&&(void 0!==i.strings?(i._$AI(e,i,t),t+=i.strings.length-2):i._$AI(e[t])),t++}}class Y{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,i,n){this.type=2,this._$AH=j,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=i,this.options=n,this._$Cv=n?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode;const t=this._$AM;return void 0!==t&&11===e?.nodeType&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=q(this,e,t),M(e)?e===j||null==e||""===e?(this._$AH!==j&&this._$AR(),this._$AH=j):e!==this._$AH&&e!==F&&this._(e):void 0!==e._$litType$?this.$(e):void 0!==e.nodeType?this.T(e):(e=>L(e)||"function"==typeof e?.[Symbol.iterator])(e)?this.k(e):this._(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==j&&M(this._$AH)?this._$AA.nextSibling.data=e:this.T(P.createTextNode(e)),this._$AH=e}$(e){const{values:t,_$litType$:i}=e,n="number"==typeof i?this._$AC(e):(void 0===i.el&&(i.el=X.createElement(Z(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===n)this._$AH.p(t);else{const e=new J(n,this),i=e.u(this.options);e.p(t),this.T(i),this._$AH=e}}_$AC(e){let t=G.get(e.strings);return void 0===t&&G.set(e.strings,t=new X(e)),t}k(e){L(this._$AH)||(this._$AH=[],this._$AR());const t=this._$AH;let i,n=0;for(const r of e)n===t.length?t.push(i=new Y(this.O(T()),this.O(T()),this,this.options)):i=t[n],i._$AI(r),n++;n<t.length&&(this._$AR(i&&i._$AB.nextSibling,n),t.length=n)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){const t=x(e).nextSibling;x(e).remove(),e=t}}setConnected(e){void 0===this._$AM&&(this._$Cv=e,this._$AP?.(e))}}class ee{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,i,n,r){this.type=1,this._$AH=j,this._$AN=void 0,this.element=e,this.name=t,this._$AM=n,this.options=r,i.length>2||""!==i[0]||""!==i[1]?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=j}_$AI(e,t=this,i,n){const r=this.strings;let s=!1;if(void 0===r)e=q(this,e,t,0),s=!M(e)||e!==this._$AH&&e!==F,s&&(this._$AH=e);else{const n=e;let o,a;for(e=r[0],o=0;o<r.length-1;o++)a=q(this,n[i+o],t,o),a===F&&(a=this._$AH[o]),s||=!M(a)||a!==this._$AH[o],a===j?e=j:e!==j&&(e+=(a??"")+r[o+1]),this._$AH[o]=a}s&&!n&&this.j(e)}j(e){e===j?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??"")}}class te extends ee{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===j?void 0:e}}class ie extends ee{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==j)}}class ne extends ee{constructor(e,t,i,n,r){super(e,t,i,n,r),this.type=5}_$AI(e,t=this){if((e=q(this,e,t,0)??j)===F)return;const i=this._$AH,n=e===j&&i!==j||e.capture!==i.capture||e.once!==i.once||e.passive!==i.passive,r=e!==j&&(i===j||n);n&&this.element.removeEventListener(this.name,this,i),r&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}}class re{constructor(e,t,i){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(e){q(this,e)}}const se=k.litHtmlPolyfillSupport;se?.(X,Y),(k.litHtmlVersions??=[]).push("3.3.3");const oe=globalThis;class ae extends y{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){const e=super.createRenderRoot();return this.renderOptions.renderBefore??=e.firstChild,e}update(e){const t=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(e),this._$Do=((e,t,i)=>{const n=i?.renderBefore??t;let r=n._$litPart$;if(void 0===r){const e=i?.renderBefore??null;n._$litPart$=r=new Y(t.insertBefore(T(),e),e,void 0,i??{})}return r._$AI(e),r})(t,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return F}}ae._$litElement$=!0,ae.finalized=!0,oe.litElementHydrateSupport?.({LitElement:ae});const le=oe.litElementPolyfillSupport;le?.({LitElement:ae}),(oe.litElementVersions??=[]).push("4.2.2");const ce=["on","true","heat","cool","heating","cooling","auto","dry","fan_only","open","home","playing"],de=e=>ce.includes(String(e).toLowerCase()),he=e=>{if(null==e)return null;const t=String(e).trim().replace(",",".");if(!/^[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?$/.test(t))return null;const i=Number(t);return isFinite(i)?i:null},pe=(e,t=0)=>{const i=Number(e);return isFinite(i)?i.toFixed(t).replace(".",","):"—"},ue=e=>{if(!e)return null;const t=he(e.state);if(null===t)return null;return"kw"===String(e.attributes?.unit_of_measurement||"W").toLowerCase()?1e3*t:t},me=(e,t=Date.now())=>{if(!e)return"";const i=Date.parse(e);if(isNaN(i))return"";const n=Math.max(0,(t-i)/1e3);if(n<60)return`seit ${Math.floor(n)} Sek`;const r=n/60;if(r<60)return`seit ${Math.floor(r)} Min`;const s=r/60;if(s<24)return`seit ${Math.floor(s)} Std`;const o=Math.floor(s/24);return o<=1?"seit 1 Tag":`seit ${o} Tagen`},fe=(e,t=Date.now())=>{if(!e)return"";const i=Date.parse(e);if(isNaN(i))return"";const n=Math.floor(Math.max(0,t-i)/6e4);if(n<1)return"seit < 1 Min";if(n<60)return`seit ${n} Min`;if(n<1440){const e=Math.floor(n/60),t=n%60;return t?`seit ${e} Std ${t} Min`:`seit ${e} Std`}const r=Math.floor(n/1440);return r<=1?"seit 1 Tag":`seit ${r} Tagen`},ge=e=>String(e||"").split(".")[0],_e=(e,t)=>e?.attributes?.friendly_name||String(t||"").split(".")[1]||String(t||""),be=(e,{decimals:t}={})=>{const i=he(e?.state);if(null===i)return"—";const n=t??(Number.isInteger(i)?0:1),r=e.attributes?.unit_of_measurement;return pe(i,Math.min(n,1))+(r?" "+r:"")},we=e=>{if(!e)return"—";const t=he(e.state),i=e.attributes?.unit_of_measurement;return null!==t?pe(t,Number.isInteger(t)?0:1)+(i?" "+i:""):String(e.state)+(i?" "+i:"")},$e={oval:{label:"Oval",file:"poolbecken_oval.png",thermo:{left:16.1,top:28.2},ph:{left:34.1,top:69.5},rx:{left:63.9,top:69.5},drain:{left:78,top:30.9},skimmer:{left:22.3,top:19.3},inlet:{left:65.5,top:11.6},label_anker:{left:49.8,top:1.3}},rechteck:{label:"Rechteck",file:"poolbecken_rechteck.png",thermo:{left:13.3,top:31.2},ph:{left:32.6,top:68.5},rx:{left:64.5,top:68.5},drain:{left:79.6,top:33.4},skimmer:{left:20,top:24.1},inlet:{left:66.2,top:14.6},label_anker:{left:49.4,top:13.2}},achtform:{label:"Achtform",file:"poolbecken_achtform.png",thermo:{left:13,top:34},ph:{left:32.7,top:68.2},rx:{left:65.1,top:68.2},drain:{left:80.4,top:34.8},skimmer:{left:19.8,top:23.8},inlet:{left:66.7,top:12.1},label_anker:{left:49.7,top:15.6}},rund:{label:"Rund",file:"poolbecken_rund.png",thermo:{left:14.7,top:25.6},ph:{left:33.5,top:72.4},rx:{left:64.5,top:72.4},drain:{left:79.3,top:39.1},skimmer:{left:21.3,top:13.5},inlet:{left:66.2,top:12.6},label_anker:{left:49.8,top:1}},niere:{label:"Nierenform",file:"poolbecken_nierenform.png",thermo:{left:15.9,top:31.6},ph:{left:34.4,top:65.3},rx:{left:65,top:65.3},drain:{left:79.5,top:35.7},skimmer:{left:22.3,top:21.8},inlet:{left:66.6,top:15.3},label_anker:{left:50.5,top:10.2}},freiform:{label:"Freiform",file:"poolbecken_freiform.png",thermo:{left:13.4,top:38.3},ph:{left:33.4,top:75.4},rx:{left:66.6,top:75.4},drain:{left:82.3,top:47.1},skimmer:{left:20.4,top:28.6},inlet:{left:68.4,top:14.8},label_anker:{left:50.9,top:6.7}}},ve="oval",ye=e=>$e[String(e||"").toLowerCase()]||$e[ve],ke={"poolbecken_oval.png":1090/389,"poolbecken_rechteck.png":1280/544,"poolbecken_achtform.png":1280/542,"poolbecken_rund.png":1280/716,"poolbecken_nierenform.png":1280/547,"poolbecken_freiform.png":1280/543},xe=e=>ke[ye(e).file]||2.5,ze={heatpump:"waermepumpe_transparent.png",pump:"poolpumpe_transparent.png",uv:"uv_lampe_transparent.png",solar:"solar_transparent.png"},Se={skimmer:{file:"skimmer_transparent.png",anker:"skimmer",groesse:10,standard:!0},einlauf:{file:"einlaufduese_transparent.png",anker:"inlet",groesse:6.5,standard:!0},drain:{file:"bodenablauf_transparent.png",anker:"drain",groesse:9,standard:!1}},Ae={uv:{seite:"uv_lampe_transparent.png",oben:"uv_lampe_transparent_2.png"}},Ee={heatpump:988/725,pump:1126/756,uv:947/384,solar:1001/710},Be={in:"pfeil_blau.png",out:"pfeil_rot.png"},Ce="1.0.0-a51d66cd",Pe=Ce.startsWith("__")?"dev":Ce,Te=e=>"/local/community/tomtut-pool-cards/"+e+"?v="+encodeURIComponent(Pe),Me=(e,t)=>Te(Ae[e]?.[t]||ze[e]||""),Le=e=>Ee[e]||1,We={heatpump:{label:"Wärmepumpe",ready:!0,farbe:"#e07b28"},pump:{label:"Poolpumpe",ready:!0,farbe:"#2f7fd0"},custom:{label:"Freifeld (benutzerdefiniert)",ready:!0,farbe:"#2fa25f"},frame:{label:"Leerer Rahmen",ready:!0,farbe:"#8a8f98"},hidden:{label:"Ausgeblendet",ready:!0,farbe:"#8a8f98"},uv:{label:"UV-C-Lampe",ready:!0,farbe:"#8b5cf6"},solar:{label:"Solarheizung",ready:!0,farbe:"#d9a71c"},inlet:{label:"Einlaufdüse (entfällt)",ready:!1,waehlbar:!1,farbe:"#8a8f98",hint:"Einlaufdüse ist jetzt Teil des Beckens"}},Ke="#8a8f98",Oe={hero:"#12a4b8"},Ne=e=>We[e]?.farbe||Oe[e]||Ke,De=[{trenner:null,keys:["custom","hidden","frame"]},{trenner:"— Geräte —",keys:["heatpump","pump","uv","solar"]}],Ve=()=>{const e=new Set(De.flatMap(e=>e.keys)),t=Object.keys(We).filter(t=>!e.has(t)&&!1!==We[t].waehlbar),i=e=>({value:e,label:We[e].label+(!1===We[e].ready?" (folgt)":"")}),n=[];for(const e of De){e.trenner&&n.push({trenner:!0,label:e.trenner});for(const t of e.keys)We[t]&&n.push(i(t))}for(const e of t)n.push(i(e));return n},Re=e=>{const t=Number(e);return isFinite(t)?(Math.round(t)%360+360)%360:0},He=e=>Math.abs(e)<1e-9?0:Math.abs(e),Ie=(e,t)=>{const i=Number(t)>0?Number(t):1,n=Re(e)*Math.PI/180,r=He(Math.cos(n)),s=He(Math.sin(n));return Math.min(1,i/(i*r+s),1/(i*s+r))},Fe=30,je=100,Ge=e=>{const t=Number(e);return isFinite(t)?Math.min(je,Math.max(30,t))/100:1},Ue=(e,t,i,n=100)=>{const r=Re(e),s=(e=>Math.round(1e3*e)/1e3)(Ie(r,i)*Ge(n)),o=[];return r&&o.push(`rotate(${r}deg)`),s<1&&o.push(`scale(${s})`),!0===t&&o.push("scaleX(-1)"),o.length?`transform:${o.join(" ")};`:""},Ze='<circle cx="20" cy="20" r="3" fill="currentColor"/><path d="M20,17 Q20,6 12,6 Q4,6 6,14 Q8,17 20,17 Z" fill="currentColor" opacity="0.85"/><path d="M23,20 Q34,20 34,12 Q34,4 26,6 Q23,8 23,20 Z" fill="currentColor" opacity="0.85"/><path d="M20,23 Q20,34 28,34 Q36,34 34,26 Q32,23 20,23 Z" fill="currentColor" opacity="0.85"/><path d="M17,20 Q6,20 6,28 Q6,36 14,34 Q17,32 17,20 Z" fill="currentColor" opacity="0.85"/>',Qe='fill="currentColor" fill-opacity="0.8" stroke="currentColor" stroke-width="0.7" stroke-linejoin="round"',Xe=(e,t,i="")=>Array.from({length:t},(n,r)=>{const s=Math.round(360/t*r*100)/100;return`<path d="${e}" ${Qe}${i}${s?` transform="rotate(${s} 20 20)"`:""}/>`}).join(""),qe=(e=3.2)=>`<circle cx="20" cy="20" r="${e}" fill="currentColor" stroke="currentColor" stroke-width="0.7"/>`,Je={klassisch:{label:"Klassisch (4 Blätter)",svg:Ze},drei:{label:"3 Blätter, breit",svg:Xe("M20,20 C21.5,14.5 25,7 31.5,7.2 C36.5,7.6 35.2,13.5 30.5,16.2 C27,18.2 23,19.4 20,20 Z",3)+qe(3.6)},fuenf:{label:"5 Blätter, schlank",svg:Xe("M20,20 C20.6,14.2 22.8,6.4 27.2,5.6 C31.2,5.2 30.6,10.6 27.6,14 C25.4,16.6 22.4,18.6 20,20 Z",5)+qe(3)},sichel:{label:"Sichel / Turbine",svg:Xe("M20.6,17.2 Q29.5,15.2 33.6,5.8 Q35.2,14.8 22.4,20.8 Z",7)+'<circle cx="20" cy="20" r="17.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="7 1.2 11 0.9"/>'+qe(3.4)},propeller:{label:"Propeller",svg:Xe("M20,20 C17.6,14.4 17.4,6.2 19.4,2.6 C20.3,1.9 21.4,2.2 22,3.4 C23.4,7.4 22.6,14.6 20,20 Z",2)+'<ellipse cx="20" cy="20" rx="3.4" ry="4.2" fill="currentColor" stroke="currentColor" stroke-width="0.7"/>'},batman:{label:"Batman",svg:'<path d="M20,27.5 Q23,22 26,26 Q29,21.5 32,24.5 Q39,20 37.5,11 Q31,15.5 24,14.5 Q23,16 22.5,16 L21.7,12.3 L21,15.6 L19,15.6 L18.3,12.3 L17.5,16 Q17,16 16,14.5 Q9,15.5 2.5,11 Q1,20 8,24.5 Q11,21.5 14,26 Q17,22 20,27.5 Z" '+Qe+"/>"}},Ye="klassisch",et=I`<svg viewBox="0 0 24 60" aria-hidden="true">
+const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,i=Symbol(),n=new WeakMap;let r=class{constructor(e,t,n){if(this._$cssResult$=!0,n!==i)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=e,this.t=t}get styleSheet(){let e=this.o;const i=this.t;if(t&&void 0===e){const t=void 0!==i&&1===i.length;t&&(e=n.get(i)),void 0===e&&((this.o=e=new CSSStyleSheet).replaceSync(this.cssText),t&&n.set(i,e))}return e}toString(){return this.cssText}};const s=e=>new r("string"==typeof e?e:e+"",void 0,i),a=(e,...t)=>{const n=1===e.length?e[0]:t.reduce((t,i,n)=>t+(e=>{if(!0===e._$cssResult$)return e.cssText;if("number"==typeof e)return e;throw Error("Value passed to 'css' function must be a 'css' function result: "+e+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(i)+e[n+1],e[0]);return new r(n,e,i)},o=t?e=>e:e=>e instanceof CSSStyleSheet?(e=>{let t="";for(const i of e.cssRules)t+=i.cssText;return s(t)})(e):e,{is:l,defineProperty:c,getOwnPropertyDescriptor:d,getOwnPropertyNames:h,getOwnPropertySymbols:p,getPrototypeOf:u}=Object,m=globalThis,f=m.trustedTypes,g=f?f.emptyScript:"",_=m.reactiveElementPolyfillSupport,b=(e,t)=>e,w={toAttribute(e,t){switch(t){case Boolean:e=e?g:null;break;case Object:case Array:e=null==e?e:JSON.stringify(e)}return e},fromAttribute(e,t){let i=e;switch(t){case Boolean:i=null!==e;break;case Number:i=null===e?null:Number(e);break;case Object:case Array:try{i=JSON.parse(e)}catch(e){i=null}}return i}},$=(e,t)=>!l(e,t),v={attribute:!0,type:String,converter:w,reflect:!1,useDefault:!1,hasChanged:$};Symbol.metadata??=Symbol("metadata"),m.litPropertyMetadata??=new WeakMap;let y=class extends HTMLElement{static addInitializer(e){this._$Ei(),(this.l??=[]).push(e)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(e,t=v){if(t.state&&(t.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(e)&&((t=Object.create(t)).wrapped=!0),this.elementProperties.set(e,t),!t.noAccessor){const i=Symbol(),n=this.getPropertyDescriptor(e,i,t);void 0!==n&&c(this.prototype,e,n)}}static getPropertyDescriptor(e,t,i){const{get:n,set:r}=d(this.prototype,e)??{get(){return this[t]},set(e){this[t]=e}};return{get:n,set(t){const s=n?.call(this);r?.call(this,t),this.requestUpdate(e,s,i)},configurable:!0,enumerable:!0}}static getPropertyOptions(e){return this.elementProperties.get(e)??v}static _$Ei(){if(this.hasOwnProperty(b("elementProperties")))return;const e=u(this);e.finalize(),void 0!==e.l&&(this.l=[...e.l]),this.elementProperties=new Map(e.elementProperties)}static finalize(){if(this.hasOwnProperty(b("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(b("properties"))){const e=this.properties,t=[...h(e),...p(e)];for(const i of t)this.createProperty(i,e[i])}const e=this[Symbol.metadata];if(null!==e){const t=litPropertyMetadata.get(e);if(void 0!==t)for(const[e,i]of t)this.elementProperties.set(e,i)}this._$Eh=new Map;for(const[e,t]of this.elementProperties){const i=this._$Eu(e,t);void 0!==i&&this._$Eh.set(i,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(e){const t=[];if(Array.isArray(e)){const i=new Set(e.flat(1/0).reverse());for(const e of i)t.unshift(o(e))}else void 0!==e&&t.push(o(e));return t}static _$Eu(e,t){const i=t.attribute;return!1===i?void 0:"string"==typeof i?i:"string"==typeof e?e.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(e=>this.enableUpdating=e),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(e=>e(this))}addController(e){(this._$EO??=new Set).add(e),void 0!==this.renderRoot&&this.isConnected&&e.hostConnected?.()}removeController(e){this._$EO?.delete(e)}_$E_(){const e=new Map,t=this.constructor.elementProperties;for(const i of t.keys())this.hasOwnProperty(i)&&(e.set(i,this[i]),delete this[i]);e.size>0&&(this._$Ep=e)}createRenderRoot(){const i=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return((i,n)=>{if(t)i.adoptedStyleSheets=n.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(const t of n){const n=document.createElement("style"),r=e.litNonce;void 0!==r&&n.setAttribute("nonce",r),n.textContent=t.cssText,i.appendChild(n)}})(i,this.constructor.elementStyles),i}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(e=>e.hostConnected?.())}enableUpdating(e){}disconnectedCallback(){this._$EO?.forEach(e=>e.hostDisconnected?.())}attributeChangedCallback(e,t,i){this._$AK(e,i)}_$ET(e,t){const i=this.constructor.elementProperties.get(e),n=this.constructor._$Eu(e,i);if(void 0!==n&&!0===i.reflect){const r=(void 0!==i.converter?.toAttribute?i.converter:w).toAttribute(t,i.type);this._$Em=e,null==r?this.removeAttribute(n):this.setAttribute(n,r),this._$Em=null}}_$AK(e,t){const i=this.constructor,n=i._$Eh.get(e);if(void 0!==n&&this._$Em!==n){const e=i.getPropertyOptions(n),r="function"==typeof e.converter?{fromAttribute:e.converter}:void 0!==e.converter?.fromAttribute?e.converter:w;this._$Em=n;const s=r.fromAttribute(t,e.type);this[n]=s??this._$Ej?.get(n)??s,this._$Em=null}}requestUpdate(e,t,i,n=!1,r){if(void 0!==e){const s=this.constructor;if(!1===n&&(r=this[e]),i??=s.getPropertyOptions(e),!((i.hasChanged??$)(r,t)||i.useDefault&&i.reflect&&r===this._$Ej?.get(e)&&!this.hasAttribute(s._$Eu(e,i))))return;this.C(e,t,i)}!1===this.isUpdatePending&&(this._$ES=this._$EP())}C(e,t,{useDefault:i,reflect:n,wrapped:r},s){i&&!(this._$Ej??=new Map).has(e)&&(this._$Ej.set(e,s??t??this[e]),!0!==r||void 0!==s)||(this._$AL.has(e)||(this.hasUpdated||i||(t=void 0),this._$AL.set(e,t)),!0===n&&this._$Em!==e&&(this._$Eq??=new Set).add(e))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}const e=this.scheduleUpdate();return null!=e&&await e,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(const[e,t]of this._$Ep)this[e]=t;this._$Ep=void 0}const e=this.constructor.elementProperties;if(e.size>0)for(const[t,i]of e){const{wrapped:e}=i,n=this[t];!0!==e||this._$AL.has(t)||void 0===n||this.C(t,void 0,i,n)}}let e=!1;const t=this._$AL;try{e=this.shouldUpdate(t),e?(this.willUpdate(t),this._$EO?.forEach(e=>e.hostUpdate?.()),this.update(t)):this._$EM()}catch(t){throw e=!1,this._$EM(),t}e&&this._$AE(t)}willUpdate(e){}_$AE(e){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(e)),this.updated(e)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(e){return!0}update(e){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(e){}firstUpdated(e){}};y.elementStyles=[],y.shadowRootOptions={mode:"open"},y[b("elementProperties")]=new Map,y[b("finalized")]=new Map,_?.({ReactiveElement:y}),(m.reactiveElementVersions??=[]).push("2.1.2");const k=globalThis,x=e=>e,z=k.trustedTypes,S=z?z.createPolicy("lit-html",{createHTML:e=>e}):void 0,A="$lit$",E=`lit$${Math.random().toFixed(9).slice(2)}$`,B="?"+E,C=`<${B}>`,P=document,T=()=>P.createComment(""),M=e=>null===e||"object"!=typeof e&&"function"!=typeof e,L=Array.isArray,W="[ \t\n\f\r]",K=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,O=/-->/g,N=/>/g,D=RegExp(`>|${W}(?:([^\\s"'>=/]+)(${W}*=${W}*(?:[^ \t\n\f\r"'\`<>=]|("|')|))|$)`,"g"),V=/'/g,R=/"/g,H=/^(?:script|style|textarea|title)$/i,I=(e=>(t,...i)=>({_$litType$:e,strings:t,values:i}))(1),F=Symbol.for("lit-noChange"),j=Symbol.for("lit-nothing"),G=new WeakMap,U=P.createTreeWalker(P,129);function Z(e,t){if(!L(e)||!e.hasOwnProperty("raw"))throw Error("invalid template strings array");return void 0!==S?S.createHTML(t):t}const Q=(e,t)=>{const i=e.length-1,n=[];let r,s=2===t?"<svg>":3===t?"<math>":"",a=K;for(let t=0;t<i;t++){const i=e[t];let o,l,c=-1,d=0;for(;d<i.length&&(a.lastIndex=d,l=a.exec(i),null!==l);)d=a.lastIndex,a===K?"!--"===l[1]?a=O:void 0!==l[1]?a=N:void 0!==l[2]?(H.test(l[2])&&(r=RegExp("</"+l[2],"g")),a=D):void 0!==l[3]&&(a=D):a===D?">"===l[0]?(a=r??K,c=-1):void 0===l[1]?c=-2:(c=a.lastIndex-l[2].length,o=l[1],a=void 0===l[3]?D:'"'===l[3]?R:V):a===R||a===V?a=D:a===O||a===N?a=K:(a=D,r=void 0);const h=a===D&&e[t+1].startsWith("/>")?" ":"";s+=a===K?i+C:c>=0?(n.push(o),i.slice(0,c)+A+i.slice(c)+E+h):i+E+(-2===c?t:h)}return[Z(e,s+(e[i]||"<?>")+(2===t?"</svg>":3===t?"</math>":"")),n]};class X{constructor({strings:e,_$litType$:t},i){let n;this.parts=[];let r=0,s=0;const a=e.length-1,o=this.parts,[l,c]=Q(e,t);if(this.el=X.createElement(l,i),U.currentNode=this.el.content,2===t||3===t){const e=this.el.content.firstChild;e.replaceWith(...e.childNodes)}for(;null!==(n=U.nextNode())&&o.length<a;){if(1===n.nodeType){if(n.hasAttributes())for(const e of n.getAttributeNames())if(e.endsWith(A)){const t=c[s++],i=n.getAttribute(e).split(E),a=/([.?@])?(.*)/.exec(t);o.push({type:1,index:r,name:a[2],strings:i,ctor:"."===a[1]?te:"?"===a[1]?ie:"@"===a[1]?ne:ee}),n.removeAttribute(e)}else e.startsWith(E)&&(o.push({type:6,index:r}),n.removeAttribute(e));if(H.test(n.tagName)){const e=n.textContent.split(E),t=e.length-1;if(t>0){n.textContent=z?z.emptyScript:"";for(let i=0;i<t;i++)n.append(e[i],T()),U.nextNode(),o.push({type:2,index:++r});n.append(e[t],T())}}}else if(8===n.nodeType)if(n.data===B)o.push({type:2,index:r});else{let e=-1;for(;-1!==(e=n.data.indexOf(E,e+1));)o.push({type:7,index:r}),e+=E.length-1}r++}}static createElement(e,t){const i=P.createElement("template");return i.innerHTML=e,i}}function q(e,t,i=e,n){if(t===F)return t;let r=void 0!==n?i._$Co?.[n]:i._$Cl;const s=M(t)?void 0:t._$litDirective$;return r?.constructor!==s&&(r?._$AO?.(!1),void 0===s?r=void 0:(r=new s(e),r._$AT(e,i,n)),void 0!==n?(i._$Co??=[])[n]=r:i._$Cl=r),void 0!==r&&(t=q(e,r._$AS(e,t.values),r,n)),t}class J{constructor(e,t){this._$AV=[],this._$AN=void 0,this._$AD=e,this._$AM=t}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(e){const{el:{content:t},parts:i}=this._$AD,n=(e?.creationScope??P).importNode(t,!0);U.currentNode=n;let r=U.nextNode(),s=0,a=0,o=i[0];for(;void 0!==o;){if(s===o.index){let t;2===o.type?t=new Y(r,r.nextSibling,this,e):1===o.type?t=new o.ctor(r,o.name,o.strings,this,e):6===o.type&&(t=new re(r,this,e)),this._$AV.push(t),o=i[++a]}s!==o?.index&&(r=U.nextNode(),s++)}return U.currentNode=P,n}p(e){let t=0;for(const i of this._$AV)void 0!==i&&(void 0!==i.strings?(i._$AI(e,i,t),t+=i.strings.length-2):i._$AI(e[t])),t++}}class Y{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(e,t,i,n){this.type=2,this._$AH=j,this._$AN=void 0,this._$AA=e,this._$AB=t,this._$AM=i,this.options=n,this._$Cv=n?.isConnected??!0}get parentNode(){let e=this._$AA.parentNode;const t=this._$AM;return void 0!==t&&11===e?.nodeType&&(e=t.parentNode),e}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(e,t=this){e=q(this,e,t),M(e)?e===j||null==e||""===e?(this._$AH!==j&&this._$AR(),this._$AH=j):e!==this._$AH&&e!==F&&this._(e):void 0!==e._$litType$?this.$(e):void 0!==e.nodeType?this.T(e):(e=>L(e)||"function"==typeof e?.[Symbol.iterator])(e)?this.k(e):this._(e)}O(e){return this._$AA.parentNode.insertBefore(e,this._$AB)}T(e){this._$AH!==e&&(this._$AR(),this._$AH=this.O(e))}_(e){this._$AH!==j&&M(this._$AH)?this._$AA.nextSibling.data=e:this.T(P.createTextNode(e)),this._$AH=e}$(e){const{values:t,_$litType$:i}=e,n="number"==typeof i?this._$AC(e):(void 0===i.el&&(i.el=X.createElement(Z(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===n)this._$AH.p(t);else{const e=new J(n,this),i=e.u(this.options);e.p(t),this.T(i),this._$AH=e}}_$AC(e){let t=G.get(e.strings);return void 0===t&&G.set(e.strings,t=new X(e)),t}k(e){L(this._$AH)||(this._$AH=[],this._$AR());const t=this._$AH;let i,n=0;for(const r of e)n===t.length?t.push(i=new Y(this.O(T()),this.O(T()),this,this.options)):i=t[n],i._$AI(r),n++;n<t.length&&(this._$AR(i&&i._$AB.nextSibling,n),t.length=n)}_$AR(e=this._$AA.nextSibling,t){for(this._$AP?.(!1,!0,t);e!==this._$AB;){const t=x(e).nextSibling;x(e).remove(),e=t}}setConnected(e){void 0===this._$AM&&(this._$Cv=e,this._$AP?.(e))}}class ee{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(e,t,i,n,r){this.type=1,this._$AH=j,this._$AN=void 0,this.element=e,this.name=t,this._$AM=n,this.options=r,i.length>2||""!==i[0]||""!==i[1]?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=j}_$AI(e,t=this,i,n){const r=this.strings;let s=!1;if(void 0===r)e=q(this,e,t,0),s=!M(e)||e!==this._$AH&&e!==F,s&&(this._$AH=e);else{const n=e;let a,o;for(e=r[0],a=0;a<r.length-1;a++)o=q(this,n[i+a],t,a),o===F&&(o=this._$AH[a]),s||=!M(o)||o!==this._$AH[a],o===j?e=j:e!==j&&(e+=(o??"")+r[a+1]),this._$AH[a]=o}s&&!n&&this.j(e)}j(e){e===j?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,e??"")}}class te extends ee{constructor(){super(...arguments),this.type=3}j(e){this.element[this.name]=e===j?void 0:e}}class ie extends ee{constructor(){super(...arguments),this.type=4}j(e){this.element.toggleAttribute(this.name,!!e&&e!==j)}}class ne extends ee{constructor(e,t,i,n,r){super(e,t,i,n,r),this.type=5}_$AI(e,t=this){if((e=q(this,e,t,0)??j)===F)return;const i=this._$AH,n=e===j&&i!==j||e.capture!==i.capture||e.once!==i.once||e.passive!==i.passive,r=e!==j&&(i===j||n);n&&this.element.removeEventListener(this.name,this,i),r&&this.element.addEventListener(this.name,this,e),this._$AH=e}handleEvent(e){"function"==typeof this._$AH?this._$AH.call(this.options?.host??this.element,e):this._$AH.handleEvent(e)}}class re{constructor(e,t,i){this.element=e,this.type=6,this._$AN=void 0,this._$AM=t,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(e){q(this,e)}}const se=k.litHtmlPolyfillSupport;se?.(X,Y),(k.litHtmlVersions??=[]).push("3.3.3");const ae=globalThis;class oe extends y{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){const e=super.createRenderRoot();return this.renderOptions.renderBefore??=e.firstChild,e}update(e){const t=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(e),this._$Do=((e,t,i)=>{const n=i?.renderBefore??t;let r=n._$litPart$;if(void 0===r){const e=i?.renderBefore??null;n._$litPart$=r=new Y(t.insertBefore(T(),e),e,void 0,i??{})}return r._$AI(e),r})(t,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return F}}oe._$litElement$=!0,oe.finalized=!0,ae.litElementHydrateSupport?.({LitElement:oe});const le=ae.litElementPolyfillSupport;le?.({LitElement:oe}),(ae.litElementVersions??=[]).push("4.2.2");const ce=["on","true","heat","cool","heating","cooling","auto","dry","fan_only","open","home","playing"],de=e=>ce.includes(String(e).toLowerCase()),he=e=>{if(null==e)return null;const t=String(e).trim().replace(",",".");if(!/^[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?$/.test(t))return null;const i=Number(t);return isFinite(i)?i:null},pe=(e,t=0)=>{const i=Number(e);return isFinite(i)?i.toFixed(t).replace(".",","):"—"},ue=e=>{if(!e)return null;const t=he(e.state);if(null===t)return null;return"kw"===String(e.attributes?.unit_of_measurement||"W").toLowerCase()?1e3*t:t},me=(e,t=Date.now())=>{if(!e)return"";const i=Date.parse(e);if(isNaN(i))return"";const n=Math.max(0,(t-i)/1e3);if(n<60)return`seit ${Math.floor(n)} Sek`;const r=n/60;if(r<60)return`seit ${Math.floor(r)} Min`;const s=r/60;if(s<24)return`seit ${Math.floor(s)} Std`;const a=Math.floor(s/24);return a<=1?"seit 1 Tag":`seit ${a} Tagen`},fe=(e,t=Date.now())=>{if(!e)return"";const i=Date.parse(e);if(isNaN(i))return"";const n=Math.floor(Math.max(0,t-i)/6e4);if(n<1)return"seit < 1 Min";if(n<60)return`seit ${n} Min`;if(n<1440){const e=Math.floor(n/60),t=n%60;return t?`seit ${e} Std ${t} Min`:`seit ${e} Std`}const r=Math.floor(n/1440);return r<=1?"seit 1 Tag":`seit ${r} Tagen`},ge=e=>String(e||"").split(".")[0],_e=(e,t)=>e?.attributes?.friendly_name||String(t||"").split(".")[1]||String(t||""),be=(e,{decimals:t}={})=>{const i=he(e?.state);if(null===i)return"—";const n=t??(Number.isInteger(i)?0:1),r=e.attributes?.unit_of_measurement;return pe(i,Math.min(n,1))+(r?" "+r:"")},we=e=>{if(!e)return"—";const t=he(e.state),i=e.attributes?.unit_of_measurement;return null!==t?pe(t,Number.isInteger(t)?0:1)+(i?" "+i:""):String(e.state)+(i?" "+i:"")},$e={oval:{label:"Oval",file:"poolbecken_oval.png",thermo:{left:16.1,top:28.2},ph:{left:34.1,top:69.5},rx:{left:63.9,top:69.5},drain:{left:78,top:30.9},skimmer:{left:22.3,top:19.3},inlet:{left:65.5,top:11.6},label_anker:{left:49.8,top:1.3}},rechteck:{label:"Rechteck",file:"poolbecken_rechteck.png",thermo:{left:13.3,top:31.2},ph:{left:32.6,top:68.5},rx:{left:64.5,top:68.5},drain:{left:79.6,top:33.4},skimmer:{left:20,top:24.1},inlet:{left:66.2,top:14.6},label_anker:{left:49.4,top:13.2}},achtform:{label:"Achtform",file:"poolbecken_achtform.png",thermo:{left:13,top:34},ph:{left:32.7,top:68.2},rx:{left:65.1,top:68.2},drain:{left:80.4,top:34.8},skimmer:{left:19.8,top:23.8},inlet:{left:66.7,top:12.1},label_anker:{left:49.7,top:15.6}},rund:{label:"Rund",file:"poolbecken_rund.png",thermo:{left:14.7,top:25.6},ph:{left:33.5,top:72.4},rx:{left:64.5,top:72.4},drain:{left:79.3,top:39.1},skimmer:{left:21.3,top:13.5},inlet:{left:66.2,top:12.6},label_anker:{left:49.8,top:1}},niere:{label:"Nierenform",file:"poolbecken_nierenform.png",thermo:{left:15.9,top:31.6},ph:{left:34.4,top:65.3},rx:{left:65,top:65.3},drain:{left:79.5,top:35.7},skimmer:{left:22.3,top:21.8},inlet:{left:66.6,top:15.3},label_anker:{left:50.5,top:10.2}},freiform:{label:"Freiform",file:"poolbecken_freiform.png",thermo:{left:13.4,top:38.3},ph:{left:33.4,top:75.4},rx:{left:66.6,top:75.4},drain:{left:82.3,top:47.1},skimmer:{left:20.4,top:28.6},inlet:{left:68.4,top:14.8},label_anker:{left:50.9,top:6.7}}},ve="oval",ye=e=>$e[String(e||"").toLowerCase()]||$e[ve],ke={"poolbecken_oval.png":1090/389,"poolbecken_rechteck.png":1280/544,"poolbecken_achtform.png":1280/542,"poolbecken_rund.png":1280/716,"poolbecken_nierenform.png":1280/547,"poolbecken_freiform.png":1280/543},xe=e=>ke[ye(e).file]||2.5,ze={heatpump:"waermepumpe_transparent.png",pump:"poolpumpe_transparent.png",uv:"uv_lampe_transparent.png",solar:"solar_transparent.png"},Se={skimmer:{file:"skimmer_transparent.png",anker:"skimmer",groesse:10,standard:!0},einlauf:{file:"einlaufduese_transparent.png",anker:"inlet",groesse:6.5,standard:!0},drain:{file:"bodenablauf_transparent.png",anker:"drain",groesse:9,standard:!1}},Ae={uv:{seite:"uv_lampe_transparent.png",oben:"uv_lampe_transparent_2.png"}},Ee={heatpump:988/725,pump:1126/756,uv:947/384,solar:1001/710},Be={in:"pfeil_blau.png",out:"pfeil_rot.png"},Ce="1.0.0-a51d66cd",Pe=Ce.startsWith("__")?"dev":Ce,Te=e=>"/local/community/tomtut-pool-cards/"+e+"?v="+encodeURIComponent(Pe),Me=(e,t)=>Te(Ae[e]?.[t]||ze[e]||""),Le=e=>Ee[e]||1,We={heatpump:{label:"Wärmepumpe",ready:!0,farbe:"#e07b28"},pump:{label:"Poolpumpe",ready:!0,farbe:"#2f7fd0"},custom:{label:"Freifeld (benutzerdefiniert)",ready:!0,farbe:"#2fa25f"},frame:{label:"Leerer Rahmen",ready:!0,farbe:"#8a8f98"},hidden:{label:"Ausgeblendet",ready:!0,farbe:"#8a8f98"},uv:{label:"UV-C-Lampe",ready:!0,farbe:"#8b5cf6"},solar:{label:"Solarheizung",ready:!0,farbe:"#d9a71c"},inlet:{label:"Einlaufdüse (entfällt)",ready:!1,waehlbar:!1,farbe:"#8a8f98",hint:"Einlaufdüse ist jetzt Teil des Beckens"}},Ke="#8a8f98",Oe={hero:"#12a4b8"},Ne=e=>We[e]?.farbe||Oe[e]||Ke,De=[{trenner:null,keys:["custom","hidden","frame"]},{trenner:"— Geräte —",keys:["heatpump","pump","uv","solar"]}],Ve=()=>{const e=new Set(De.flatMap(e=>e.keys)),t=Object.keys(We).filter(t=>!e.has(t)&&!1!==We[t].waehlbar),i=e=>({value:e,label:We[e].label+(!1===We[e].ready?" (folgt)":"")}),n=[];for(const e of De){e.trenner&&n.push({trenner:!0,label:e.trenner});for(const t of e.keys)We[t]&&n.push(i(t))}for(const e of t)n.push(i(e));return n},Re=e=>{const t=Number(e);return isFinite(t)?(Math.round(t)%360+360)%360:0},He=e=>Math.abs(e)<1e-9?0:Math.abs(e),Ie=(e,t)=>{const i=Number(t)>0?Number(t):1,n=Re(e)*Math.PI/180,r=He(Math.cos(n)),s=He(Math.sin(n));return Math.min(1,i/(i*r+s),1/(i*s+r))},Fe=30,je=100,Ge=e=>{const t=Number(e);return isFinite(t)?Math.min(je,Math.max(30,t))/100:1},Ue=(e,t,i,n=100)=>{const r=Re(e),s=(e=>Math.round(1e3*e)/1e3)(Ie(r,i)*Ge(n)),a=[];return r&&a.push(`rotate(${r}deg)`),s<1&&a.push(`scale(${s})`),!0===t&&a.push("scaleX(-1)"),a.length?`transform:${a.join(" ")};`:""},Ze='<circle cx="20" cy="20" r="3" fill="currentColor"/><path d="M20,17 Q20,6 12,6 Q4,6 6,14 Q8,17 20,17 Z" fill="currentColor" opacity="0.85"/><path d="M23,20 Q34,20 34,12 Q34,4 26,6 Q23,8 23,20 Z" fill="currentColor" opacity="0.85"/><path d="M20,23 Q20,34 28,34 Q36,34 34,26 Q32,23 20,23 Z" fill="currentColor" opacity="0.85"/><path d="M17,20 Q6,20 6,28 Q6,36 14,34 Q17,32 17,20 Z" fill="currentColor" opacity="0.85"/>',Qe='fill="currentColor" fill-opacity="0.8" stroke="currentColor" stroke-width="0.7" stroke-linejoin="round"',Xe=(e,t,i="")=>Array.from({length:t},(n,r)=>{const s=Math.round(360/t*r*100)/100;return`<path d="${e}" ${Qe}${i}${s?` transform="rotate(${s} 20 20)"`:""}/>`}).join(""),qe=(e=3.2)=>`<circle cx="20" cy="20" r="${e}" fill="currentColor" stroke="currentColor" stroke-width="0.7"/>`,Je={klassisch:{label:"Klassisch (4 Blätter)",svg:Ze},drei:{label:"3 Blätter, breit",svg:Xe("M20,20 C21.5,14.5 25,7 31.5,7.2 C36.5,7.6 35.2,13.5 30.5,16.2 C27,18.2 23,19.4 20,20 Z",3)+qe(3.6)},fuenf:{label:"5 Blätter, schlank",svg:Xe("M20,20 C20.6,14.2 22.8,6.4 27.2,5.6 C31.2,5.2 30.6,10.6 27.6,14 C25.4,16.6 22.4,18.6 20,20 Z",5)+qe(3)},sichel:{label:"Sichel / Turbine",svg:Xe("M20.6,17.2 Q29.5,15.2 33.6,5.8 Q35.2,14.8 22.4,20.8 Z",7)+'<circle cx="20" cy="20" r="17.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="7 1.2 11 0.9"/>'+qe(3.4)},propeller:{label:"Propeller",svg:Xe("M20,20 C17.6,14.4 17.4,6.2 19.4,2.6 C20.3,1.9 21.4,2.2 22,3.4 C23.4,7.4 22.6,14.6 20,20 Z",2)+'<ellipse cx="20" cy="20" rx="3.4" ry="4.2" fill="currentColor" stroke="currentColor" stroke-width="0.7"/>'},batman:{label:"Batman",svg:'<path d="M20,27.5 Q23,22 26,26 Q29,21.5 32,24.5 Q39,20 37.5,11 Q31,15.5 24,14.5 Q23,16 22.5,16 L21.7,12.3 L21,15.6 L19,15.6 L18.3,12.3 L17.5,16 Q17,16 16,14.5 Q9,15.5 2.5,11 Q1,20 8,24.5 Q11,21.5 14,26 Q17,22 20,27.5 Z" '+Qe+"/>"}},Ye="klassisch",et=I`<svg viewBox="0 0 24 60" aria-hidden="true">
   <rect x="8" y="3" width="8" height="38" rx="4" fill="#ffffff" stroke="#111" stroke-width="1.6" />
   <circle cx="12" cy="48" r="8" fill="#e8483c" stroke="#111" stroke-width="1.6" />
   <rect x="10" y="20" width="4" height="26" fill="#e8483c" />
@@ -8,36 +8,37 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     <line x1="16" y1="22" x2="20" y2="22" />
     <line x1="16" y1="28" x2="20" y2="28" />
   </g>
-</svg>`;class tt extends ae{static properties={hass:{attribute:!1},config:{attribute:!1},frame:{attribute:!1},kiosk:{attribute:!1},_confirmOpen:{state:!0}};constructor(){super(),this.config={},this.frame={enabled:!0,fill:"transparent"},this.kiosk=!1,this._confirmOpen=!1}get defaults(){return{}}_v(e){const t=this.config?.[e];return null==t||""===t?this.defaults[e]:t}_ent(e){return e?this.hass?.states?.[e]:void 0}_isOn(e){const t=this._ent(e);return!!t&&de(t.state)}_watt(e){return ue(this._ent(e))}get bedienbar(){return!0!==this.kiosk}_call(e,t,i={}){this.bedienbar&&e&&this.hass&&this.hass.callService(ge(e),t,{entity_id:e,...i})}_moreInfo(e){if(!this.bedienbar)return;const t=e?.currentTarget?.dataset?.entity;t&&(e.stopPropagation(),this.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId:t},bubbles:!0,composed:!0})))}get _frameClasses(){const e=this.frame||{},t=["transparent","weiss","schwarz"].includes(e.fill)?e.fill:"transparent";return`slot ${!1===e.enabled?"":"framed"} fill-${t}${this.bedienbar?"":" kiosk"}`}renderSlot(e){return I`<div class="${this._frameClasses}">${e}</div>`}renderGeraeteBild({kind:e,variante:t,alt:i,rotate:n=0,mirror:r=!1,groesse:s=100,inhalt:o=j}){const a=Le(e);return I`
-      <div class="bild-flaeche" style="aspect-ratio:${Math.round(1e4*a)/1e4};">
-        <div class="bild" style="${Ue(n,r,a,s)}">
+</svg>`;class tt extends oe{static properties={hass:{attribute:!1},config:{attribute:!1},frame:{attribute:!1},kiosk:{attribute:!1},_confirmOpen:{state:!0}};constructor(){super(),this.config={},this.frame={enabled:!0,fill:"transparent"},this.kiosk=!1,this._confirmOpen=!1}get defaults(){return{}}_v(e){const t=this.config?.[e];return null==t||""===t?this.defaults[e]:t}_ent(e){return e?this.hass?.states?.[e]:void 0}_isOn(e){const t=this._ent(e);return!!t&&de(t.state)}_watt(e){return ue(this._ent(e))}get bedienbar(){return!0!==this.kiosk}_call(e,t,i={}){this.bedienbar&&e&&this.hass&&this.hass.callService(ge(e),t,{entity_id:e,...i})}_moreInfo(e){if(!this.bedienbar)return;const t=e?.currentTarget?.dataset?.entity;t&&(e.stopPropagation(),this.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId:t},bubbles:!0,composed:!0})))}get _frameClasses(){const e=this.frame||{},t=["transparent","weiss","schwarz"].includes(e.fill)?e.fill:"transparent";return`slot ${!1===e.enabled?"":"framed"} fill-${t}${this.bedienbar?"":" kiosk"}`}renderSlot(e){return I`<div class="${this._frameClasses}">${e}</div>`}renderGeraeteBild({kind:e,variante:t,alt:i,rotate:n=0,mirror:r=!1,groesse:s=100,inhalt:a=j}){const o=Le(e);return I`
+      <div class="bild-flaeche" style="aspect-ratio:${Math.round(1e4*o)/1e4};">
+        <div class="bild" style="${Ue(n,r,o,s)}">
           <img src="${Me(e,t)}" alt="${i}" />
-          ${o}
+          ${a}
         </div>
       </div>
-    `}renderFan({active:e,top:t,left:i,size:n,ratio:r,dur:s,inactive:o,round:a=!1,design:l,farbe:c}){const d=e?"spinning":"hidden"===o?"hidden":"idle",h=a?1:Number(r)||1,p=l?(e=>(Je[e]||Je[Ye]).svg)(l):Ze;return I`
+    `}renderFan({active:e,top:t,left:i,size:n,ratio:r,dur:s,inactive:a,round:o=!1,design:l,farbe:c}){const d=e?"spinning":"hidden"===a?"hidden":"idle",h=o?1:Number(r)||1,p=l?(e=>(Je[e]||Je[Ye]).svg)(l):Ze;return I`
       <div
-        class="fan-overlay ${d} ${a?"round":""} design-${l&&Je[l]?l:Ye}"
+        class="fan-overlay ${d} ${o?"round":""} design-${l&&Je[l]?l:Ye}"
         style="top:${t}%; left:${i}%; width:${n}%; --fan-dur:${s}s; --fan-ratio:${h};${c?` --tt-fan-color:${c};`:""}"
       >
-        <svg viewBox="0 0 40 40" preserveAspectRatio="${a?"xMidYMid meet":"none"}">
+        <svg viewBox="0 0 40 40" preserveAspectRatio="${o?"xMidYMid meet":"none"}">
           <g .innerHTML="${p}"></g>
         </svg>
       </div>
-    `}renderPowerButton({on:e,top:t,left:i,scale:n}){return I`
+    `}renderPowerButton({on:e,top:t,left:i,scale:n,standby:r=!1}){return I`
       <div
-        class="power-badge ${e?"on":"off"}"
+        class="power-badge ${e?"on":"off"} ${r?"standby":""}"
         style="top:${t}%; left:${i}%; transform:scale(${(n??100)/100});"
-        title="${e?"Ausschalten (mit Rückfrage)":"Einschalten"}"
+        title="${r?"Steckdose an, Wärmepumpe aus (Standby) — Steckdose ausschalten (mit Rückfrage)":e?"Ausschalten (mit Rückfrage)":"Einschalten"}"
         @click="${this._onPowerClick}"
       >
         <ha-icon icon="mdi:power"></ha-icon>
+        ${r?I`<span class="power-hinweis"><b>Strom an</b><span>WP aus</span></span>`:j}
       </div>
-    `}renderValueBox({value:e,unit:t,top:i,bottom:n,left:r,scale:s,box:o,entity:a}){return I`
+    `}renderValueBox({value:e,unit:t,top:i,bottom:n,left:r,scale:s,box:a,entity:o}){return I`
       <div
-        class="value-box ${!1===o?"no-bg":""}"
+        class="value-box ${!1===a?"no-bg":""}"
         style="${void 0===n?`top:${i}%;`:`bottom:${n}%;`} left:${r}%; transform:translateX(-50%) scale(${(s??100)/100});"
-        data-entity="${a||""}"
+        data-entity="${o||""}"
         @click="${this._moreInfo}"
       >
         <span class="val">${e}</span>
@@ -64,7 +65,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           </div>
         </div>
       </div>
-    `:j}wattText(e,t=0){const i=this._watt(e);return null===i?"—":pe(i,t)}}const it=o`
+    `:j}wattText(e,t=0){const i=this._watt(e);return null===i?"—":pe(i,t)}}const it=a`
   .slot {
     --tt-bg: transparent;
     --tt-fg: var(--primary-text-color, #111);
@@ -108,7 +109,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     --tt-box-bg: rgba(30, 30, 30, 0.9);
     --tt-box-fg: #ffffff;
   }
-`,nt=o`
+`,nt=a`
   /*
    * Eigener Stacking-Context je Card/Slot.
    *
@@ -171,7 +172,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     line-height: 1.35;
     margin: 0;
   }
-`,rt=o`
+`,rt=a`
   .img-wrap {
     position: relative;
     width: 100%;
@@ -301,6 +302,32 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   }
   .power-badge:hover {
     filter: brightness(1.2);
+  }
+  /* Steckdose an, Gerät aus (Iteration 18) */
+  .power-badge.standby {
+    color: #ffb300;
+    box-shadow: 0 0 8px rgba(255, 179, 0, 0.45);
+  }
+  .power-hinweis {
+    position: absolute;
+    left: calc(100% + 0.35em);
+    /* unter der Knopfmitte: so bleibt er unter dem Freitext-Label oben
+       mittig, auch wenn das in schmalen Spalten wächst */
+    top: 58%;
+    display: flex;
+    flex-direction: column;
+    padding: 0.2em 0.45em;
+    border-radius: 0.45em;
+    border: 1px solid var(--tt-line);
+    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
+    color: var(--tt-box-fg);
+    font-size: 0.62em;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .power-hinweis b {
+    color: inherit;
   }
 
   /* Wertefelder auf dem Bild */
@@ -496,7 +523,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   .btn.danger:hover {
     background: #b71c1c;
   }
-`,st={top:8,left:11},ot={thermo_scale:133,label_scale:100,label_top:3,label_left:50,skimmer_size:Se.skimmer.groesse,inlet_size:Se.einlauf.groesse,drain_size:Se.drain.groesse},at=e=>{const t=ye(e),i={};for(const e of Object.values(Se)){const n=t[e.anker];n&&(i[`${e.anker}_top`]=n.top,i[`${e.anker}_left`]=n.left)}return{...ot,thermo_top:t.thermo.top,thermo_left:t.thermo.left,ph_top:t.ph.top,ph_left:t.ph.left,rx_top:t.rx.top,rx_left:t.rx.left,...i,inlet_temp_top:(t.inlet?.top??12)+st.top,inlet_temp_left:(t.inlet?.left??66)+st.left,label_top:t.label_anker?.top??ot.label_top,label_left:t.label_anker?.left??ot.label_left}};class lt extends tt{get defaults(){return{...at(this.config?.shape),inlet_temp_top:this._anchor("inlet","top")+st.top,inlet_temp_left:this._anchor("inlet","left")+st.left}}_spriteAn(e){const t=Object.values(Se).find(t=>t.anker===e),i=this.config?.[`show_${e}`];return null==i?!!t?.standard:!1!==i}get shape(){return ye(this.config?.shape)}_anchor(e,t){const i=`${e}_${t}`,n=this.config?.[i];return null!=n&&""!==n?Number(n):this.shape[e]?.[t]??50}render(){const e=this.config||{},t=this.shape,i=!0===e.framed,n=!1!==e.show_thermo&&!!e.temp_entity,r=!1!==e.show_ph&&!!e.ph_entity,s=!1!==e.show_rx&&!!e.rx_entity,o=!!e.inlet_temp_entity&&this._spriteAn("inlet"),a=I`
+`,st={top:8,left:11},at={thermo_scale:133,label_scale:100,label_top:3,label_left:50,skimmer_size:Se.skimmer.groesse,inlet_size:Se.einlauf.groesse,drain_size:Se.drain.groesse},ot=e=>{const t=ye(e),i={};for(const e of Object.values(Se)){const n=t[e.anker];n&&(i[`${e.anker}_top`]=n.top,i[`${e.anker}_left`]=n.left)}return{...at,thermo_top:t.thermo.top,thermo_left:t.thermo.left,ph_top:t.ph.top,ph_left:t.ph.left,rx_top:t.rx.top,rx_left:t.rx.left,...i,inlet_temp_top:(t.inlet?.top??12)+st.top,inlet_temp_left:(t.inlet?.left??66)+st.left,label_top:t.label_anker?.top??at.label_top,label_left:t.label_anker?.left??at.label_left}};class lt extends tt{get defaults(){return{...ot(this.config?.shape),inlet_temp_top:this._anchor("inlet","top")+st.top,inlet_temp_left:this._anchor("inlet","left")+st.left}}_spriteAn(e){const t=Object.values(Se).find(t=>t.anker===e),i=this.config?.[`show_${e}`];return null==i?!!t?.standard:!1!==i}get shape(){return ye(this.config?.shape)}_anchor(e,t){const i=`${e}_${t}`,n=this.config?.[i];return null!=n&&""!==n?Number(n):this.shape[e]?.[t]??50}render(){const e=this.config||{},t=this.shape,i=!0===e.framed,n=!1!==e.show_thermo&&!!e.temp_entity,r=!1!==e.show_ph&&!!e.ph_entity,s=!1!==e.show_rx&&!!e.rx_entity,a=!!e.inlet_temp_entity&&this._spriteAn("inlet"),o=I`
       <div class="img-wrap">
         <img src="${Te(t.file)}" alt="Pool ${t.label}" />
         ${this._sprites()}
@@ -504,7 +531,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         ${n?this.renderThermo({value:be(this._ent(e.temp_entity)),top:this._anchor("thermo","top"),left:this._anchor("thermo","left"),scale:this._v("thermo_scale"),entity:e.temp_entity}):j}
         ${r?this._chemBox("pH",e.ph_entity,this._anchor("ph","top"),this._anchor("ph","left")):j}
         ${s?this._chemBox("RX",e.rx_entity,this._anchor("rx","top"),this._anchor("rx","left")):j}
-        ${o?this._chemBox("Zulauf",e.inlet_temp_entity,this._v("inlet_temp_top"),this._v("inlet_temp_left"),"inlet-temp"):j}
+        ${a?this._chemBox("Zulauf",e.inlet_temp_entity,this._v("inlet_temp_top"),this._v("inlet_temp_left"),"inlet-temp"):j}
         ${e.label_text?I`<div
               class="label-badge"
               style="top:${this._v("label_top")}%; left:${this._v("label_left")}%; transform:translateX(-50%) scale(${(this._v("label_scale")??100)/100});"
@@ -512,7 +539,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
               ${e.label_text}
             </div>`:j}
       </div>
-    `;return i?this.renderSlot(a):I`<div class="${this._frameClasses} bare">${a}</div>`}_sprites(){return Object.values(Se).map(e=>{if(!this._spriteAn(e.anker))return j;const t=Number(this._v(`${e.anker}_size`)),i=t>0?t:e.groesse;return I`<img
+    `;return i?this.renderSlot(o):I`<div class="${this._frameClasses} bare">${o}</div>`}_sprites(){return Object.values(Se).map(e=>{if(!this._spriteAn(e.anker))return j;const t=Number(this._v(`${e.anker}_size`)),i=t>0?t:e.groesse;return I`<img
         class="hero-sprite sprite-${e.anker}"
         src="${Te(e.file)}"
         alt=""
@@ -527,24 +554,24 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         <span class="chem-key">${e}</span>
         <span class="chem-val">${be(s)}</span>
       </div>
-    `}static styles=[nt,rt,o`
+    `}static styles=[nt,rt,a`
       .slot.bare {
         border: none;
         padding: 0;
       }
-    `]}customElements.define("tomtut-pool-hero",lt);const ct="becken",dt=e=>String(e??"").trim().toLowerCase(),ht=(e={})=>[...!1===e.hero?.enabled?[]:[ct],...(Array.isArray(e.slots)?e.slots:[]).map((e,t)=>"hidden"===String(e?.type||"frame").toLowerCase()?null:t+1).filter(e=>null!==e)],pt=(e={},t)=>!0===e?.kiosk&&(!Array.isArray(e.kiosk_slots)||e.kiosk_slots.some(e=>dt(e)===dt(t))),ut={fan_top:60,fan_left:61,fan_size:18,fan_inactive:"gray",fan_speed_1:3,fan_speed_2:5,fan_speed_3:8,power_btn_top:62,power_btn_left:80,power_btn_scale:110,power_bottom:9,power_left:24,power_scale:98,power_box:!0,power_label:!0,temp_top:11,temp_left:38,temp_scale:119,idle_watt:30,stage_from_power:!0,stage_watt_1:20,stage_watt_2:150,stage_watt_3:500},mt=(e,t=[20,150,500],i=3)=>{const n=Number(e);if(null==e||!isFinite(n)||i<1)return null;let r=null;return t.slice(0,3).forEach((e,t)=>{const i=Number(e);isFinite(i)&&n>i&&(r=t)}),null===r?null:Math.min(r,i-1)},ft=10,gt=e=>{const t=Math.min(ft,Math.max(1,Number(e)||1)),i=4*Math.pow(.125,(t-1)/9);return Math.round(100*i)/100},_t=(e={})=>!!(Array.isArray(e.stage_entities)&&e.stage_entities.filter(Boolean).length||e.main_entity);class bt extends tt{static properties={...tt.properties,_tick:{state:!0}};constructor(){super(),this._tick=0,this._optimistic=null}get defaults(){return ut}connectedCallback(){super.connectedCallback(),this._timer=setInterval(()=>{this._tick=Date.now()},3e4),this._timer&&"function"==typeof this._timer.unref&&this._timer.unref()}disconnectedCallback(){clearInterval(this._timer),this._timer=void 0,super.disconnectedCallback()}get powerEntityId(){return this.config?.main_entity||null}get powerConfirmText(){return"Die Poolpumpe wird hart vom Netz getrennt. Läuft sie gerade, sollte sie erst\n      über STOP bzw. die Stufensteuerung heruntergefahren werden — sonst kann die Anlage\n      Schaden nehmen (Druckschlag, trockenlaufende Gleitringdichtung)."}get stages(){const e=this.config?.stage_entities;return(Array.isArray(e)?e:[]).filter(Boolean).slice(0,3)}get stopEntity(){return this.config?.stop_entity||""}get mode(){return"latching"===this.config?.stage_mode?"latching":"momentary"}get stageLabels(){const e=Array.isArray(this.config?.stage_labels)?this.config.stage_labels:[];return this.stages.map((t,i)=>e[i]||`N${i+1}`)}get blockedByMain(){return!!this.config?.main_entity&&!this._isOn(this.config.main_entity)}get _wattStufeAktiv(){return!1!==this._v("stage_from_power")&&!!this.config?.power_entity}_wattStufe(){if(!this._wattStufeAktiv)return;const e=this._watt(this.config.power_entity);if(null===e)return;const t=[1,2,3].map(e=>this._v(`stage_watt_${e}`));return mt(e,t,Math.max(1,this.stages.length))}_derive(){const e=this._deriveSchalter(),t=this._wattStufe();if(void 0===t)return e;if(null===t)return{active:null,stopped:!0,since:e.stopped?e.since:null};return{active:t,stopped:!1,since:e.active!==t||e.stopped?null:e.since,ausLeistung:!0}}_deriveSchalter(){if("latching"===this.mode){let e=null;if(this.stages.forEach((t,i)=>{const n=this._ent(t);if(!n||!de(n.state))return;const r=Date.parse(n.last_changed||0)||0;(!e||r>e.t)&&(e={i:i,t:r,since:n.last_changed})}),!e){const e=this._ent(this.stopEntity);return{active:null,stopped:!0,since:e?.last_changed||null}}return{active:e.i,stopped:!1,since:e.since}}const e=this.stages.map((e,t)=>({id:e,i:t}));this.stopEntity&&e.push({id:this.stopEntity,i:-1});let t=null;for(const i of e){const e=this._ent(i.id);if(!e||!e.last_changed)continue;const n=Date.parse(e.last_changed);isNaN(n)||(!t||n>t.t)&&(t={...i,t:n,since:e.last_changed})}return t?-1===t.i?{active:null,stopped:!0,since:t.since}:{active:t.i,stopped:!1,since:t.since}:{active:null,stopped:!1,since:null}}get state(){const e=this._derive(),t=this._optimistic;if(t&&Date.now()-t.t<6e3){if(-1===t.i&&!e.stopped)return{active:null,stopped:!0,since:null};if(t.i>=0&&e.active!==t.i)return{active:t.i,stopped:!1,since:null}}return e}get running(){const e=this.state;if(this.blockedByMain)return!1;if(e.stopped||null===e.active)return!1;if(e.ausLeistung)return!0;const t=Number(this._v("idle_watt")),i=this._watt(this.config?.power_entity);return!(null!==i&&isFinite(t)&&i<t)}_clickStage(e){if(!this.bedienbar||this.blockedByMain)return;const t=this.stages[e];t&&(this._optimistic={i:e,t:Date.now()},this.requestUpdate(),"latching"===this.mode?(this.stages.forEach((t,i)=>{i!==e&&this._call(t,"turn_off")}),this._call(t,"turn_on")):this._call(t,"turn_on"))}_clickStop(){this.bedienbar&&!this.blockedByMain&&(this._optimistic={i:-1,t:Date.now()},this.requestUpdate(),"latching"===this.mode?this.stages.forEach(e=>this._call(e,"turn_off")):this.stopEntity&&this._call(this.stopEntity,"turn_on"))}get _showStop(){return!!this.stopEntity||"latching"===this.mode}render(){const e=this.config||{},t=_t(e),i=this.state,n=["fan_speed_1","fan_speed_2","fan_speed_3"][i.active??0]||"fan_speed_1",r=!1!==e.show_power&&!!e.power_entity,s=!1!==e.show_temp&&!!e.temp_entity,o=!1!==e.show_power_button&&!!e.main_entity,a=!1!==e.show_stages&&(this.stages.length>0||this._showStop);return this.renderSlot(I`
+    `]}customElements.define("tomtut-pool-hero",lt);const ct="becken",dt=e=>String(e??"").trim().toLowerCase(),ht=(e={})=>[...!1===e.hero?.enabled?[]:[ct],...(Array.isArray(e.slots)?e.slots:[]).map((e,t)=>"hidden"===String(e?.type||"frame").toLowerCase()?null:t+1).filter(e=>null!==e)],pt=(e={},t)=>!0===e?.kiosk&&(!Array.isArray(e.kiosk_slots)||e.kiosk_slots.some(e=>dt(e)===dt(t))),ut={fan_top:60,fan_left:61,fan_size:18,fan_inactive:"gray",fan_speed_1:3,fan_speed_2:5,fan_speed_3:8,power_btn_top:62,power_btn_left:80,power_btn_scale:110,power_bottom:9,power_left:24,power_scale:98,power_box:!0,power_label:!0,temp_top:11,temp_left:38,temp_scale:119,idle_watt:30,stage_from_power:!0,stage_watt_1:20,stage_watt_2:150,stage_watt_3:500},mt=(e,t=[20,150,500],i=3)=>{const n=Number(e);if(null==e||!isFinite(n)||i<1)return null;let r=null;return t.slice(0,3).forEach((e,t)=>{const i=Number(e);isFinite(i)&&n>i&&(r=t)}),null===r?null:Math.min(r,i-1)},ft=10,gt=e=>{const t=Math.min(ft,Math.max(1,Number(e)||1)),i=4*Math.pow(.125,(t-1)/9);return Math.round(100*i)/100},_t=(e={})=>!!(Array.isArray(e.stage_entities)&&e.stage_entities.filter(Boolean).length||e.main_entity);class bt extends tt{static properties={...tt.properties,_tick:{state:!0}};constructor(){super(),this._tick=0,this._optimistic=null}get defaults(){return ut}connectedCallback(){super.connectedCallback(),this._timer=setInterval(()=>{this._tick=Date.now()},3e4),this._timer&&"function"==typeof this._timer.unref&&this._timer.unref()}disconnectedCallback(){clearInterval(this._timer),this._timer=void 0,super.disconnectedCallback()}get powerEntityId(){return this.config?.main_entity||null}get powerConfirmText(){return"Die Poolpumpe wird hart vom Netz getrennt. Läuft sie gerade, sollte sie erst\n      über STOP bzw. die Stufensteuerung heruntergefahren werden — sonst kann die Anlage\n      Schaden nehmen (Druckschlag, trockenlaufende Gleitringdichtung)."}get stages(){const e=this.config?.stage_entities;return(Array.isArray(e)?e:[]).filter(Boolean).slice(0,3)}get stopEntity(){return this.config?.stop_entity||""}get mode(){return"latching"===this.config?.stage_mode?"latching":"momentary"}get stageLabels(){const e=Array.isArray(this.config?.stage_labels)?this.config.stage_labels:[];return this.stages.map((t,i)=>e[i]||`N${i+1}`)}get blockedByMain(){return!!this.config?.main_entity&&!this._isOn(this.config.main_entity)}get _wattStufeAktiv(){return!1!==this._v("stage_from_power")&&!!this.config?.power_entity}_wattStufe(){if(!this._wattStufeAktiv)return;const e=this._watt(this.config.power_entity);if(null===e)return;const t=[1,2,3].map(e=>this._v(`stage_watt_${e}`));return mt(e,t,Math.max(1,this.stages.length))}_derive(){const e=this._deriveSchalter(),t=this._wattStufe();if(void 0===t)return e;if(null===t)return{active:null,stopped:!0,since:e.stopped?e.since:null};return{active:t,stopped:!1,since:e.active!==t||e.stopped?null:e.since,ausLeistung:!0}}_deriveSchalter(){if("latching"===this.mode){let e=null;if(this.stages.forEach((t,i)=>{const n=this._ent(t);if(!n||!de(n.state))return;const r=Date.parse(n.last_changed||0)||0;(!e||r>e.t)&&(e={i:i,t:r,since:n.last_changed})}),!e){const e=this._ent(this.stopEntity);return{active:null,stopped:!0,since:e?.last_changed||null}}return{active:e.i,stopped:!1,since:e.since}}const e=this.stages.map((e,t)=>({id:e,i:t}));this.stopEntity&&e.push({id:this.stopEntity,i:-1});let t=null;for(const i of e){const e=this._ent(i.id);if(!e||!e.last_changed)continue;const n=Date.parse(e.last_changed);isNaN(n)||(!t||n>t.t)&&(t={...i,t:n,since:e.last_changed})}return t?-1===t.i?{active:null,stopped:!0,since:t.since}:{active:t.i,stopped:!1,since:t.since}:{active:null,stopped:!1,since:null}}get state(){const e=this._derive(),t=this._optimistic;if(t&&Date.now()-t.t<6e3){if(-1===t.i&&!e.stopped)return{active:null,stopped:!0,since:null};if(t.i>=0&&e.active!==t.i)return{active:t.i,stopped:!1,since:null}}return e}get running(){const e=this.state;if(this.blockedByMain)return!1;if(e.stopped||null===e.active)return!1;if(e.ausLeistung)return!0;const t=Number(this._v("idle_watt")),i=this._watt(this.config?.power_entity);return!(null!==i&&isFinite(t)&&i<t)}_clickStage(e){if(!this.bedienbar||this.blockedByMain)return;const t=this.stages[e];t&&(this._optimistic={i:e,t:Date.now()},this.requestUpdate(),"latching"===this.mode?(this.stages.forEach((t,i)=>{i!==e&&this._call(t,"turn_off")}),this._call(t,"turn_on")):this._call(t,"turn_on"))}_clickStop(){this.bedienbar&&!this.blockedByMain&&(this._optimistic={i:-1,t:Date.now()},this.requestUpdate(),"latching"===this.mode?this.stages.forEach(e=>this._call(e,"turn_off")):this.stopEntity&&this._call(this.stopEntity,"turn_on"))}get _showStop(){return!!this.stopEntity||"latching"===this.mode}render(){const e=this.config||{},t=_t(e),i=this.state,n=["fan_speed_1","fan_speed_2","fan_speed_3"][i.active??0]||"fan_speed_1",r=!1!==e.show_power&&!!e.power_entity,s=!1!==e.show_temp&&!!e.temp_entity,a=!1!==e.show_power_button&&!!e.main_entity,o=!1!==e.show_stages&&(this.stages.length>0||this._showStop);return this.renderSlot(I`
       ${e.label?I`<h3 class="slot-title">${e.label}</h3>`:j}
       <div class="pump">
         <div class="img-wrap">
           ${this.renderGeraeteBild({kind:"pump",alt:"Poolpumpe"})}
           ${!1===e.show_fan?j:this.renderFan({active:t&&this.running,top:this._v("fan_top"),left:this._v("fan_left"),size:this._v("fan_size"),dur:gt(this._v(n)),inactive:this._v("fan_inactive"),round:!0})}
-          ${o?this.renderPowerButton({on:this._isOn(e.main_entity),top:this._v("power_btn_top"),left:this._v("power_btn_left"),scale:this._v("power_btn_scale")}):j}
+          ${a?this.renderPowerButton({on:this._isOn(e.main_entity),top:this._v("power_btn_top"),left:this._v("power_btn_left"),scale:this._v("power_btn_scale")}):j}
           ${r?this.renderValueBox({value:this.wattText(e.power_entity),unit:!1===this._v("power_label")?"":"Watt",bottom:this._v("power_bottom"),left:this._v("power_left"),scale:this._v("power_scale"),box:this._v("power_box"),entity:e.power_entity}):j}
           ${s?this.renderThermo({value:be(this._ent(e.temp_entity)),top:this._v("temp_top"),left:this._v("temp_left"),scale:this._v("temp_scale"),entity:e.temp_entity}):j}
           ${this.renderConfirm("Poolpumpe stromlos schalten?")}
         </div>
 
-        ${a?I`
+        ${o?I`
               <div class="stages ${this.blockedByMain?"disabled":""}">
                 ${this.stages.map((e,t)=>I`
                     <button
@@ -572,7 +599,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
       ${t?j:I`<p class="slot-hint">
             Poolpumpe: bitte mindestens eine Stufen-Entity oder den Hauptschalter wählen.
           </p>`}
-    `)}static styles=[nt,rt,o`
+    `)}static styles=[nt,rt,a`
       .pump {
         display: flex;
         align-items: center;
@@ -641,7 +668,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         line-height: 1.1;
         white-space: nowrap;
       }
-    `]}customElements.define("tomtut-pool-slot-pump",bt);const wt={fan_top:49.5,fan_left:26,fan_size:42,fan_ratio:1.14,fan_speed:60,fan_inactive:"gray",fan_power_threshold:100,fan_design:"klassisch",fan_color_mode:"neutral",mode_speed_heiz_silent:3,mode_speed_heiz_smart:5,mode_speed_heiz_auto:6,mode_speed_heiz_boost:9,mode_speed_kuehl_silent:3,mode_speed_kuehl_smart:5,mode_speed_kuehl_auto:6,mode_speed_kuehl_boost:9,power_btn_top:5,power_btn_left:3,power_btn_scale:139,release_top:84,release_left:24,release_scale:100,show_release_since:!1,mode_top:86,mode_left:64,mode_scale:100,power_top:22,power_left:62,power_scale:100,power_box:!0,power_label:!0,current_bottom:40,current_left:62,current_scale:100,current_box:!0,current_label:!0,target_bottom:16,target_left:63,target_scale:119,target_box:!0,target_label:!0,target_step:.5,label_top:4,label_left:50,label_scale:180,label_box:!0},$t=[{key:"heiz_silent",label:"Heizen Silent",art:"heizen",zustaende:["Heizen Silent","heat_silent","heating_silent","silent_heat"]},{key:"heiz_smart",label:"Heizen Smart",art:"heizen",zustaende:["Heizen Smart","heat_smart","heating_smart","smart_heat"]},{key:"heiz_auto",label:"Heizen Auto",art:"heizen",zustaende:["Heizen Auto","heat_auto","heating_auto","auto_heat"]},{key:"heiz_boost",label:"Heizen Boost",art:"heizen",zustaende:["Heizen Boost","heat_boost","heating_boost","boost_heat","heat_turbo","heat_powerful"]},{key:"kuehl_silent",label:"Kühlen Silent",art:"kuehlen",zustaende:["Kühlen Silent","cool_silent","cooling_silent","silent_cool"]},{key:"kuehl_smart",label:"Kühlen Smart",art:"kuehlen",zustaende:["Kühlen Smart","cool_smart","cooling_smart","smart_cool"]},{key:"kuehl_auto",label:"Kühlen Auto",art:"kuehlen",zustaende:["Kühlen Auto","cool_auto","cooling_auto","auto_cool"]},{key:"kuehl_boost",label:"Kühlen Boost",art:"kuehlen",zustaende:["Kühlen Boost","cool_boost","cooling_boost","boost_cool","cool_turbo","cool_powerful"]}],vt={heizen:"#e0452c",kuehlen:"#2f7fd0"},yt=e=>String(e??"").toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss").replace(/[\s_-]+/g," ").trim(),kt=[["heizen",/heiz|heat/],["kuehlen",/kuehl|cool/]],xt=[["silent",/silent|leise|quiet|mute/],["smart",/smart|eco/],["boost",/boost|power|turbo|max|strong/],["auto",/auto/]],zt=e=>{const t=yt(e);if(!t)return null;const i=kt.filter(([,e])=>e.test(t)).map(([e])=>e);if(1!==i.length)return null;const n=xt.find(([,e])=>e.test(t));if(!n)return null;const r=`${"heizen"===i[0]?"heiz":"kuehl"}_${n[0]}`;return $t.find(e=>e.key===r)||null},St=(e,t={})=>{const i=yt(e);if(!i)return null;const n=$t.find(e=>((e={},t)=>{const i=e[`mode_map_${t.key}`];return"string"==typeof i&&i.trim()?i.split(",").map(e=>e.trim()).filter(Boolean):Array.isArray(i)&&i.length?i.map(String):t.zustaende})(t,e).some(e=>yt(e)===i));if(n)return n;const r=zt(e);return r&&!((e,t)=>{const i=e?.[`mode_map_${t.key}`];return"string"==typeof i&&!!i.trim()||Array.isArray(i)&&i.length>0})(t,r)?r:null},At={off:"Aus",aus:"Aus",heat:"Heizen",heating:"Heizen",heizen:"Heizen",cool:"Kühlen",cooling:"Kühlen",kuehlen:"Kühlen","kühlen":"Kühlen",auto:"Auto","heat cool":"Heizen/Kühlen",dry:"Entfeuchten","fan only":"Nur Lüfter",idle:"Bereit",standby:"Standby",silent:"Silent",smart:"Smart",boost:"Boost",turbo:"Turbo",powerful:"Power",eco:"Eco",comfort:"Komfort",away:"Abwesend",sleep:"Nacht",home:"Zuhause",activity:"Aktiv"},Et={off:"aus",aus:"aus",heat:"heizen",heating:"heizen",heizen:"heizen",cool:"kuehlen",cooling:"kuehlen",kuehlen:"kuehlen","kühlen":"kuehlen"},Bt=e=>["","unknown","unavailable","none"].includes(yt(e)),Ct=e=>{const t=yt(e);return Object.prototype.hasOwnProperty.call(At,t)?At[t]:String(e??"").trim()},Pt=(e,t={})=>{if(!e)return null;const i=String(t.mode_attribute||"").trim(),n=i?e.attributes?.[i]:e.state,r=St(n,t);if(r)return{text:r.label,art:r.art};let s=n,o=null;if(!String(t.mode_entity||"").startsWith("climate.")||i&&"preset_mode"!==i||(s=e.state,o=i?n:e.attributes?.preset_mode),Bt(s)&&Bt(o))return{text:"—",art:null};const a=Et[yt(s)]||null;if("aus"===a)return{text:"Aus",art:a};if(!Bt(s)&&!Bt(o)){const e=St(`${s} ${o}`,t);if(e)return{text:e.label,art:e.art}}const l=[s,o].filter(e=>!Bt(e)).map(Ct);return{text:l.join(" · "),art:a}},Tt=(e,t)=>St(e,t)?.label||Ct(e),Mt=(e,t={})=>{const i=t.mode_entity;if(!e||!i)return[];const n=ge(i),r=e.attributes||{},s=String(t.mode_attribute||"").trim(),o=(e,i,n,r,s,o)=>Array.isArray(s)&&s.length?[{titel:e,domain:i,service:n,feld:r,optionen:s.map(e=>({wert:String(e),text:Tt(e,t),aktiv:yt(e)===yt(o)}))}]:[];if(("select"===n||"input_select"===n)&&!s)return o("Betriebsmodus",n,"select_option","option",r.options,e.state);if("climate"===n){if("preset_mode"===s)return o("Betriebsmodus","climate","set_preset_mode","preset_mode",r.preset_modes,r.preset_mode);if(!s)return[...o("Betriebsart","climate","set_hvac_mode","hvac_mode",r.hvac_modes,e.state),...o("Stufe / Preset","climate","set_preset_mode","preset_mode",r.preset_modes,r.preset_mode)]}return[]};class Lt extends tt{static properties={...tt.properties,_tick:{state:!0},_modusWahlOffen:{state:!0},_modusFehler:{state:!0}};get defaults(){return wt}get _seitAn(){const e=this.config||{};return!0===e.show_release_since&&!1!==e.show_release&&!!e.release_entity}_seitTimerPruefen(){const e=this.isConnected&&this._seitAn;e&&!this._seitTimer?(this._seitTimer=setInterval(()=>{this._tick=Date.now()},6e4),"function"==typeof this._seitTimer?.unref&&this._seitTimer.unref()):!e&&this._seitTimer&&(clearInterval(this._seitTimer),this._seitTimer=void 0)}connectedCallback(){super.connectedCallback(),this._seitTimerPruefen()}disconnectedCallback(){clearInterval(this._seitTimer),this._seitTimer=void 0,super.disconnectedCallback()}updated(e){super.updated?.(e),this._seitTimerPruefen()}get powerEntityId(){return this.config?.switch_entity||null}get powerConfirmText(){return"Eine laufende Wärmepumpe sollte erst am Gerät bzw. über den Betriebsmodus\n      ausgeschaltet werden — nicht einfach den Stecker ziehen! Hartes Trennen im Betrieb\n      kann Kompressor und Elektronik schaden."}get _freigabe(){const e=this.config||{};if(!1===e.show_release||!e.release_entity)return null;const t=this._ent(e.release_entity);if(!t)return null;const i=String(t.state).toLowerCase();return"unknown"===i||"unavailable"===i||""===i?null:de(i)}get _releaseSchaltbar(){const e=this.config?.release_entity;return!!e&&!String(e).startsWith("binary_sensor.")}_onReleaseClick(e){e?.stopPropagation(),this.bedienbar&&this._releaseSchaltbar&&this._call(this.config.release_entity,"toggle")}_renderRelease(){const e=this._freigabe,t=!1===e,i=null===e?"unbekannt":t?"gesperrt":"frei",n=this._releaseSchaltbar,r=null===e?"Freigabekontakt — Zustand unbekannt":n?t?"Freigabe geben (Kontakt schließen)":"Freigabe entziehen (Kontakt öffnen)":t?"Freigabekontakt offen — die Wärmepumpe ist gesperrt (nur Anzeige)":"Freigabekontakt geschlossen — die Wärmepumpe ist freigegeben (nur Anzeige)";return I`
+    `]}customElements.define("tomtut-pool-slot-pump",bt);const wt={fan_top:49.5,fan_left:26,fan_size:42,fan_ratio:1.14,fan_speed:60,fan_inactive:"gray",fan_power_threshold:100,fan_design:"klassisch",fan_color_mode:"neutral",mode_speed_heiz_silent:3,mode_speed_heiz_smart:5,mode_speed_heiz_auto:6,mode_speed_heiz_boost:9,mode_speed_kuehl_silent:3,mode_speed_kuehl_smart:5,mode_speed_kuehl_auto:6,mode_speed_kuehl_boost:9,power_btn_top:5,power_btn_left:3,power_btn_scale:139,release_top:84,release_left:24,release_scale:100,show_release_since:!1,mode_top:86,mode_left:64,mode_scale:100,power_top:22,power_left:62,power_scale:100,power_box:!0,power_label:!0,current_bottom:40,current_left:62,current_scale:100,current_box:!0,current_label:!0,target_bottom:16,target_left:63,target_scale:119,target_box:!0,target_label:!0,target_step:.5,label_top:4,label_left:50,label_scale:180,label_box:!0},$t=[{key:"heiz_silent",label:"Heizen Silent",art:"heizen",zustaende:["Heizen Silent","heat_silent","heating_silent","silent_heat"]},{key:"heiz_smart",label:"Heizen Smart",art:"heizen",zustaende:["Heizen Smart","heat_smart","heating_smart","smart_heat"]},{key:"heiz_auto",label:"Heizen Auto",art:"heizen",zustaende:["Heizen Auto","heat_auto","heating_auto","auto_heat"]},{key:"heiz_boost",label:"Heizen Boost",art:"heizen",zustaende:["Heizen Boost","heat_boost","heating_boost","boost_heat","heat_turbo","heat_powerful"]},{key:"kuehl_silent",label:"Kühlen Silent",art:"kuehlen",zustaende:["Kühlen Silent","cool_silent","cooling_silent","silent_cool"]},{key:"kuehl_smart",label:"Kühlen Smart",art:"kuehlen",zustaende:["Kühlen Smart","cool_smart","cooling_smart","smart_cool"]},{key:"kuehl_auto",label:"Kühlen Auto",art:"kuehlen",zustaende:["Kühlen Auto","cool_auto","cooling_auto","auto_cool"]},{key:"kuehl_boost",label:"Kühlen Boost",art:"kuehlen",zustaende:["Kühlen Boost","cool_boost","cooling_boost","boost_cool","cool_turbo","cool_powerful"]}],vt={heizen:"#e0452c",kuehlen:"#2f7fd0"},yt=e=>String(e??"").toLowerCase().replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss").replace(/[\s_-]+/g," ").trim(),kt=[["heizen",/heiz|heat/],["kuehlen",/kuehl|cool/]],xt=[["silent",/silent|leise|quiet|mute/],["smart",/smart|eco/],["boost",/boost|power|turbo|max|strong/],["auto",/auto/]],zt=e=>{const t=yt(e);if(!t)return null;const i=kt.filter(([,e])=>e.test(t)).map(([e])=>e);if(1!==i.length)return null;const n=xt.find(([,e])=>e.test(t));if(!n)return null;const r=`${"heizen"===i[0]?"heiz":"kuehl"}_${n[0]}`;return $t.find(e=>e.key===r)||null},St=(e,t={})=>{const i=yt(e);if(!i)return null;const n=$t.find(e=>((e={},t)=>{const i=e[`mode_map_${t.key}`];return"string"==typeof i&&i.trim()?i.split(",").map(e=>e.trim()).filter(Boolean):Array.isArray(i)&&i.length?i.map(String):t.zustaende})(t,e).some(e=>yt(e)===i));if(n)return n;const r=zt(e);return r&&!((e,t)=>{const i=e?.[`mode_map_${t.key}`];return"string"==typeof i&&!!i.trim()||Array.isArray(i)&&i.length>0})(t,r)?r:null},At={off:"Aus",aus:"Aus",heat:"Heizen",heating:"Heizen",heizen:"Heizen",cool:"Kühlen",cooling:"Kühlen",kuehlen:"Kühlen","kühlen":"Kühlen",auto:"Auto","heat cool":"Heizen/Kühlen",dry:"Entfeuchten","fan only":"Nur Lüfter",idle:"Bereit",standby:"Standby",silent:"Silent",smart:"Smart",boost:"Boost",turbo:"Turbo",powerful:"Power",eco:"Eco",comfort:"Komfort",away:"Abwesend",sleep:"Nacht",home:"Zuhause",activity:"Aktiv"},Et={off:"aus",aus:"aus",heat:"heizen",heating:"heizen",heizen:"heizen",cool:"kuehlen",cooling:"kuehlen",kuehlen:"kuehlen","kühlen":"kuehlen"},Bt=e=>["","unknown","unavailable","none"].includes(yt(e)),Ct=e=>{const t=yt(e);return Object.prototype.hasOwnProperty.call(At,t)?At[t]:String(e??"").trim()},Pt=(e,t={})=>{if(!e)return null;const i=String(t.mode_attribute||"").trim(),n=i?e.attributes?.[i]:e.state,r=St(n,t);if(r)return{text:r.label,art:r.art};let s=n,a=null;if(!String(t.mode_entity||"").startsWith("climate.")||i&&"preset_mode"!==i||(s=e.state,a=i?n:e.attributes?.preset_mode),Bt(s)&&Bt(a))return{text:"—",art:null};const o=Et[yt(s)]||null;if("aus"===o)return{text:"Aus",art:o};if(!Bt(s)&&!Bt(a)){const e=St(`${s} ${a}`,t);if(e)return{text:e.label,art:e.art}}const l=[s,a].filter(e=>!Bt(e)).map(Ct);return{text:l.join(" · "),art:o}},Tt=(e,t)=>St(e,t)?.label||Ct(e),Mt=(e,t={})=>{const i=t.mode_entity;if(!e||!i)return[];const n=ge(i),r=e.attributes||{},s=String(t.mode_attribute||"").trim(),a=(e,i,n,r,s,a)=>Array.isArray(s)&&s.length?[{titel:e,domain:i,service:n,feld:r,optionen:s.map(e=>({wert:String(e),text:Tt(e,t),aktiv:yt(e)===yt(a)}))}]:[];if(("select"===n||"input_select"===n)&&!s)return a("Betriebsmodus",n,"select_option","option",r.options,e.state);if("climate"===n){if("preset_mode"===s)return a("Betriebsmodus","climate","set_preset_mode","preset_mode",r.preset_modes,r.preset_mode);if(!s)return[...a("Betriebsart","climate","set_hvac_mode","hvac_mode",r.hvac_modes,e.state),...a("Stufe / Preset","climate","set_preset_mode","preset_mode",r.preset_modes,r.preset_mode)]}return[]},Lt=(e={},t)=>[e.mode_entity,e.target_entity,e.current_entity].find(e=>String(e||"").startsWith("climate.")&&!!t?.states?.[e])||null,Wt=(e={},t)=>{const i=Lt(e,t);return!!i&&"off"===String(t.states[i].state).toLowerCase()};class Kt extends tt{static properties={...tt.properties,_tick:{state:!0},_modusWahlOffen:{state:!0},_modusFehler:{state:!0}};get defaults(){return wt}get _seitAn(){const e=this.config||{};return!0===e.show_release_since&&!1!==e.show_release&&!!e.release_entity}_seitTimerPruefen(){const e=this.isConnected&&this._seitAn;e&&!this._seitTimer?(this._seitTimer=setInterval(()=>{this._tick=Date.now()},6e4),"function"==typeof this._seitTimer?.unref&&this._seitTimer.unref()):!e&&this._seitTimer&&(clearInterval(this._seitTimer),this._seitTimer=void 0)}connectedCallback(){super.connectedCallback(),this._seitTimerPruefen()}disconnectedCallback(){clearInterval(this._seitTimer),this._seitTimer=void 0,super.disconnectedCallback()}updated(e){super.updated?.(e),this._seitTimerPruefen()}get powerEntityId(){return this.config?.switch_entity||null}get powerConfirmText(){return"Eine laufende Wärmepumpe sollte erst am Gerät bzw. über den Betriebsmodus\n      ausgeschaltet werden — nicht einfach den Stecker ziehen! Hartes Trennen im Betrieb\n      kann Kompressor und Elektronik schaden."}get _freigabe(){const e=this.config||{};if(!1===e.show_release||!e.release_entity)return null;const t=this._ent(e.release_entity);if(!t)return null;const i=String(t.state).toLowerCase();return"unknown"===i||"unavailable"===i||""===i?null:de(i)}get _releaseSchaltbar(){const e=this.config?.release_entity;return!!e&&!String(e).startsWith("binary_sensor.")}_onReleaseClick(e){e?.stopPropagation(),this.bedienbar&&this._releaseSchaltbar&&this._call(this.config.release_entity,"toggle")}_renderRelease(){const e=this._freigabe,t=!1===e,i=null===e?"unbekannt":t?"gesperrt":"frei",n=this._releaseSchaltbar,r=null===e?"Freigabekontakt — Zustand unbekannt":n?t?"Freigabe geben (Kontakt schließen)":"Freigabe entziehen (Kontakt öffnen)":t?"Freigabekontakt offen — die Wärmepumpe ist gesperrt (nur Anzeige)":"Freigabekontakt geschlossen — die Wärmepumpe ist freigegeben (nur Anzeige)";return I`
       <div
         class="release-badge ${i} ${n?"schaltbar":"nur-anzeige"}"
         style="top:${this._v("release_top")}%; left:${this._v("release_left")}%; transform:translateX(-50%) scale(${(this._v("release_scale")??100)/100});"
@@ -663,7 +690,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
               >${fe(this._ent(this.config.release_entity)?.last_changed)}</span
             >`:j}
       </div>
-    `}get _target(){const e=this.config.target_entity,t=this._ent(e);if(!t)return null;const i=String(e).startsWith("climate."),n=he(i?t.attributes?.temperature:t.state);if(null===n)return null;const r=t.attributes||{};return{climate:i,value:n,min:i?r.min_temp??5:r.min??5,max:i?r.max_temp??40:r.max??40,step:this.config.target_step??(i?r.target_temp_step??.5:r.step??.5),unit:i?this.hass?.config?.unit_system?.temperature??"°C":r.unit_of_measurement??"°C"}}get _current(){const e=this.config.current_entity,t=this._ent(e);if(!t)return null;const i=String(e).startsWith("climate."),n=he(i?t.attributes?.current_temperature:t.state);return null===n?null:{value:n,unit:i?this.hass?.config?.unit_system?.temperature??"°C":t.attributes?.unit_of_measurement??"°C"}}get _modus(){const e=this.config||{};if(!1===e.show_mode||!e.mode_entity)return null;const t=this._ent(e.mode_entity);if(!t)return null;const i=String(e.mode_attribute||"").trim(),n=i?t.attributes?.[i]:t.state;return St(n,e)}get _modusBadge(){const e=this.config||{};return!1!==e.show_mode&&!1!==e.show_mode_badge&&e.mode_entity?Pt(this._ent(e.mode_entity),e)||{text:"—",art:null}:null}get _modusGruppen(){const e=this.config||{};return Mt(this._ent(e.mode_entity),e)}_onModeClick(e){e?.stopPropagation(),this.bedienbar&&this._modusGruppen.length&&(this._modusFehler="",this._modusWahlOffen=!0)}_modusSchliessen(e){e?.stopPropagation(),this._modusWahlOffen=!1,this._modusFehler=""}async _modusSetzen(e,t,i){if(i?.stopPropagation(),this.bedienbar&&this.hass){this._modusFehler="";try{await this.hass.callService(e.domain,e.service,{entity_id:this.config.mode_entity,[e.feld]:t.wert}),this._modusWahlOffen=!1}catch(e){const i=e?.message||e?.error?.message||String(e);console.error("tomtut-pool-cards: Modus setzen fehlgeschlagen",e),this._modusFehler=`Umschalten auf „${t.text}“ fehlgeschlagen: ${i}`}}}_renderModusWahl(){if(!this._modusWahlOffen||!this.bedienbar)return j;const e=this._modusGruppen;return I`
+    `}get _target(){const e=this.config.target_entity,t=this._ent(e);if(!t)return null;const i=String(e).startsWith("climate."),n=he(i?t.attributes?.temperature:t.state);if(null===n)return null;const r=t.attributes||{};return{climate:i,value:n,min:i?r.min_temp??5:r.min??5,max:i?r.max_temp??40:r.max??40,step:this.config.target_step??(i?r.target_temp_step??.5:r.step??.5),unit:i?this.hass?.config?.unit_system?.temperature??"°C":r.unit_of_measurement??"°C"}}get _current(){const e=this.config.current_entity,t=this._ent(e);if(!t)return null;const i=String(e).startsWith("climate."),n=he(i?t.attributes?.current_temperature:t.state);return null===n?null:{value:n,unit:i?this.hass?.config?.unit_system?.temperature??"°C":t.attributes?.unit_of_measurement??"°C"}}get _modus(){const e=this.config||{};if(!1===e.show_mode||!e.mode_entity)return null;const t=this._ent(e.mode_entity);if(!t)return null;const i=String(e.mode_attribute||"").trim(),n=i?t.attributes?.[i]:t.state;return St(n,e)}get _klimaAus(){return Wt(this.config||{},this.hass)}get _standby(){const e=this.config?.switch_entity;return this._klimaAus&&!!e&&this._isOn(e)}get _modusBadge(){const e=this.config||{};return!1!==e.show_mode&&!1!==e.show_mode_badge&&e.mode_entity?this._klimaAus?{text:"Aus",art:"aus"}:Pt(this._ent(e.mode_entity),e)||{text:"—",art:null}:null}get _modusGruppen(){const e=this.config||{};return Mt(this._ent(e.mode_entity),e)}_onModeClick(e){e?.stopPropagation(),this.bedienbar&&this._modusGruppen.length&&(this._modusFehler="",this._modusWahlOffen=!0)}_modusSchliessen(e){e?.stopPropagation(),this._modusWahlOffen=!1,this._modusFehler=""}async _modusSetzen(e,t,i){if(i?.stopPropagation(),this.bedienbar&&this.hass){this._modusFehler="";try{await this.hass.callService(e.domain,e.service,{entity_id:this.config.mode_entity,[e.feld]:t.wert}),this._modusWahlOffen=!1}catch(e){const i=e?.message||e?.error?.message||String(e);console.error("tomtut-pool-cards: Modus setzen fehlgeschlagen",e),this._modusFehler=`Umschalten auf „${t.text}“ fehlgeschlagen: ${i}`}}}_renderModusWahl(){if(!this._modusWahlOffen||!this.bedienbar)return j;const e=this._modusGruppen;return I`
       <div class="confirm-overlay modus-overlay" @click="${this._modusSchliessen}">
         <div class="confirm-panel modus-panel" @click="${e=>e.stopPropagation()}">
           <h3 class="modus-kopf">Betriebsmodus wählen</h3>
@@ -696,17 +723,17 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         <span class="mode-punkt"></span>
         <span class="val">${e.text}</span>
       </div>
-    `}get _fanDur(){const e=this._modus;if(e)return gt(this._v(`mode_speed_${e.key}`));const t=Number(this._v("fan_speed"))||0;return t<=0?0:Math.max(.2,4-t/100*3.6)}get _fanFarbe(){if("modus"!==this._v("fan_color_mode"))return"";const e=this._modus;return e?vt[e.art]:""}get _fanActive(){if(!1===this._freigabe)return!1;const e=this.config.switch_entity;if(e&&this._ent(e)&&!this._isOn(e))return!1;const t=this.config.fan_source??"auto",i=this._ent(this.config.fan_entity);if("power"!==t&&i){const e=String(i.state).toLowerCase();if(de(e))return!0;const t=he(e);return null!==t&&t>0}if("entity"===t)return!1;const n=this._watt(this.config.power_entity);return null!==n&&n>=Number(this._v("fan_power_threshold"))}_stepTarget(e){const t=this._target;if(!this.bedienbar||!t||!this.hass)return;let i=Math.round((t.value+e*t.step)/t.step)*t.step;i=Math.min(t.max,Math.max(t.min,i)),i=Math.round(100*i)/100,i!==t.value&&(t.climate?this.hass.callService("climate","set_temperature",{entity_id:this.config.target_entity,temperature:i}):this.hass.callService("number","set_value",{entity_id:this.config.target_entity,value:i}))}_targetUp(e){e?.stopPropagation(),this._stepTarget(1)}_targetDown(e){e?.stopPropagation(),this._stepTarget(-1)}render(){const e=this.config||{},t=((e={})=>!!(e.switch_entity||e.power_entity||e.target_entity||e.current_entity||e.release_entity))(e),i=!1!==e.show_fan,n=!1!==e.show_power_button&&!!e.switch_entity,r=!1!==e.show_release&&!!e.release_entity,s=!1!==e.show_power&&!!e.power_entity,o=!1!==e.show_target&&!!e.target_entity,a=!1!==e.show_current&&!!e.current_entity,l=e.label_text||"",c=this._modusBadge,d=this._fanDur,h=this._target,p=this._current;return this.renderSlot(I`
+    `}get _fanDur(){const e=this._modus;if(e)return gt(this._v(`mode_speed_${e.key}`));const t=Number(this._v("fan_speed"))||0;return t<=0?0:Math.max(.2,4-t/100*3.6)}get _fanFarbe(){if("modus"!==this._v("fan_color_mode"))return"";const e=this._modus;return e?vt[e.art]:""}get _fanActive(){if(!1===this._freigabe)return!1;if(this._klimaAus)return!1;const e=this.config.switch_entity;if(e&&this._ent(e)&&!this._isOn(e))return!1;const t=this.config.fan_source??"auto",i=this._ent(this.config.fan_entity);if("power"!==t&&i){const e=String(i.state).toLowerCase();if(de(e))return!0;const t=he(e);return null!==t&&t>0}if("entity"===t)return!1;const n=this._watt(this.config.power_entity);return null!==n&&n>=Number(this._v("fan_power_threshold"))}_stepTarget(e){const t=this._target;if(!this.bedienbar||!t||!this.hass)return;let i=Math.round((t.value+e*t.step)/t.step)*t.step;i=Math.min(t.max,Math.max(t.min,i)),i=Math.round(100*i)/100,i!==t.value&&(t.climate?this.hass.callService("climate","set_temperature",{entity_id:this.config.target_entity,temperature:i}):this.hass.callService("number","set_value",{entity_id:this.config.target_entity,value:i}))}_targetUp(e){e?.stopPropagation(),this._stepTarget(1)}_targetDown(e){e?.stopPropagation(),this._stepTarget(-1)}render(){const e=this.config||{},t=((e={})=>!!(e.switch_entity||e.power_entity||e.target_entity||e.current_entity||e.release_entity))(e),i=!1!==e.show_fan,n=!1!==e.show_power_button&&!!e.switch_entity,r=!1!==e.show_release&&!!e.release_entity,s=!1!==e.show_power&&!!e.power_entity,a=!1!==e.show_target&&!!e.target_entity,o=!1!==e.show_current&&!!e.current_entity,l=e.label_text||"",c=this._modusBadge,d=this._fanDur,h=this._target,p=this._current;return this.renderSlot(I`
       <div class="img-wrap">
         ${this.renderGeraeteBild({kind:"heatpump",alt:"Wärmepumpe"})}
 
         ${i?this.renderFan({active:t&&this._fanActive,top:this._v("fan_top"),left:this._v("fan_left"),size:this._v("fan_size"),ratio:this._v("fan_ratio"),dur:d,inactive:this._v("fan_inactive"),design:this._v("fan_design"),farbe:this._fanFarbe}):j}
-        ${n?this.renderPowerButton({on:this._isOn(e.switch_entity),top:this._v("power_btn_top"),left:this._v("power_btn_left"),scale:this._v("power_btn_scale")}):j}
+        ${n?this.renderPowerButton({on:this._isOn(e.switch_entity),standby:this._standby,top:this._v("power_btn_top"),left:this._v("power_btn_left"),scale:this._v("power_btn_scale")}):j}
         ${r?this._renderRelease():j}
         ${c?this._renderModeBadge(c):j}
         ${s?this.renderValueBox({value:this.wattText(e.power_entity),unit:!1===this._v("power_label")?"":"Watt",top:this._v("power_top"),left:this._v("power_left"),scale:this._v("power_scale"),box:this._v("power_box"),entity:e.power_entity}):j}
-        ${a?this.renderValueBox({value:null===p?"—":pe(p.value,1)+" "+p.unit,unit:!1===this._v("current_label")?"":"Ist",bottom:this._v("current_bottom"),left:this._v("current_left"),scale:this._v("current_scale"),box:this._v("current_box"),entity:e.current_entity}):j}
-        ${o?I`
+        ${o?this.renderValueBox({value:null===p?"—":pe(p.value,1)+" "+p.unit,unit:!1===this._v("current_label")?"":"Ist",bottom:this._v("current_bottom"),left:this._v("current_left"),scale:this._v("current_scale"),box:this._v("current_box"),entity:e.current_entity}):j}
+        ${a?I`
               <div
                 class="value-box target ${!1===this._v("target_box")?"no-bg":""}"
                 style="bottom:${this._v("target_bottom")}%; left:${this._v("target_left")}%; transform:translateX(-50%) scale(${(this._v("target_scale")??100)/100});"
@@ -750,7 +777,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
       ${t?j:I`<p class="slot-hint">
             Wärmepumpe: bitte mindestens eine Entity wählen (Schalter, Leistung, Soll oder Ist).
           </p>`}
-    `)}static styles=[nt,rt,o`
+    `)}static styles=[nt,rt,a`
       .value-box.target {
         padding: 0.35em 0.5em;
       }
@@ -980,7 +1007,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         color: var(--error-color, inherit);
         font-size: 0.9em;
       }
-    `]}customElements.define("tomtut-pool-slot-heatpump",Lt);const Wt={anschluss:"seite",rotate:0,mirror:!1,uv_size:100,power_btn_top:30,power_btn_left:11,power_btn_scale:120,power_bottom:9,power_left:76,power_scale:100,power_box:!0,power_label:!0,temp_top:19,temp_left:40,temp_scale:110,glow_top:35,glow_left:56,glow_size:40,glow_thickness:13,glow_angle:-15,glow_intensity:80,glow_pulse:40},Kt=300,Ot=e=>{const t=Math.min(300,Math.max(0,isFinite(Number(e))?Number(e):0));return{puls:Math.min(1,t/100),boost:t>100?Math.round((t-100)/200*1e3)/1e3:0}};class Nt extends tt{get defaults(){return Wt}get powerEntityId(){return this.config?.switch_entity||null}get powerConfirmText(){return"Ein UV-C-Strahler altert vor allem beim Schalten: jeder Start kostet Brennstunden,\n      häufiges Ein und Aus mehr als Durchlauf. Und nach dem Einschalten braucht die Lampe\n      einige Minuten, bis sie wieder volle Leistung bringt."}get leuchtet(){return this._isOn(this.config?.switch_entity)}renderGlow(){const e=Number(this._v("glow_size"))||0,t=Number(this._v("glow_thickness"))||0;if(e<=0||t<=0)return j;const i=Math.round(e*Le("uv")/t*1e3)/1e3,n=Number(this._v("glow_intensity")),r=Math.min(100,Math.max(0,isFinite(n)?n:80))/100,{puls:s,boost:o}=Ot(this._v("glow_pulse")),a=[`top:${this._v("glow_top")}%`,`left:${this._v("glow_left")}%`,`width:${e}%`,`aspect-ratio:${i}`,`opacity:${r}`,`transform:translate(-50%, -50%) rotate(${Number(this._v("glow_angle"))||0}deg)`,"--glow-pulse:"+Math.round(100*s)/100,...o>0?[`--glow-boost:${o}`]:[]].join("; ");return I`<div class="glow ${s>0?"wabert":"ruhig"}" style="${a};"></div>`}render(){const e=this.config||{},t=((e={})=>!!(e.switch_entity||e.power_entity||e.temp_entity))(e),i=!1!==e.show_glow,n=!1!==e.show_power_button&&!!e.switch_entity,r=!1!==e.show_power&&!!e.power_entity,s=!1!==e.show_temp&&!!e.temp_entity;return this.renderSlot(I`
+    `]}customElements.define("tomtut-pool-slot-heatpump",Kt);const Ot={anschluss:"seite",rotate:0,mirror:!1,uv_size:100,power_btn_top:30,power_btn_left:11,power_btn_scale:120,power_bottom:9,power_left:76,power_scale:100,power_box:!0,power_label:!0,temp_top:19,temp_left:40,temp_scale:110,glow_top:35,glow_left:56,glow_size:40,glow_thickness:13,glow_angle:-15,glow_intensity:80,glow_pulse:40},Nt=300,Dt=e=>{const t=Math.min(300,Math.max(0,isFinite(Number(e))?Number(e):0));return{puls:Math.min(1,t/100),boost:t>100?Math.round((t-100)/200*1e3)/1e3:0}};class Vt extends tt{get defaults(){return Ot}get powerEntityId(){return this.config?.switch_entity||null}get powerConfirmText(){return"Ein UV-C-Strahler altert vor allem beim Schalten: jeder Start kostet Brennstunden,\n      häufiges Ein und Aus mehr als Durchlauf. Und nach dem Einschalten braucht die Lampe\n      einige Minuten, bis sie wieder volle Leistung bringt."}get leuchtet(){return this._isOn(this.config?.switch_entity)}renderGlow(){const e=Number(this._v("glow_size"))||0,t=Number(this._v("glow_thickness"))||0;if(e<=0||t<=0)return j;const i=Math.round(e*Le("uv")/t*1e3)/1e3,n=Number(this._v("glow_intensity")),r=Math.min(100,Math.max(0,isFinite(n)?n:80))/100,{puls:s,boost:a}=Dt(this._v("glow_pulse")),o=[`top:${this._v("glow_top")}%`,`left:${this._v("glow_left")}%`,`width:${e}%`,`aspect-ratio:${i}`,`opacity:${r}`,`transform:translate(-50%, -50%) rotate(${Number(this._v("glow_angle"))||0}deg)`,"--glow-pulse:"+Math.round(100*s)/100,...a>0?[`--glow-boost:${a}`]:[]].join("; ");return I`<div class="glow ${s>0?"wabert":"ruhig"}" style="${o};"></div>`}render(){const e=this.config||{},t=((e={})=>!!(e.switch_entity||e.power_entity||e.temp_entity))(e),i=!1!==e.show_glow,n=!1!==e.show_power_button&&!!e.switch_entity,r=!1!==e.show_power&&!!e.power_entity,s=!1!==e.show_temp&&!!e.temp_entity;return this.renderSlot(I`
       ${e.label?I`<h3 class="slot-title">${e.label}</h3>`:j}
       <div class="img-wrap">
         ${this.renderGeraeteBild({kind:"uv",variante:this._v("anschluss"),alt:"UV-C-Lampe",rotate:this._v("rotate"),mirror:!0===this._v("mirror"),groesse:this._v("uv_size"),inhalt:i&&t&&this.leuchtet?this.renderGlow():j})}
@@ -993,7 +1020,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
       ${t?j:I`<p class="slot-hint">
             UV-C-Lampe: bitte mindestens eine Entity wählen (Schalter, Leistung oder Temperatur).
           </p>`}
-    `)}static styles=[nt,rt,o`
+    `)}static styles=[nt,rt,a`
       /*
        * Der Schein besteht aus drei Lagen:
        *   .glow         Kern — exakt der Verlauf von vorher (Deckkraft über
@@ -1105,16 +1132,16 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           animation: none;
         }
       }
-    `]}customElements.define("tomtut-pool-slot-uv",Nt);const Dt={power_btn_top:45,power_btn_left:8,power_btn_scale:110,arrow_in_top:86,arrow_in_left:8,arrow_in_size:12,arrow_out_top:12.5,arrow_out_left:91,arrow_out_size:12,temp_in_top:70,temp_in_left:14,temp_in_scale:105,temp_out_top:25,temp_out_left:72,temp_out_scale:105,power_bottom:8,power_left:42,power_scale:100,power_box:!0,power_label:!0};class Vt extends tt{get defaults(){return Dt}get powerEntityId(){return this.config?.switch_entity||null}get powerConfirmText(){return"Die Solarheizung wird abgeschaltet — das Beckenwasser läuft dann nicht mehr über\n      die Absorber. Bei voller Sonne steht das Wasser im abgesperrten Absorber und wird sehr\n      heiß; nach dem Wiedereinschalten kommt kurz ein Schwall davon ins Becken."}renderPfeil(e){const t=Number(this._v(`arrow_${e}_size`));return t>0?I`<img
+    `]}customElements.define("tomtut-pool-slot-uv",Vt);const Rt={power_btn_top:45,power_btn_left:8,power_btn_scale:110,arrow_in_top:86,arrow_in_left:8,arrow_in_size:12,arrow_out_top:12.5,arrow_out_left:91,arrow_out_size:12,temp_in_top:70,temp_in_left:14,temp_in_scale:105,temp_out_top:25,temp_out_left:72,temp_out_scale:105,power_bottom:8,power_left:42,power_scale:100,power_box:!0,power_label:!0},Ht=(e={},t)=>{for(const i of[e.active_entity,e.switch_entity]){if(!i)continue;const e=t?.states?.[i],n=String(e?.state??"").toLowerCase();return!e||["","unknown","unavailable"].includes(n)?null:de(n)}return null};class It extends tt{get defaults(){return Rt}get powerEntityId(){return this.config?.switch_entity||null}get powerConfirmText(){return"Die Solarheizung wird abgeschaltet — das Beckenwasser läuft dann nicht mehr über\n      die Absorber. Bei voller Sonne steht das Wasser im abgesperrten Absorber und wird sehr\n      heiß; nach dem Wiedereinschalten kommt kurz ein Schwall davon ins Becken."}renderPfeil(e){const t=Number(this._v(`arrow_${e}_size`));return t>0?I`<img
       class="flow-arrow flow-${e}"
       src="${Te(Be[e])}"
       alt=""
       style="top:${this._v(`arrow_${e}_top`)}%; left:${this._v(`arrow_${e}_left`)}%; width:${t}%;"
-    />`:j}render(){const e=this.config||{},t=((e={})=>!!(e.switch_entity||e.temp_in_entity||e.temp_out_entity||e.power_entity))(e),i=!1!==e.show_power_button&&!!e.switch_entity,n=!1!==e.show_temp_in&&!!e.temp_in_entity,r=!1!==e.show_temp_out&&!!e.temp_out_entity,s=!1!==e.show_power&&!!e.power_entity,o=!1!==e.show_arrows;return this.renderSlot(I`
+    />`:j}render(){const e=this.config||{},t=((e={})=>!!(e.switch_entity||e.temp_in_entity||e.temp_out_entity||e.power_entity))(e),i=!1!==e.show_power_button&&!!e.switch_entity,n=!1!==e.show_temp_in&&!!e.temp_in_entity,r=!1!==e.show_temp_out&&!!e.temp_out_entity,s=!1!==e.show_power&&!!e.power_entity,a=!1!==e.show_arrows;return this.renderSlot(I`
       ${e.label?I`<h3 class="slot-title">${e.label}</h3>`:j}
       <div class="img-wrap">
         ${this.renderGeraeteBild({kind:"solar",alt:"Solarheizung"})}
-        ${o?I`${this.renderPfeil("in")}${this.renderPfeil("out")}`:j}
+        ${a?I`${this.renderPfeil("in")}${this.renderPfeil("out")}`:j}
 
         ${i?this.renderPowerButton({on:this._isOn(e.switch_entity),top:this._v("power_btn_top"),left:this._v("power_btn_left"),scale:this._v("power_btn_scale")}):j}
         ${n?this.renderThermo({value:be(this._ent(e.temp_in_entity)),top:this._v("temp_in_top"),left:this._v("temp_in_left"),scale:this._v("temp_in_scale"),entity:e.temp_in_entity}):j}
@@ -1126,7 +1153,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
             Solarheizung: bitte mindestens eine Entity wählen (Ventil/Pumpe, Vorlauf, Rücklauf
             oder Leistung).
           </p>`}
-    `)}static styles=[nt,rt,o`
+    `)}static styles=[nt,rt,a`
       /* Die Breite steht im Inline-Stil (Prozent der Bildbreite) und schlägt
          die 100 % der allgemeinen Bildregel; die Höhe folgt dem Motiv. */
       .img-wrap > img.flow-arrow {
@@ -1137,7 +1164,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         pointer-events: none;
         z-index: 2;
       }
-    `]}customElements.define("tomtut-pool-slot-solar",Vt);const Rt=["ha-entity-picker","ha-icon-picker"];let Ht=null;const It=()=>"undefined"!=typeof customElements&&Rt.every(e=>!!customElements.get(e)),Ft=e=>"undefined"!=typeof customElements&&!!customElements.get(e),jt=8,Gt=["klassisch","liste","kacheln"],Ut="klassisch",Zt=["switch","light","input_boolean","fan","siren"],Qt={switch:"mdi:toggle-switch-variant",input_boolean:"mdi:toggle-switch-outline",light:"mdi:lightbulb",fan:"mdi:fan",siren:"mdi:bullhorn",sensor:"mdi:eye",binary_sensor:"mdi:checkbox-blank-circle-outline",climate:"mdi:thermostat",number:"mdi:ray-vertex",input_number:"mdi:ray-vertex"},Xt=e=>(Array.isArray(e?.entries)?e.entries:[]).filter(e=>e&&(e.entity||e.text||e.label)),qt=e=>Gt.includes(e?.layout)?e.layout:Ut;class Jt extends tt{get confirmDefault(){return!1}get powerEntityId(){return this._wartet?.entity||null}get powerConfirmText(){return`„${this._wartet?.label||_e(this._ent(this._wartet?.entity),this._wartet?.entity)}" wird ausgeschaltet.`}get _entries(){return Xt(this.config).slice(0,8)}get _ausgeblendet(){return Math.max(0,Xt(this.config).length-8)}get _layout(){return qt(this.config)}get _align(){const e=this.config?.align;return["oben","mitte","unten"].includes(e)?e:"klassisch"===this._layout?"mitte":"oben"}get _frameClasses(){return`${super._frameClasses} layout-${this._layout}`}_kind(e){return e.kind||(e.entity?"entity":"text")}_schaltbar(e){return Zt.includes(ge(e.entity))}_toggle(e){const t=e.entity;if(t&&this.bedienbar&&this._schaltbar(e))return!0===e.confirm_off&&this._isOn(t)?(this._wartet=e,void(this._confirmOpen=!0)):void this._call(t,"toggle")}_zustand(e){if(!e)return"—";try{const t=this.hass?.formatEntityState?.(e);if(t)return t}catch(e){console.warn("tomtut-pool-cards: formatEntityState —",e?.message||e)}return we(e)}_icon(e,t){if(e.icon)return I`<ha-icon icon="${e.icon}"></ha-icon>`;if(t&&Ft("ha-state-icon"))return I`<ha-state-icon .hass="${this.hass}" .stateObj="${t}"></ha-state-icon>`;const i=t?.attributes?.icon||Qt[ge(e.entity)]||"mdi:circle-medium";return I`<ha-icon icon="${i}"></ha-icon>`}_renderEntry(e){const t=this._kind(e);if("text"===t)return I`<div class="entry text">${e.text||e.label||""}</div>`;const i=this._ent(e.entity);if("button"===t){const t=!!i&&de(i.state);return I`
+    `]}customElements.define("tomtut-pool-slot-solar",It);const Ft=["ha-entity-picker","ha-icon-picker"];let jt=null;const Gt=()=>"undefined"!=typeof customElements&&Ft.every(e=>!!customElements.get(e)),Ut=e=>"undefined"!=typeof customElements&&!!customElements.get(e),Zt=8,Qt=["klassisch","liste","kacheln"],Xt="klassisch",qt=["switch","light","input_boolean","fan","siren"],Jt={switch:"mdi:toggle-switch-variant",input_boolean:"mdi:toggle-switch-outline",light:"mdi:lightbulb",fan:"mdi:fan",siren:"mdi:bullhorn",sensor:"mdi:eye",binary_sensor:"mdi:checkbox-blank-circle-outline",climate:"mdi:thermostat",number:"mdi:ray-vertex",input_number:"mdi:ray-vertex"},Yt=e=>(Array.isArray(e?.entries)?e.entries:[]).filter(e=>e&&(e.entity||e.text||e.label)),ei=e=>Qt.includes(e?.layout)?e.layout:Xt;class ti extends tt{get confirmDefault(){return!1}get powerEntityId(){return this._wartet?.entity||null}get powerConfirmText(){return`„${this._wartet?.label||_e(this._ent(this._wartet?.entity),this._wartet?.entity)}" wird ausgeschaltet.`}get _entries(){return Yt(this.config).slice(0,8)}get _ausgeblendet(){return Math.max(0,Yt(this.config).length-8)}get _layout(){return ei(this.config)}get _align(){const e=this.config?.align;return["oben","mitte","unten"].includes(e)?e:"klassisch"===this._layout?"mitte":"oben"}get _frameClasses(){return`${super._frameClasses} layout-${this._layout}`}_kind(e){return e.kind||(e.entity?"entity":"text")}_schaltbar(e){return qt.includes(ge(e.entity))}_toggle(e){const t=e.entity;if(t&&this.bedienbar&&this._schaltbar(e))return!0===e.confirm_off&&this._isOn(t)?(this._wartet=e,void(this._confirmOpen=!0)):void this._call(t,"toggle")}_zustand(e){if(!e)return"—";try{const t=this.hass?.formatEntityState?.(e);if(t)return t}catch(e){console.warn("tomtut-pool-cards: formatEntityState —",e?.message||e)}return we(e)}_icon(e,t){if(e.icon)return I`<ha-icon icon="${e.icon}"></ha-icon>`;if(t&&Ut("ha-state-icon"))return I`<ha-state-icon .hass="${this.hass}" .stateObj="${t}"></ha-state-icon>`;const i=t?.attributes?.icon||Jt[ge(e.entity)]||"mdi:circle-medium";return I`<ha-icon icon="${i}"></ha-icon>`}_renderEntry(e){const t=this._kind(e);if("text"===t)return I`<div class="entry text">${e.text||e.label||""}</div>`;const i=this._ent(e.entity);if("button"===t){const t=!!i&&de(i.state);return I`
         <button class="entry btn-entry ${t?"on":""}" @click="${()=>this._toggle(e)}">
           ${e.icon?I`<ha-icon icon="${e.icon}"></ha-icon>`:j}
           <span>${e.label||_e(i,e.entity)}</span>
@@ -1193,7 +1220,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         ${n?I`<p class="slot-hint mehr">+${n} weitere ${1===n?"Eintrag":"Einträge"} ausgeblendet (höchstens ${8})</p>`:j}
       </div>
       ${this.renderConfirm("Wirklich ausschalten?")}
-    `)}static styles=[nt,rt,o`
+    `)}static styles=[nt,rt,a`
       .custom {
         display: flex;
         flex-direction: column;
@@ -1471,10 +1498,10 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         overflow: hidden;
         text-overflow: ellipsis;
       }
-    `]}customElements.define("tomtut-pool-slot-custom",Jt);class Yt extends tt{static properties={...tt.properties,slotType:{attribute:!1}};render(){const e=this.config||{},t=We[this.slotType]||{},i=!1===t.ready?t.hint:e.hint||"";return this.renderSlot(I`
+    `]}customElements.define("tomtut-pool-slot-custom",ti);class ii extends tt{static properties={...tt.properties,slotType:{attribute:!1}};render(){const e=this.config||{},t=We[this.slotType]||{},i=!1===t.ready?t.hint:e.hint||"";return this.renderSlot(I`
       ${e.title||e.label?I`<h3 class="slot-title">${e.title||e.label}</h3>`:j}
       ${i?I`<p class="slot-hint">${i}</p>`:j}
-    `)}static styles=[nt,rt]}customElements.define("tomtut-pool-slot-frame",Yt);const ei=["voll","mini"],ti="voll",ii=e=>"mini"===String(e?.view??"").trim().toLowerCase()?"mini":ti,ni=["heatpump","pump","uv","solar","custom"],ri="–",si=5,oi=e=>{const t=Math.max(1,Math.floor(Number(e)||0));return t<=5?t:Math.ceil(t/2)},ai=["","unknown","unavailable","none"],li=e=>null==e||""===e||"—"===e?ri:e,ci=(e,t)=>li(be(e?.states?.[t])),di=(e,t)=>{const i=ue(e?.states?.[t]);return null===i?ri:`${pe(i,0)} W`},hi=(e,t,i)=>{const n=new e;return n.config=t||{},n.hass=i,n},pi=e=>String(e?.label||e?.label_text||e?.title||"").trim()||We[e?.type]?.label||"Kasten",ui=e=>({src:Me(e),ratio:Le(e)}),mi={pump:[["stufe","Stufe"],["watt","Watt"],["temp","Temperatur"],["status","Status an/aus"]],heatpump:[["modus","Modus"],["watt","Watt"],["ist","Ist-Temperatur"],["soll","Soll-Temperatur"],["freigabe","Freigabe"],["status","Status an/aus"]],solar:[["vorlauf","Vorlauf"],["ruecklauf","Rücklauf"],["watt","Watt"],["status","Status an/aus"]],uv:[["status","Status an/aus"],["watt","Watt"],["temp","Temperatur"]],hero:[["temp","Temperatur"],["ph","pH"],["rx","RX"],["zulauf","Zulauf"]]},fi=3,gi={pump:{stufe:e=>_t(e)||!!e.power_entity,watt:e=>!!e.power_entity,temp:e=>!!e.temp_entity},heatpump:{modus:()=>!0,watt:e=>!!e.power_entity,ist:e=>!!e.current_entity,soll:e=>!!e.target_entity,freigabe:e=>!!e.release_entity},solar:{vorlauf:e=>!!e.temp_in_entity,ruecklauf:e=>!!e.temp_out_entity,watt:e=>!!e.power_entity},uv:{watt:e=>!!e.power_entity,temp:e=>!!e.temp_entity},hero:{temp:e=>!!e.temp_entity&&!1!==e.show_thermo,ph:e=>!!e.ph_entity&&!1!==e.show_ph,rx:e=>!!e.rx_entity&&!1!==e.show_rx,zulauf:e=>!!e.inlet_temp_entity}},_i=(e,t)=>String(e?.label||e?.text||e?.entity||"").trim()||`Eintrag ${t+1}`,bi=(e={},t=String(e?.type||"frame").toLowerCase())=>{const i=e||{};let n;if("custom"===t)n=Xt(i).map((e,t)=>[String(t+1),_i(e,t)]);else{const e=gi[t]||{};n=(mi[t]||[]).filter(([t])=>!e[t]||e[t](i))}const r=e=>n.some(([t])=>t===e);let s;switch(t){case"pump":s=[r("stufe")?"stufe":"status",r("watt")?"watt":r("temp")?"temp":null];break;case"heatpump":s=["modus",r("watt")?"watt":null];break;case"solar":s=r("vorlauf")||r("ruecklauf")?["vorlauf","ruecklauf"].filter(r):["status",r("watt")?"watt":null];break;case"uv":s=["status",r("watt")?"watt":r("temp")?"temp":null];break;case"custom":s=n.length?["1"]:[];break;case"hero":s=n.map(([e])=>e);break;default:s=[]}s=s.filter(e=>e&&r(e));const o=Array.isArray(i.mini_show),a=o?i.mini_show.map(e=>String(e).trim().toLowerCase()):s,l=n.map(([e])=>e).filter(e=>a.includes(e));return{verfuegbar:n,standard:s,gewaehlt:l,eigen:o}},wi=(e={})=>ni.includes(String(e?.type||"").toLowerCase())&&!0!==e?.mini_hidden,$i=e=>e?`${pe(e.value,Number.isInteger(e.value)?0:1)} ${e.unit}`:ri,vi=(e={},t)=>{const i=String(e?.type||"frame").toLowerCase(),n={...e||{},type:i},r={typ:i,name:pi(n),bild:null,icon:null,zustand:"neutral",gesperrt:!1,zeilen:[]},s=(e,t={})=>({text:li(e),...t}),o=e=>!!e&&!!t?.states?.[e],a=e=>de(t?.states?.[e]?.state),l=()=>"an"===r.zustand?"An":"aus"===r.zustand?"Aus":"gesperrt"===r.zustand?"Gesperrt":ri,{gewaehlt:c}=bi(n,i);let d={};switch(i){case"pump":{const e=hi(bt,n,t);r.bild=ui("pump");const i=e.state;let o=null;e.blockedByMain?(o="Aus",r.zustand="aus"):_t(n)&&e.running?(o=e.stageLabels[i.active]||`N${(i.active??0)+1}`,r.zustand="an"):e.stages.length||n.power_entity||!n.main_entity?(_t(n)||n.power_entity)&&(o="Stopp",r.zustand="aus"):(o=a(n.main_entity)?"An":"Aus",r.zustand=a(n.main_entity)?"an":"aus"),d={stufe:()=>s(o),watt:()=>s(di(t,n.power_entity)),temp:()=>s(ci(t,n.temp_entity)),status:()=>s(l())};break}case"heatpump":{const e=hi(Lt,n,t);r.bild=ui("heatpump");const i=e._freigabe;r.gesperrt=!1===i;const c=n.switch_entity,h=[n.mode_entity,n.target_entity,n.current_entity].find(e=>String(e||"").startsWith("climate.")&&o(e)),p=!!h&&"off"===String(t.states[h].state).toLowerCase(),u=!p&&(o(c)?a(c):e._fanActive);r.zustand=r.gesperrt?"gesperrt":u?"an":c||n.power_entity||n.fan_entity||h?"aus":"neutral",d={modus:()=>{if(o(c)&&!a(c)||p)return s("Aus");const t=e._modusBadge;return t?s(t.text,"heizen"===t.art||"kuehlen"===t.art?{punkt:t.art}:{}):s(u?"An":"Aus")},watt:()=>s(di(t,n.power_entity)),ist:()=>s($i(e._current),{name:"Ist"}),soll:()=>s($i(e._target),{name:"Soll"}),freigabe:()=>s(null===i?null:i?"Frei":"Gesperrt",!1===i?{warn:!0}:{}),status:()=>s(l(),r.gesperrt?{warn:!0}:{})};break}case"uv":{r.bild=ui("uv");const e=n.switch_entity;o(e)&&(r.zustand=a(e)?"an":"aus"),d={status:()=>s(l()),watt:()=>s(di(t,n.power_entity)),temp:()=>s(ci(t,n.temp_entity))};break}case"solar":{r.bild=ui("solar");const e=n.switch_entity;o(e)&&(r.zustand=a(e)?"an":"aus"),d={vorlauf:()=>s(ci(t,n.temp_in_entity),{pfeil:"in"}),ruecklauf:()=>s(ci(t,n.temp_out_entity),{pfeil:"out"}),watt:()=>s(di(t,n.power_entity)),status:()=>s(l())};break}case"custom":{const e=Xt(n),i=e[Number(c[0])-1]||e[0],o=e=>{if("text"===(e.kind||(e.entity?"entity":"text"))||!e.entity)return{text:e.text||e.label,icon:e.icon||"mdi:text"};const i=t?.states?.[e.entity],n=ge(e.entity),r=e.icon||i?.attributes?.icon||Qt[n]||"mdi:circle-medium";if(!i||ai.includes(String(i.state).toLowerCase()))return{text:null,icon:r,name:e.label||_e(i,e.entity)};const s=e.label||_e(i,e.entity);if(Zt.includes(n))return{text:de(i.state)?"An":"Aus",icon:r,name:s,schalter:de(i.state)};if(null!==he(i.state))return{text:we(i),icon:r,name:s};try{return{text:t?.formatEntityState?.(i)||we(i),icon:r,name:s}}catch(e){return console.warn("tomtut-pool-cards: formatEntityState —",e?.message||e),{text:we(i),icon:r,name:s}}};if(!i)return r.icon="mdi:form-textbox",r.zeilen.push(s(n.title||"Freifeld")),r;const a=o(i);if(r.icon=a.icon,void 0!==a.schalter&&(r.zustand=a.schalter?"an":"aus"),1===c.length){r.zeilen.push(s(a.text));const e=a.name||n.title;return e&&r.zeilen.push(s(e)),r}for(const t of c){const i=e[Number(t)-1];if(!i)continue;const n=o(i);r.zeilen.push(s(n.text,n.name?{name:n.name}:{}))}return r}default:return r.zeilen.push(s(null)),r}for(const e of c)d[e]&&r.zeilen.push(d[e]());return r},yi=(e={},t)=>{const i=hi(lt,e||{},t),n=ye(e?.shape),{gewaehlt:r}=bi(e||{},"hero"),s=e=>r.includes(e),o=[];s("ph")&&o.push({key:"pH",text:ci(t,e.ph_entity),entity:e.ph_entity}),s("rx")&&o.push({key:"RX",text:ci(t,e.rx_entity),entity:e.rx_entity}),s("zulauf")&&o.push({key:"Zulauf",text:ci(t,e.inlet_temp_entity),entity:e.inlet_temp_entity});const a=Object.values(Se).filter(e=>i._spriteAn(e.anker)).map(e=>{const t=Number(i._v(`${e.anker}_size`));return{anker:e.anker,src:Te(e.file),top:i._anchor(e.anker,"top"),left:i._anchor(e.anker,"left"),breite:t>0?t:e.groesse}});return{bild:Te(n.file),ratio:xe(e?.shape),label:n.label,temp:s("temp")?ci(t,e.temp_entity):null,chips:o,sprites:a}},ki=e=>t=>{"Enter"!==t.key&&" "!==t.key||(t.preventDefault(),e())},xi=e=>["transparent","weiss","schwarz"].includes(e?.frame?.fill)?e.frame.fill:"transparent",zi=e=>e<=2?"normal":e<=3?"dicht":"eng",Si=(e,t)=>I`<span
+    `)}static styles=[nt,rt]}customElements.define("tomtut-pool-slot-frame",ii);const ni=["voll","mini"],ri="voll",si=e=>"mini"===String(e?.view??"").trim().toLowerCase()?"mini":ri,ai=["heatpump","pump","uv","solar","custom"],oi="–",li=5,ci=e=>{const t=Math.max(1,Math.floor(Number(e)||0));return t<=5?t:Math.ceil(t/2)},di=["","unknown","unavailable","none"],hi=e=>null==e||""===e||"—"===e?oi:e,pi=(e,t)=>hi(be(e?.states?.[t])),ui=(e,t)=>{const i=ue(e?.states?.[t]);return null===i?oi:`${pe(i,0)} W`},mi=(e,t,i)=>{const n=new e;return n.config=t||{},n.hass=i,n},fi=e=>String(e?.label||e?.label_text||e?.title||"").trim()||We[e?.type]?.label||"Kasten",gi=e=>({src:Me(e),ratio:Le(e)}),_i={pump:[["stufe","Stufe"],["watt","Watt"],["temp","Temperatur"],["status","Status an/aus"]],heatpump:[["modus","Modus"],["watt","Watt"],["ist","Ist-Temperatur"],["soll","Soll-Temperatur"],["freigabe","Freigabe"],["status","Status an/aus"]],solar:[["vorlauf","Vorlauf"],["ruecklauf","Rücklauf"],["watt","Watt"],["status","Status an/aus"]],uv:[["status","Status an/aus"],["watt","Watt"],["temp","Temperatur"]],hero:[["temp","Temperatur"],["ph","pH"],["rx","RX"],["zulauf","Zulauf"]]},bi=3,wi={pump:{stufe:e=>_t(e)||!!e.power_entity,watt:e=>!!e.power_entity,temp:e=>!!e.temp_entity},heatpump:{modus:()=>!0,watt:e=>!!e.power_entity,ist:e=>!!e.current_entity,soll:e=>!!e.target_entity,freigabe:e=>!!e.release_entity},solar:{vorlauf:e=>!!e.temp_in_entity,ruecklauf:e=>!!e.temp_out_entity,watt:e=>!!e.power_entity},uv:{watt:e=>!!e.power_entity,temp:e=>!!e.temp_entity},hero:{temp:e=>!!e.temp_entity&&!1!==e.show_thermo,ph:e=>!!e.ph_entity&&!1!==e.show_ph,rx:e=>!!e.rx_entity&&!1!==e.show_rx,zulauf:e=>!!e.inlet_temp_entity}},$i=(e,t)=>String(e?.label||e?.text||e?.entity||"").trim()||`Eintrag ${t+1}`,vi=(e={},t=String(e?.type||"frame").toLowerCase())=>{const i=e||{};let n;if("custom"===t)n=Yt(i).map((e,t)=>[String(t+1),$i(e,t)]);else{const e=wi[t]||{};n=(_i[t]||[]).filter(([t])=>!e[t]||e[t](i))}const r=e=>n.some(([t])=>t===e);let s;switch(t){case"pump":s=[r("stufe")?"stufe":"status",r("watt")?"watt":r("temp")?"temp":null];break;case"heatpump":s=["modus",r("watt")?"watt":null];break;case"solar":s=r("vorlauf")||r("ruecklauf")?["vorlauf","ruecklauf"].filter(r):["status",r("watt")?"watt":null];break;case"uv":s=["status",r("watt")?"watt":r("temp")?"temp":null];break;case"custom":s=n.length?["1"]:[];break;case"hero":s=n.map(([e])=>e);break;default:s=[]}s=s.filter(e=>e&&r(e));const a=Array.isArray(i.mini_show),o=a?i.mini_show.map(e=>String(e).trim().toLowerCase()):s,l=n.map(([e])=>e).filter(e=>o.includes(e));return{verfuegbar:n,standard:s,gewaehlt:l,eigen:a}},yi=(e={})=>ai.includes(String(e?.type||"").toLowerCase())&&!0!==e?.mini_hidden,ki=e=>e?`${pe(e.value,Number.isInteger(e.value)?0:1)} ${e.unit}`:oi,xi=(e={},t)=>{const i=String(e?.type||"frame").toLowerCase(),n={...e||{},type:i},r={typ:i,name:fi(n),bild:null,icon:null,zustand:"neutral",gesperrt:!1,zeilen:[]},s=(e,t={})=>({text:hi(e),...t}),a=e=>!!e&&!!t?.states?.[e],o=e=>de(t?.states?.[e]?.state),l=()=>"an"===r.zustand?"An":"aus"===r.zustand?"Aus":"gesperrt"===r.zustand?"Gesperrt":oi,{gewaehlt:c}=vi(n,i);let d={};switch(i){case"pump":{const e=mi(bt,n,t);r.bild=gi("pump");const i=e.state;let a=null;e.blockedByMain?(a="Aus",r.zustand="aus"):_t(n)&&e.running?(a=e.stageLabels[i.active]||`N${(i.active??0)+1}`,r.zustand="an"):e.stages.length||n.power_entity||!n.main_entity?(_t(n)||n.power_entity)&&(a="Stopp",r.zustand="aus"):(a=o(n.main_entity)?"An":"Aus",r.zustand=o(n.main_entity)?"an":"aus"),d={stufe:()=>s(a),watt:()=>s(ui(t,n.power_entity)),temp:()=>s(pi(t,n.temp_entity)),status:()=>s(l())};break}case"heatpump":{const e=mi(Kt,n,t);r.bild=gi("heatpump");const i=e._freigabe;r.gesperrt=!1===i;const c=n.switch_entity,h=e._klimaAus,p=h||[n.mode_entity,n.target_entity,n.current_entity].some(e=>String(e||"").startsWith("climate.")),u=!h&&(a(c)?o(c):e._fanActive);r.zustand=r.gesperrt?"gesperrt":u?"an":c||n.power_entity||n.fan_entity||p?"aus":"neutral",d={modus:()=>{if(a(c)&&!o(c)||h)return s("Aus");const t=e._modusBadge;return t?s(t.text,"heizen"===t.art||"kuehlen"===t.art?{punkt:t.art}:{}):s(u?"An":"Aus")},watt:()=>s(ui(t,n.power_entity)),ist:()=>s(ki(e._current),{name:"Ist"}),soll:()=>s(ki(e._target),{name:"Soll"}),freigabe:()=>s(null===i?null:i?"Frei":"Gesperrt",!1===i?{warn:!0}:{}),status:()=>s(l(),r.gesperrt?{warn:!0}:{})};break}case"uv":{r.bild=gi("uv");const e=n.switch_entity;a(e)&&(r.zustand=o(e)?"an":"aus"),d={status:()=>s(l()),watt:()=>s(ui(t,n.power_entity)),temp:()=>s(pi(t,n.temp_entity))};break}case"solar":{r.bild=gi("solar");const e=Ht(n,t);null!==e&&(r.zustand=e?"an":"aus"),d={vorlauf:()=>s(pi(t,n.temp_in_entity),{pfeil:"in"}),ruecklauf:()=>s(pi(t,n.temp_out_entity),{pfeil:"out"}),watt:()=>s(ui(t,n.power_entity)),status:()=>s(l())};break}case"custom":{const e=Yt(n),i=e[Number(c[0])-1]||e[0],a=e=>{if("text"===(e.kind||(e.entity?"entity":"text"))||!e.entity)return{text:e.text||e.label,icon:e.icon||"mdi:text"};const i=t?.states?.[e.entity],n=ge(e.entity),r=e.icon||i?.attributes?.icon||Jt[n]||"mdi:circle-medium";if(!i||di.includes(String(i.state).toLowerCase()))return{text:null,icon:r,name:e.label||_e(i,e.entity)};const s=e.label||_e(i,e.entity);if(qt.includes(n))return{text:de(i.state)?"An":"Aus",icon:r,name:s,schalter:de(i.state)};if(null!==he(i.state))return{text:we(i),icon:r,name:s};try{return{text:t?.formatEntityState?.(i)||we(i),icon:r,name:s}}catch(e){return console.warn("tomtut-pool-cards: formatEntityState —",e?.message||e),{text:we(i),icon:r,name:s}}};if(!i)return r.icon="mdi:form-textbox",r.zeilen.push(s(n.title||"Freifeld")),r;const o=a(i);if(r.icon=o.icon,void 0!==o.schalter&&(r.zustand=o.schalter?"an":"aus"),1===c.length){r.zeilen.push(s(o.text));const e=o.name||n.title;return e&&r.zeilen.push(s(e)),r}for(const t of c){const i=e[Number(t)-1];if(!i)continue;const n=a(i);r.zeilen.push(s(n.text,n.name?{name:n.name}:{}))}return r}default:return r.zeilen.push(s(null)),r}for(const e of c)d[e]&&r.zeilen.push(d[e]());return r},zi=(e={},t)=>{const i=mi(lt,e||{},t),n=ye(e?.shape),{gewaehlt:r}=vi(e||{},"hero"),s=e=>r.includes(e),a=[];s("ph")&&a.push({key:"pH",text:pi(t,e.ph_entity),entity:e.ph_entity}),s("rx")&&a.push({key:"RX",text:pi(t,e.rx_entity),entity:e.rx_entity}),s("zulauf")&&a.push({key:"Zulauf",text:pi(t,e.inlet_temp_entity),entity:e.inlet_temp_entity});const o=Object.values(Se).filter(e=>i._spriteAn(e.anker)).map(e=>{const t=Number(i._v(`${e.anker}_size`));return{anker:e.anker,src:Te(e.file),top:i._anchor(e.anker,"top"),left:i._anchor(e.anker,"left"),breite:t>0?t:e.groesse}});return{bild:Te(n.file),ratio:xe(e?.shape),label:n.label,temp:s("temp")?pi(t,e.temp_entity):null,chips:a,sprites:o}},Si=e=>t=>{"Enter"!==t.key&&" "!==t.key||(t.preventDefault(),e())},Ai=e=>["transparent","weiss","schwarz"].includes(e?.frame?.fill)?e.frame.fill:"transparent",Ei=e=>e<=2?"normal":e<=3?"dicht":"eng",Bi=(e,t)=>I`<span
   class="k-zeile ${t?"neben":"haupt"} ${e.punkt?`badge ${e.punkt}`:""} ${e.warn?"warn":""}"
   >${e.pfeil?I`<img
         class="k-pfeil"
@@ -1483,9 +1510,9 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
       />`:j}${e.name?I`<span class="k-name">${e.name}</span>`:j}<span class="k-text"
     >${e.text}</span
   ></span
->`,Ai=e=>{const t=e._config,i=e.hass,n=!1!==t.hero?.enabled&&!0!==t.hero?.mini_hidden,r=e._slotsMitNummer.filter(({slot:e})=>wi(e));return I`
-    <ha-card class="mini-karte slot fill-${xi(t)} ${!1===t.frame?.enabled?"":"framed"}">
-      <div class="mini" style="--m-spalten:${oi(r.length)};">
+>`,Ci=e=>{const t=e._config,i=e.hass,n=!1!==t.hero?.enabled&&!0!==t.hero?.mini_hidden,r=e._slotsMitNummer.filter(({slot:e})=>yi(e));return I`
+    <ha-card class="mini-karte slot fill-${Ai(t)} ${!1===t.frame?.enabled?"":"framed"}">
+      <div class="mini" style="--m-spalten:${ci(r.length)};">
         ${n?((e,t)=>I`
   <div
     class="m-kopf"
@@ -1494,7 +1521,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     data-mini="${ct}"
     title="Becken — tippen für den vollen Kasten"
     @click="${()=>e._miniOeffnen(ct)}"
-    @keydown="${ki(()=>e._miniOeffnen(ct))}"
+    @keydown="${Si(()=>e._miniOeffnen(ct))}"
   >
     <div class="m-becken" style="--r:${Math.round(1e3*t.ratio)/1e3};">
       <img class="m-becken-bild" src="${t.bild}" alt="Pool ${t.label}" />
@@ -1506,7 +1533,9 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         />`)}
     </div>
     <div class="m-werte">
-      ${null!==t.temp?I`<div class="m-temp">${et}<span class="m-temp-wert">${t.temp}</span></div>`:j}
+      ${null===t.temp?j:t.temp===oi?I`<div class="m-temp leer" title="Wassertemperatur: kein Wert">
+            ${et}<span class="m-temp-leer"><span class="m-temp-key">Wasser</span>${oi}</span>
+          </div>`:I`<div class="m-temp">${et}<span class="m-temp-wert">${t.temp}</span></div>`}
       ${t.chips.length?I`<div class="m-chips">
             ${t.chips.map(e=>I`<span class="m-chip" data-entity="${e.entity}"
                 ><span class="m-chip-key">${e.key}</span><span class="m-chip-wert">${e.text}</span></span
@@ -1514,29 +1543,29 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           </div>`:j}
     </div>
   </div>
-`)(e,yi(t.hero,i)):j}
+`)(e,zi(t.hero,i)):j}
         ${r.length?I`<div class="m-kacheln">
               ${r.map(({slot:t,nr:n})=>((e,t,i)=>I`
   <div
-    class="kachel ${t.zustand} typ-${t.typ} dichte-${zi(t.zeilen.length)}"
+    class="kachel ${t.zustand} typ-${t.typ} dichte-${Ei(t.zeilen.length)}"
     role="button"
     tabindex="0"
     data-mini="${i}"
     title="${t.name} — tippen für den vollen Kasten"
     aria-label="${t.name}: ${t.zeilen.map(e=>e.name?`${e.name} ${e.text}`:e.text).join(", ")}"
     @click="${()=>e._miniOeffnen(i)}"
-    @keydown="${ki(()=>e._miniOeffnen(i))}"
+    @keydown="${Si(()=>e._miniOeffnen(i))}"
   >
-    ${"neutral"===t.zustand?j:I`<span class="k-status"></span>`}
+    <span class="k-status" title="${{an:"an",aus:"aus",gesperrt:"gesperrt"}[t.zustand]||"unbekannt"}"></span>
     <div class="k-innen">
       <div class="k-bild">
         ${t.bild?I`<img src="${t.bild.src}" alt="${t.name}" />`:I`<ha-icon icon="${t.icon||"mdi:circle-medium"}"></ha-icon>`}
         ${t.gesperrt?I`<span class="k-sperre">Gesperrt</span>`:j}
       </div>
-      ${t.zeilen.length?I`<div class="k-werte">${t.zeilen.map(Si)}</div>`:j}
+      ${t.zeilen.length?I`<div class="k-werte">${t.zeilen.map(Bi)}</div>`:j}
     </div>
   </div>
-`)(e,vi(t,i),n))}
+`)(e,xi(t,i),n))}
             </div>`:j}
       </div>
       ${(e=>{const t=e._miniOffen;if(null==t)return j;const i=e._config;let n,r,s;if(t===ct){if(!1===i.hero?.enabled)return j;n="Becken",r=pt(i,ct),s=I`<tomtut-pool-hero
@@ -1544,9 +1573,9 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
       .config="${i.hero}"
       .frame="${i.frame}"
       .kiosk="${r}"
-    ></tomtut-pool-hero>`}else{const o=e._slotsMitNummer.find(e=>e.nr===t);if(!o)return j;n=pi(o.slot),r=pt(i,o.nr),s=e._renderSlot(o.slot,r)}return I`
+    ></tomtut-pool-hero>`}else{const a=e._slotsMitNummer.find(e=>e.nr===t);if(!a)return j;n=fi(a.slot),r=pt(i,a.nr),s=e._renderSlot(a.slot,r)}return I`
     <dialog
-      class="m-dialog slot fill-${xi(i)}"
+      class="m-dialog slot fill-${Ai(i)}"
       data-mini-dialog="${t}"
       aria-label="${n}"
       @click="${t=>e._miniBackdrop(t)}"
@@ -1564,7 +1593,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     </dialog>
   `})(e)}
     </ha-card>
-  `},Ei=o`
+  `},Pi=a`
   ha-card.mini-karte {
     display: block;
     box-sizing: border-box;
@@ -1591,11 +1620,12 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     line-height: 1.2;
   }
 
-  /* ---- Kopf: Becken + Werte ---- */
+  /* ---- Kopf: Becken + Werte (Iteration 18: Becken größer, Werte füllen
+     die Spalte — Temperatur als breiter Block, pH/RX/Zulauf als 2er-Raster) ---- */
   .m-kopf {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     min-width: 0;
     border-radius: 10px;
     cursor: pointer;
@@ -1604,7 +1634,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   .m-becken {
     position: relative;
     flex: 0 0 auto;
-    width: min(58%, calc(128px * var(--r)));
+    width: min(62%, calc(150px * var(--r)));
     aspect-ratio: var(--r);
   }
   .m-becken > img {
@@ -1626,46 +1656,69 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     min-width: 0;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: center;
-    gap: 8px;
+    gap: 5px;
   }
   .m-temp {
     display: flex;
     align-items: center;
     gap: 6px;
     line-height: 1;
-    max-width: 100%;
+    min-width: 0;
   }
   .m-temp svg {
     flex: none;
-    height: clamp(34px, 9.5cqw, 46px);
+    height: clamp(28px, 7.6cqw, 36px);
     width: auto;
     display: block;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
   }
   .m-temp-wert {
-    font-size: clamp(19px, 5.8cqw, 28px);
+    flex: 1 1 auto;
+    text-align: center;
+    font-size: clamp(18px, 5cqw, 24px);
     font-weight: 800;
     white-space: nowrap;
-    padding: 0.14em 0.42em;
+    padding: 0.1em 0.3em;
     border-radius: 0.4em;
     background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
     color: var(--tt-box-fg);
     border: 1px solid var(--tt-line);
+    font-variant-numeric: tabular-nums;
   }
-  .m-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    max-width: 100%;
+  /* kein Wert: dezent, ohne großen leeren Kasten */
+  .m-temp.leer svg {
+    height: clamp(26px, 7cqw, 34px);
+    opacity: 0.75;
   }
-  .m-chip {
+  .m-temp-leer {
     display: inline-flex;
     align-items: baseline;
+    gap: 6px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--tt-fg);
+  }
+  .m-temp-key {
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.75;
+  }
+  /* Werte als kleine Tabelle untereinander: Schlüssel links, Wert rechts */
+  .m-chips {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+  .m-chip {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 4px;
-    padding: 3px 8px;
-    border-radius: 8px;
+    min-width: 0;
+    padding: 2px 9px;
+    border-radius: 7px;
     border: 1px solid var(--tt-line);
     background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
     color: var(--tt-box-fg);
@@ -1680,6 +1733,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   .m-chip-wert {
     font-size: 14px;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
 
   /* ---- Kacheln ---- */
@@ -1730,7 +1784,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   .k-bild {
     position: relative;
     width: 100%;
-    height: 64px;
+    height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1865,6 +1919,9 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   .kachel.gesperrt .k-status {
     background: #c62828;
   }
+  .kachel.neutral .k-status {
+    background: var(--tt-line);
+  }
   .k-sperre {
     position: absolute;
     left: 50%;
@@ -1961,7 +2018,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   .m-dialog-inhalt {
     padding: 8px 12px 14px;
   }
-`,Bi={enabled:!0,fill:"transparent"};class Ci extends ae{static properties={hass:{attribute:!1},_config:{state:!0},_miniOffen:{state:!0}};constructor(){super(),this._miniOffen=null}setConfig(e){if(!e||"object"!=typeof e)throw new Error("Ungültige Konfiguration");if(void 0!==e.slots&&!Array.isArray(e.slots))throw new Error("`slots` muss eine Liste sein");if(void 0!==e.hero&&("object"!=typeof e.hero||Array.isArray(e.hero)))throw new Error("`hero` muss ein Objekt sein");if(void 0!==e.version&&1!==Number(e.version))throw new Error(`Unbekannte Config-Version ${e.version} — diese Card kennt Version 1`);this._config={version:1,...e,hero:{enabled:!0,shape:ve,...e.hero||{}},frame:{...Bi,...e.frame||{}},slots:Array.isArray(e.slots)?e.slots:[]},this._miniOffen=null}static getConfigElement(){return document.createElement("tomtut-pool-dashboard-editor")}static getStubConfig(){return{version:1,hero:{enabled:!0,shape:ve},frame:{enabled:!0,fill:"transparent"},slots:[]}}getCardSize(){const e=this._config||{};if("mini"===ii(e)){const t=(e.slots||[]).filter(e=>ni.includes(String(e?.type||"").toLowerCase())).length;return(!1===e.hero?.enabled?0:3)+(t?2:0)||2}const t=(e.slots||[]).filter(e=>"hidden"!==(e?.type||"frame"));return(!1===e.hero?.enabled?0:6)+5*Math.ceil(t.length/3)||3}get visibleSlots(){return(this._config?.slots||[]).map(e=>({...e||{},type:String(e?.type||"frame").toLowerCase()})).filter(e=>"hidden"!==e.type)}get _slotsMitNummer(){return(this._config?.slots||[]).map((e,t)=>({slot:{...e||{},type:String(e?.type||"frame").toLowerCase()},nr:t+1})).filter(({slot:e})=>"hidden"!==e.type)}_miniOeffnen(e){this._miniOffen=e}_miniZu(){null!==this._miniOffen&&(this._miniOffen=null)}_miniBackdrop(e){e?.target===e?.currentTarget&&this._miniZu()}updated(e){super.updated?.(e);const t=this.renderRoot?.querySelector?.("dialog.m-dialog");if(t&&!t.open)try{"function"==typeof t.showModal?t.showModal():t.setAttribute("open","")}catch(e){console.warn("tomtut-pool-cards: Dialog ohne showModal —",e?.message||e),t.setAttribute("open","")}}render(){if(!this._config)return j;const e=this._config;if("mini"===ii(e))return Ai(this);const t=!1!==e.hero?.enabled;return I`
+`,Ti={enabled:!0,fill:"transparent"};class Mi extends oe{static properties={hass:{attribute:!1},_config:{state:!0},_miniOffen:{state:!0}};constructor(){super(),this._miniOffen=null}setConfig(e){if(!e||"object"!=typeof e)throw new Error("Ungültige Konfiguration");if(void 0!==e.slots&&!Array.isArray(e.slots))throw new Error("`slots` muss eine Liste sein");if(void 0!==e.hero&&("object"!=typeof e.hero||Array.isArray(e.hero)))throw new Error("`hero` muss ein Objekt sein");if(void 0!==e.version&&1!==Number(e.version))throw new Error(`Unbekannte Config-Version ${e.version} — diese Card kennt Version 1`);this._config={version:1,...e,hero:{enabled:!0,shape:ve,...e.hero||{}},frame:{...Ti,...e.frame||{}},slots:Array.isArray(e.slots)?e.slots:[]},this._miniOffen=null}static getConfigElement(){return document.createElement("tomtut-pool-dashboard-editor")}static getStubConfig(){return{version:1,hero:{enabled:!0,shape:ve},frame:{enabled:!0,fill:"transparent"},slots:[]}}getCardSize(){const e=this._config||{};if("mini"===si(e)){const t=(e.slots||[]).filter(e=>ai.includes(String(e?.type||"").toLowerCase())).length;return(!1===e.hero?.enabled?0:3)+(t?2:0)||2}const t=(e.slots||[]).filter(e=>"hidden"!==(e?.type||"frame"));return(!1===e.hero?.enabled?0:6)+5*Math.ceil(t.length/3)||3}get visibleSlots(){return(this._config?.slots||[]).map(e=>({...e||{},type:String(e?.type||"frame").toLowerCase()})).filter(e=>"hidden"!==e.type)}get _slotsMitNummer(){return(this._config?.slots||[]).map((e,t)=>({slot:{...e||{},type:String(e?.type||"frame").toLowerCase()},nr:t+1})).filter(({slot:e})=>"hidden"!==e.type)}_miniOeffnen(e){this._miniOffen=e}_miniZu(){null!==this._miniOffen&&(this._miniOffen=null)}_miniBackdrop(e){e?.target===e?.currentTarget&&this._miniZu()}updated(e){super.updated?.(e);const t=this.renderRoot?.querySelector?.("dialog.m-dialog");if(t&&!t.open)try{"function"==typeof t.showModal?t.showModal():t.setAttribute("open","")}catch(e){console.warn("tomtut-pool-cards: Dialog ohne showModal —",e?.message||e),t.setAttribute("open","")}}render(){if(!this._config)return j;const e=this._config;if("mini"===si(e))return Ci(this);const t=!1!==e.hero?.enabled;return I`
       <ha-card>
         <div class="wrap">
           <div class="grid">
@@ -2007,7 +2064,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           .frame="${i}"
           .kiosk="${t}"
           .slotType="${e.type}"
-        ></tomtut-pool-slot-frame>`}}static styles=[o`
+        ></tomtut-pool-slot-frame>`}}static styles=[a`
     /*
      * Der aeussere Riegel gegen das Durchschlagen in die HA-Oberflaeche:
      * Host und ha-card bilden je einen eigenen Stacking-Context. Alles,
@@ -2059,7 +2116,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         grid-column: span 2;
       }
     }
-  `,it,Ei]}customElements.define("tomtut-pool-dashboard",Ci);class Pi{constructor({hass:e,config:t,defaults:i={},update:n,idPrefix:r="f",stash:s=null}){this.hass=e,this.config=t||{},this.defaults=i,this.update=n,this.idPrefix=r,this.stash=s}val(e){const t=this.config?.[e];return null==t||""===t?this.defaults[e]:t}raw(e){const t=this.config?.[e];return null==t?"":t}shown(e,t=!0){const i=this.config?.[e];return null==i?t:!1!==i}element(e,t,i=[],n=!0){const r=this.shown(t,n);return I`
+  `,it,Pi]}customElements.define("tomtut-pool-dashboard",Mi);class Li{constructor({hass:e,config:t,defaults:i={},update:n,idPrefix:r="f",stash:s=null}){this.hass=e,this.config=t||{},this.defaults=i,this.update=n,this.idPrefix=r,this.stash=s}val(e){const t=this.config?.[e];return null==t||""===t?this.defaults[e]:t}raw(e){const t=this.config?.[e];return null==t?"":t}shown(e,t=!0){const i=this.config?.[e];return null==i?t:!1!==i}element(e,t,i=[],n=!0){const r=this.shown(t,n);return I`
       <div class="row">
         <span class="row-label">${e}</span>
         <input
@@ -2081,7 +2138,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         />
         ${i?I`<small>${i}</small>`:j}
       </label>
-    `}_entityOptions(e){const t=this.hass?.states??{};return Object.keys(t).filter(t=>!e.length||e.some(e=>t.startsWith(e+"."))).sort()}entity(e,t,i="",...n){return this._entityInput({label:e,hint:i,domains:n,value:String(this.raw(t)),dataKey:t,listId:`${this.idPrefix}-${t}`,onChange:e=>this.update({[t]:e||void 0})})}entityAt(e,t,i,n="",...r){const s=Array.isArray(this.config?.[t])?this.config[t]:[];return this._entityInput({label:e,hint:n,domains:r,value:String(s[i]??""),dataKey:`${t}.${i}`,listId:`${this.idPrefix}-${t}-${i}`,onChange:e=>this._updateList(t,i,e)})}_entityInput({label:e,hint:t,domains:i,value:n,dataKey:r,listId:s,onChange:o}){return Ft("ha-entity-picker")?I`
+    `}_entityOptions(e){const t=this.hass?.states??{};return Object.keys(t).filter(t=>!e.length||e.some(e=>t.startsWith(e+"."))).sort()}entity(e,t,i="",...n){return this._entityInput({label:e,hint:i,domains:n,value:String(this.raw(t)),dataKey:t,listId:`${this.idPrefix}-${t}`,onChange:e=>this.update({[t]:e||void 0})})}entityAt(e,t,i,n="",...r){const s=Array.isArray(this.config?.[t])?this.config[t]:[];return this._entityInput({label:e,hint:n,domains:r,value:String(s[i]??""),dataKey:`${t}.${i}`,listId:`${this.idPrefix}-${t}-${i}`,onChange:e=>this._updateList(t,i,e)})}_entityInput({label:e,hint:t,domains:i,value:n,dataKey:r,listId:s,onChange:a}){return Ut("ha-entity-picker")?I`
         <ha-entity-picker
           .hass="${this.hass}"
           .value="${n}"
@@ -2090,7 +2147,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           .includeDomains="${i.length?i:void 0}"
           data-key="${r}"
           allow-custom-entity
-          @value-changed="${e=>{e.stopPropagation(),o(e.detail?.value??"")}}"
+          @value-changed="${e=>{e.stopPropagation(),a(e.detail?.value??"")}}"
         ></ha-entity-picker>
       `:I`
       <label
@@ -2101,15 +2158,15 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           data-key="${r}"
           .value="${n}"
           placeholder="${"Entity auswählen …"}"
-          @input="${e=>o(e.target.value)}"
-          @change="${e=>o(e.target.value)}"
+          @input="${e=>a(e.target.value)}"
+          @change="${e=>a(e.target.value)}"
         />
         <datalist id="${s}">
           ${this._entityOptions(i).map(e=>I`<option value="${e}"></option>`)}
         </datalist>
         ${t?I`<small>${t}</small>`:j}
       </label>
-    `}_updateList(e,t,i){const n=Array.isArray(this.config?.[e])?[...this.config[e]]:[];for(;n.length<=t;)n.push("");for(n[t]=i;n.length&&!n[n.length-1];)n.pop();this.update({[e]:n.length?n:void 0})}icon(e,t,i=""){return Ft("ha-icon-picker")?I`
+    `}_updateList(e,t,i){const n=Array.isArray(this.config?.[e])?[...this.config[e]]:[];for(;n.length<=t;)n.push("");for(n[t]=i;n.length&&!n[n.length-1];)n.pop();this.update({[e]:n.length?n:void 0})}icon(e,t,i=""){return Ut("ha-icon-picker")?I`
         <ha-icon-picker
           .hass="${this.hass}"
           .value="${String(this.raw(t))}"
@@ -2125,7 +2182,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           ${i.map(([e,t])=>I`<option value="${e}" ?selected="${r===e}">${t}</option>`)}
         </select>
       </div>
-    `}slider(e,t,i,n,r="%",s=1){const o=this.val(t),a=null==o||""===o?i:o;return I`
+    `}slider(e,t,i,n,r="%",s=1){const a=this.val(t),o=null==a||""===a?i:a;return I`
       <div class="row">
         <span class="row-label">${e}</span>
         <input
@@ -2134,10 +2191,10 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           max="${n}"
           step="${s}"
           data-key="${t}"
-          .value="${String(a)}"
+          .value="${String(o)}"
           @input="${e=>this.update({[t]:parseFloat(e.target.value)})}"
         />
-        <span class="row-val">${a}${r}</span>
+        <span class="row-val">${o}${r}</span>
       </div>
     `}toggle(e,t,i){const n=this.config?.[t]??i;return I`
       <div class="row">
@@ -2149,12 +2206,12 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           @change="${e=>this.update({[t]:e.target.checked})}"
         />
       </div>
-    `}}const Ti=(e,t,i=!1)=>I`
+    `}}const Wi=(e,t,i=!1)=>I`
   <details class="section" ?open="${i}">
     <summary>${e}</summary>
     <div class="section-body">${t}</div>
   </details>
-`,Mi=e=>I`
+`,Ki=e=>I`
   <details class="section elements" open>
     <summary>Elemente anzeigen</summary>
     <div class="section-body">
@@ -2162,7 +2219,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
       <small>Nur angehakte Elemente haben Felder — und landen in der Konfiguration.</small>
     </div>
   </details>
-`,Li=o`
+`,Oi=a`
   .editor {
     display: flex;
     flex-direction: column;
@@ -2523,15 +2580,15 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   .add-btn:hover {
     background: rgba(3, 169, 244, 0.1);
   }
-`,Wi=["switch","input_boolean","light"],Ki=["sensor","input_number"],Oi=["sensor","input_number","number"],Ni=["climate","number","input_number","sensor"],Di=["sensor","select","input_select","climate"],Vi=["switch","input_boolean","binary_sensor"],Ri=(e,t=!0,i="Aus = ein Tippen auf den Powerbutton schaltet sofort ab, ohne Warnung.")=>I`
+`,Ni=["switch","input_boolean","light"],Di=["sensor","input_number"],Vi=["sensor","input_number","number"],Ri=["climate","number","input_number","sensor"],Hi=["sensor","select","input_select","climate"],Ii=["switch","input_boolean","binary_sensor"],Fi=(e,t=!0,i="Aus = ein Tippen auf den Powerbutton schaltet sofort ab, ohne Warnung.")=>I`
   ${e.toggle("Vor dem Ausschalten nachfragen","confirm_off",t)}
   <small>${i}</small>
-`,Hi=(e,t,i,n,r)=>e.shown(n,r)?Ti(`${t} — Größe und Lage`,I`
+`,ji=(e,t,i,n,r)=>e.shown(n,r)?Wi(`${t} — Größe und Lage`,I`
           ${e.slider("Größe",`${i}_size`,2,30,"%",.5)}
           ${e.slider("Von oben",`${i}_top`,0,100,"%",.5)}
           ${e.slider("Von links",`${i}_left`,0,100,"%",.5)}
           <small>Die Größe ist die Breite in Prozent der Beckenbreite.</small>
-        `):j,Ii=e=>{const t=((e,t={})=>{const i=t.mode_entity,n=i?e?.states?.[i]:null;if(!n)return null;const r=String(t.mode_attribute||"").trim(),s=r?n.attributes?.[r]:n.state,o=n.attributes||{},a=Array.isArray(o.options)?o.options:"preset_mode"===r&&Array.isArray(o.preset_modes)?o.preset_modes:!r&&Array.isArray(o.hvac_modes)?o.hvac_modes:[];return{roh:s??"",modus:St(s,t),optionen:a.map(e=>({wert:String(e),modus:St(e,t)}))}})(e.hass,e.config),i=t?I`<div class="modus-befund ${t.modus?"ok":"nein"}">
+        `):j,Gi=e=>{const t=((e,t={})=>{const i=t.mode_entity,n=i?e?.states?.[i]:null;if(!n)return null;const r=String(t.mode_attribute||"").trim(),s=r?n.attributes?.[r]:n.state,a=n.attributes||{},o=Array.isArray(a.options)?a.options:"preset_mode"===r&&Array.isArray(a.preset_modes)?a.preset_modes:!r&&Array.isArray(a.hvac_modes)?a.hvac_modes:[];return{roh:s??"",modus:St(s,t),optionen:o.map(e=>({wert:String(e),modus:St(e,t)}))}})(e.hass,e.config),i=t?I`<div class="modus-befund ${t.modus?"ok":"nein"}">
         Deine Pumpe meldet gerade: <b>${String(t.roh)||"—"}</b> →
         ${t.modus?I`erkannt als <b>${t.modus.label}</b> ✓`:I`nicht erkannt ✗ – bitte unten zuordnen`}
       </div>`:I`<div class="modus-befund">Wähle oben die Modus-Entity — dann steht hier, was sie meldet.</div>`,n=t&&t.optionen.length?I`<div class="modus-optionen">
@@ -2541,7 +2598,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
                   ${e.wert} → ${e.modus?I`${e.modus.label} ✓`:I`nicht erkannt ✗`}
                 </li>`)}
           </ul>
-        </div>`:j;return Ti("Erweitert: Modus-Namen anpassen",I`
+        </div>`:j;return Wi("Erweitert: Modus-Namen anpassen",I`
       ${i} ${n}
       ${$t.map(t=>e.text(t.label,`mode_map_${t.key}`,"",t.zustaende.join(", ")))}
       <small>
@@ -2550,7 +2607,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         wenn oben etwas „nicht erkannt" ist: hier die Zustände als Kommaliste eintragen. Eine
         eigene Liste ersetzt für diesen Modus Vorgabe und Automatik. Leer = Vorgabe (grau).
       </small>
-    `,!!t&&!t.modus&&""!==String(t.roh)&&!["unknown","unavailable"].includes(String(t.roh)))},Fi={heatpump:wt,pump:ut,uv:Wt,solar:Dt},ji=(e,t)=>{const i={...e||{}};for(const[e,n]of Object.entries(t||{}))void 0===n?delete i[e]:i[e]=n;return i};class Gi extends ae{static properties={hass:{attribute:!1},_config:{state:!0}};constructor(){super(),this._stash={}}connectedCallback(){super.connectedCallback(),(It()?Promise.resolve(!0):"undefined"==typeof window||"function"!=typeof window.loadCardHelpers?Promise.resolve(!1):(Ht||(Ht=(async()=>{try{const e=await window.loadCardHelpers(),t=await(e?.createCardElement?.({type:"entities",entities:[]}));await(t?.constructor?.getConfigElement?.())}catch(e){console.warn("tomtut-pool-cards: HA-Eingabefelder nicht ladbar —",e?.message||e)}return It()})()),Ht)).then(e=>{e&&this.requestUpdate()})}setConfig(e){this._config={version:1,hero:{enabled:!0,shape:ve},frame:{enabled:!0,fill:"transparent"},slots:[],...e||{}}}_emit(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e}}))}_updateHero(e){this._emit({...this._config,hero:ji(this._config.hero,e)})}_updateFrame(e){this._emit({...this._config,frame:ji(this._config.frame,e)})}_slots(){return Array.isArray(this._config?.slots)?this._config.slots:[]}_setAnsicht(e){ii(this._config)!==e&&this._emit(ji(this._config,{view:"mini"===e?"mini":void 0}))}_renderAnsicht(){const e="mini"===ii(this._config),t=(t,i)=>I`<button
+    `,!!t&&!t.modus&&""!==String(t.roh)&&!["unknown","unavailable"].includes(String(t.roh)))},Ui={heatpump:wt,pump:ut,uv:Ot,solar:Rt},Zi=(e,t)=>{const i={...e||{}};for(const[e,n]of Object.entries(t||{}))void 0===n?delete i[e]:i[e]=n;return i};class Qi extends oe{static properties={hass:{attribute:!1},_config:{state:!0}};constructor(){super(),this._stash={}}connectedCallback(){super.connectedCallback(),(Gt()?Promise.resolve(!0):"undefined"==typeof window||"function"!=typeof window.loadCardHelpers?Promise.resolve(!1):(jt||(jt=(async()=>{try{const e=await window.loadCardHelpers(),t=await(e?.createCardElement?.({type:"entities",entities:[]}));await(t?.constructor?.getConfigElement?.())}catch(e){console.warn("tomtut-pool-cards: HA-Eingabefelder nicht ladbar —",e?.message||e)}return Gt()})()),jt)).then(e=>{e&&this.requestUpdate()})}setConfig(e){this._config={version:1,hero:{enabled:!0,shape:ve},frame:{enabled:!0,fill:"transparent"},slots:[],...e||{}}}_emit(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e}}))}_updateHero(e){this._emit({...this._config,hero:Zi(this._config.hero,e)})}_updateFrame(e){this._emit({...this._config,frame:Zi(this._config.frame,e)})}_slots(){return Array.isArray(this._config?.slots)?this._config.slots:[]}_setAnsicht(e){si(this._config)!==e&&this._emit(Zi(this._config,{view:"mini"===e?"mini":void 0}))}_renderAnsicht(){const e="mini"===si(this._config),t=(t,i)=>I`<button
       type="button"
       class="ansicht-knopf ${"mini"===t===e?"aktiv":""}"
       data-ansicht="${t}"
@@ -2569,7 +2626,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           Kacheln. Tipp auf eine Kachel öffnet den vollen Kasten. Dieselbe Einrichtung wie Voll.
         </small>
       </div>
-    `}_renderMiniWahl(e,t,i){if("mini"!==ii(this._config))return j;const n=String(t||"").toLowerCase();if("hero"!==n&&!ni.includes(n))return j;const r=bi(e||{},n),s="hero"!==n&&!0===e?.mini_hidden;return I`
+    `}_renderMiniWahl(e,t,i){if("mini"!==si(this._config))return j;const n=String(t||"").toLowerCase();if("hero"!==n&&!ai.includes(n))return j;const r=vi(e||{},n),s="hero"!==n&&!0===e?.mini_hidden;return I`
       <div class="mini-wahl" data-mini-wahl="${n}">
         <div class="mini-wahl-titel">In Mini anzeigen</div>
         ${"hero"===n?j:I`<label class="mini-wahl-zeile">
@@ -2600,7 +2657,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
                   </div>`:j}
             `}
       </div>
-    `}_setKiosk(e){this._emit(ji(this._config,e?{kiosk:!0}:{kiosk:void 0,kiosk_slots:void 0}))}_setKioskKasten(e,t){const i=ht(this._config),n=i.filter(i=>String(i)===String(e)?t:pt({...this._config,kiosk:!0},i));this._emit(ji(this._config,{kiosk_slots:n.length===i.length?void 0:n}))}_renderKiosk(){const e=!0===this._config?.kiosk,t=ht(this._config),i=this._slots();return I`
+    `}_setKiosk(e){this._emit(Zi(this._config,e?{kiosk:!0}:{kiosk:void 0,kiosk_slots:void 0}))}_setKioskKasten(e,t){const i=ht(this._config),n=i.filter(i=>String(i)===String(e)?t:pt({...this._config,kiosk:!0},i));this._emit(Zi(this._config,{kiosk_slots:n.length===i.length?void 0:n}))}_renderKiosk(){const e=!0===this._config?.kiosk,t=ht(this._config),i=this._slots();return I`
       <div class="kiosk-block ${e?"an":""}">
         <label class="kiosk-schalter">
           <input
@@ -2628,8 +2685,8 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
                 </label>`})}
             </div>`:j}
       </div>
-    `}_updateSlot(e,t){const i=this._slots().map((i,n)=>n===e?ji(i,t):i);this._emit({...this._config,slots:i})}_updateEntry(e,t,i){const n=this._slots()[e]||{},r=Array.isArray(n.entries)?[...n.entries]:[];for(;r.length<=t;)r.push({});r[t]=ji(r[t],i),this._updateSlot(e,{entries:r})}_addSlot(){this._emit({...this._config,slots:[...this._slots(),{type:"frame"}]})}_removeSlot(e){this._emit({...this._config,slots:this._slots().filter((t,i)=>i!==e)})}_moveSlot(e,t){const i=[...this._slots()],n=e+t;if(n<0||n>=i.length)return;const[r]=i.splice(e,1);i.splice(n,0,r),this._emit({...this._config,slots:i})}_fieldsFor(e){const t=this._slots()[e]||{};return new Pi({hass:this.hass,config:t,defaults:Fi[t.type]||{},update:t=>this._updateSlot(e,t),idPrefix:`slot${e}`,stash:this._stash})}_altTypOption(e){const t=We[e];return t&&!1===t.waehlbar?I`<option value="${e}" selected>${t.label}</option>`:j}_slotKopf(e,t){const i=We[e?.type]?.label||We.frame.label,n=String(e?.label||e?.label_text||e?.title||"").trim();return`Kasten ${t+1} · ${i}${n?` · ${n}`:""}`}_slotBody(e){const t=this._slots()[e]||{},i=this._fieldsFor(e);switch(t.type){case"heatpump":return(e=>I`
-  ${Mi(I`
+    `}_updateSlot(e,t){const i=this._slots().map((i,n)=>n===e?Zi(i,t):i);this._emit({...this._config,slots:i})}_updateEntry(e,t,i){const n=this._slots()[e]||{},r=Array.isArray(n.entries)?[...n.entries]:[];for(;r.length<=t;)r.push({});r[t]=Zi(r[t],i),this._updateSlot(e,{entries:r})}_addSlot(){this._emit({...this._config,slots:[...this._slots(),{type:"frame"}]})}_removeSlot(e){this._emit({...this._config,slots:this._slots().filter((t,i)=>i!==e)})}_moveSlot(e,t){const i=[...this._slots()],n=e+t;if(n<0||n>=i.length)return;const[r]=i.splice(e,1);i.splice(n,0,r),this._emit({...this._config,slots:i})}_fieldsFor(e){const t=this._slots()[e]||{};return new Li({hass:this.hass,config:t,defaults:Ui[t.type]||{},update:t=>this._updateSlot(e,t),idPrefix:`slot${e}`,stash:this._stash})}_altTypOption(e){const t=We[e];return t&&!1===t.waehlbar?I`<option value="${e}" selected>${t.label}</option>`:j}_slotKopf(e,t){const i=We[e?.type]?.label||We.frame.label,n=String(e?.label||e?.label_text||e?.title||"").trim();return`Kasten ${t+1} · ${i}${n?` · ${n}`:""}`}_slotBody(e){const t=this._slots()[e]||{},i=this._fieldsFor(e);switch(t.type){case"heatpump":return(e=>I`
+  ${Ki(I`
     ${e.element("⏻ Powerbutton","show_power_button",["switch_entity","confirm_off","power_btn_top","power_btn_left","power_btn_scale"])}
     ${e.element("🔌 Freigabekontakt","show_release",["release_entity","release_top","release_left","release_scale","show_release_since"],!1)}
     ${e.element("⚡ Stromverbrauch","show_power",["power_entity","power_top","power_left","power_scale","power_box","power_label"])}
@@ -2639,23 +2696,23 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     ${e.element("🔁 Betriebsmodus","show_mode",["mode_entity","mode_attribute","show_mode_badge","mode_top","mode_left","mode_scale",...$t.flatMap(e=>[`mode_speed_${e.key}`,`mode_map_${e.key}`])],!1)}
   `)}
   ${e.shown("show_power_button")?I`
-        ${e.entity("Powerbutton — Schalter","switch_entity","z.B. die Shelly-Steckdose der Wärmepumpe. Ist er aus, steht der Lüfter immer.",...Wi)}
-        ${Ri(e)}
-        ${Ti("Powerbutton — Position",I`
+        ${e.entity("Powerbutton — Schalter","switch_entity","z.B. die Shelly-Steckdose der Wärmepumpe. Ist er aus, steht der Lüfter immer.",...Ni)}
+        ${Fi(e)}
+        ${Wi("Powerbutton — Position",I`
             ${e.slider("Von oben","power_btn_top",0,100)}
             ${e.slider("Von links","power_btn_left",0,100)}
             ${e.slider("Größe","power_btn_scale",50,200)}
           `)}
       `:j}
   ${e.shown("show_release",!1)?I`
-        ${e.entity("Freigabekontakt — Entity","release_entity","Der potentialfreie Eingang der Wärmepumpe: offen = sie darf nicht laufen, geschlossen = freigegeben.",...Vi)}
+        ${e.entity("Freigabekontakt — Entity","release_entity","Der potentialfreie Eingang der Wärmepumpe: offen = sie darf nicht laufen, geschlossen = freigegeben.",...Ii)}
         <small>
           Damit sperrt oder gibt man die Wärmepumpe von außen frei (PV-Überschuss, Zeitfenster) —
           ohne an ihren eigenen Einstellungen zu drehen. Ist der Kontakt offen, zeigt die Karte
           „Gesperrt" und der Lüfter steht still, auch wenn der Schalter an ist. Ein binary_sensor
           wird nur angezeigt, switch und input_boolean schalten per Klick um.
         </small>
-        ${Ti("Freigabekontakt — Position",I`
+        ${Wi("Freigabekontakt — Position",I`
             ${e.slider("Von oben","release_top",0,100,"%",.5)}
             ${e.slider("Von links","release_left",0,100,"%",.5)}
             ${e.slider("Größe","release_scale",50,200)}
@@ -2664,8 +2721,8 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         <small>Klein unter dem Badge, z.B. „seit 2 Std 10 Min" — läuft minütlich mit.</small>
       `:j}
   ${e.shown("show_power")?I`
-        ${e.entity("Stromverbrauch — Sensor","power_entity","Leistungssensor in W oder kW (z.B. Shelly).",...Ki)}
-        ${Ti("Stromverbrauch — Darstellung",I`
+        ${e.entity("Stromverbrauch — Sensor","power_entity","Leistungssensor in W oder kW (z.B. Shelly).",...Di)}
+        ${Wi("Stromverbrauch — Darstellung",I`
             ${e.slider("Von oben","power_top",0,100)}
             ${e.slider("Von links","power_left",0,100)}
             ${e.slider("Größe","power_scale",50,150)}
@@ -2674,8 +2731,8 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           `)}
       `:j}
   ${e.shown("show_current")?I`
-        ${e.entity("Ist-Temperatur","current_entity","climate.* nutzt current_temperature, sensor.* den Zustand.",...Ni)}
-        ${Ti("Ist-Temperatur — Darstellung",I`
+        ${e.entity("Ist-Temperatur","current_entity","climate.* nutzt current_temperature, sensor.* den Zustand.",...Ri)}
+        ${Wi("Ist-Temperatur — Darstellung",I`
             ${e.slider("Von unten","current_bottom",0,100)}
             ${e.slider("Von links","current_left",0,100)}
             ${e.slider("Größe","current_scale",50,150)}
@@ -2684,8 +2741,8 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           `)}
       `:j}
   ${e.shown("show_target")?I`
-        ${e.entity("Soll-Temperatur","target_entity","climate.* nutzt die Zieltemperatur, number.* den Wert direkt.",...Ni)}
-        ${Ti("Soll-Temperatur — Darstellung",I`
+        ${e.entity("Soll-Temperatur","target_entity","climate.* nutzt die Zieltemperatur, number.* den Wert direkt.",...Ri)}
+        ${Wi("Soll-Temperatur — Darstellung",I`
             ${e.slider("Von unten","target_bottom",0,100)}
             ${e.slider("Von links","target_left",0,100)}
             ${e.slider("Größe","target_scale",50,150)}
@@ -2695,7 +2752,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           `)}
       `:j}
   ${e.shown("show_fan")?I`
-        ${Ti("Lüfter — wann dreht er?",I`
+        ${Wi("Lüfter — wann dreht er?",I`
             ${e.select("Aktiv wenn …","fan_source",[["auto","Automatisch (Entity, sonst Leistung)"],["entity","Nur Entity"],["power","Nur Leistung"]],"auto")}
             ${e.entity("Lüfter-Entity (optional)","fan_entity","an/aus oder Zahlenwert > 0 = Lüfter dreht.","binary_sensor","switch","sensor","fan","climate")}
             ${e.slider("Leistungs-Schwelle","fan_power_threshold",0,2e3," W",10)}
@@ -2705,12 +2762,12 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
               Betriebsmodus gilt statt der Drehgeschwindigkeit das Tempo des Modus.
             </small>
           `,!0)}
-        ${Ti("Lüfter — Aussehen",I`
+        ${Wi("Lüfter — Aussehen",I`
             ${e.select("Blatt-Design","fan_design",Object.entries(Je).map(([e,t])=>[e,t.label]),"klassisch")}
             ${e.select("Farbe","fan_color_mode",[["neutral","Schwarz/Weiß (wie die Schrift)"],["modus","Nach Modus: Heizen rot, Kühlen blau"]],"neutral")}
             <small>Die Färbung nach Modus braucht einen erkannten Betriebsmodus.</small>
           `)}
-        ${Ti("Lüfter — Position",I`
+        ${Wi("Lüfter — Position",I`
             ${e.slider("Von oben","fan_top",0,100,"%",.5)}
             ${e.slider("Von links","fan_left",0,100,"%",.5)}
             ${e.slider("Breite","fan_size",5,80,"%",.5)}
@@ -2719,9 +2776,9 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           `)}
       `:j}
   ${e.shown("show_mode",!1)?I`
-        ${e.entity("Betriebsmodus — Entity","mode_entity","sensor, select, input_select oder climate — liefert den Modus der Wärmepumpe.",...Di)}
+        ${e.entity("Betriebsmodus — Entity","mode_entity","sensor, select, input_select oder climate — liefert den Modus der Wärmepumpe.",...Hi)}
         ${e.text("Attribut (optional)","mode_attribute","Leer = Zustand der Entity. Bei climate.* z.B. preset_mode.","z.B. preset_mode")}
-        ${Ti("Betriebsmodus — Anzeige auf der Card",I`
+        ${Wi("Betriebsmodus — Anzeige auf der Card",I`
             ${e.toggle("Modus als Badge anzeigen","show_mode_badge",!0)}
             ${e.slider("Von oben","mode_top",0,100,"%",.5)}
             ${e.slider("Von links","mode_left",0,100,"%",.5)}
@@ -2731,21 +2788,21 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
               Heizen · Eco). Unbekannte Werte erscheinen unübersetzt. Farbe wie das Rad.
             </small>
           `)}
-        ${Ti("Betriebsmodus — Tempo je Modus",I`
+        ${Wi("Betriebsmodus — Tempo je Modus",I`
             ${$t.map(t=>e.slider(t.label,`mode_speed_${t.key}`,1,ft,"",1))}
             <small>Links langsam, rechts schnell (1–10, ohne Einheit).</small>
           `,!0)}
-        ${Ii(e)}
+        ${Gi(e)}
       `:j}
   ${e.text("Freitext auf der Card (optional)","label_text","","z.B. Pool-Wärmepumpe")}
-  ${Ti("Freitext — Darstellung",I`
+  ${Wi("Freitext — Darstellung",I`
       ${e.slider("Von oben","label_top",0,100)}
       ${e.slider("Von links","label_left",0,100)}
       ${e.slider("Größe","label_scale",50,200)}
       ${e.toggle("Box anzeigen","label_box",!0)}
     `)}
 `)(i);case"pump":return(e=>I`
-  ${Mi(I`
+  ${Ki(I`
     ${e.element("🎚 Stufen-Taster","show_stages",["stage_mode","stage_entities","stop_entity","stage_labels"])}
     ${e.element("⏻ Powerbutton","show_power_button",["main_entity","confirm_off","power_btn_top","power_btn_left","power_btn_scale"])}
     ${e.element("⚡ Stromverbrauch","show_power",["power_entity","power_bottom","power_left","power_scale","power_box","power_label","stage_from_power","stage_watt_1","stage_watt_2","stage_watt_3"])}
@@ -2755,30 +2812,30 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   ${e.text("Überschrift (optional)","label","","z.B. Poolpumpe")}
   ${e.shown("show_stages")?I`
         ${e.select("Schaltmodell","stage_mode",[["momentary","Impulstaster (Shelly & Co.) — zuletzt gedrückt gilt"],["latching","Dauerrelais je Stufe — Zustand ist an/aus"]],"momentary")}
-        ${e.entityAt("Stufe 1 (N1)","stage_entities",0,"",...Wi)}
-        ${e.entityAt("Stufe 2 (N2, optional)","stage_entities",1,"",...Wi)}
-        ${e.entityAt("Stufe 3 (N3, optional)","stage_entities",2,"",...Wi)}
-        ${e.entity("STOP-Taster (optional)","stop_entity","Bei Impulstastern der eigene STOP-Kanal.",...Wi)}
+        ${e.entityAt("Stufe 1 (N1)","stage_entities",0,"",...Ni)}
+        ${e.entityAt("Stufe 2 (N2, optional)","stage_entities",1,"",...Ni)}
+        ${e.entityAt("Stufe 3 (N3, optional)","stage_entities",2,"",...Ni)}
+        ${e.entity("STOP-Taster (optional)","stop_entity","Bei Impulstastern der eigene STOP-Kanal.",...Ni)}
       `:j}
   ${e.shown("show_power_button")?I`
-        ${e.entity("Hauptschalter","main_entity","Steckdose/Relais der Pumpe — Powerbutton.",...Wi)}
-        ${Ri(e)}
-        ${Ti("Powerbutton — Position",I`
+        ${e.entity("Hauptschalter","main_entity","Steckdose/Relais der Pumpe — Powerbutton.",...Ni)}
+        ${Fi(e)}
+        ${Wi("Powerbutton — Position",I`
             ${e.slider("Von oben","power_btn_top",0,100)}
             ${e.slider("Von links","power_btn_left",0,100)}
             ${e.slider("Größe","power_btn_scale",50,200)}
           `)}
       `:j}
   ${e.shown("show_power")?I`
-        ${e.entity("Stromverbrauch","power_entity","W oder kW.",...Ki)}
-        ${Ti("Stromverbrauch — Darstellung",I`
+        ${e.entity("Stromverbrauch","power_entity","W oder kW.",...Di)}
+        ${Wi("Stromverbrauch — Darstellung",I`
             ${e.slider("Von unten","power_bottom",0,100)}
             ${e.slider("Von links","power_left",0,100)}
             ${e.slider("Größe","power_scale",50,150)}
             ${e.toggle("Box anzeigen","power_box",!0)}
             ${e.toggle("Einheit anzeigen","power_label",!0)}
           `)}
-        ${e.raw("power_entity")?Ti("Stufe aus Leistung erkennen",I`
+        ${e.raw("power_entity")?Wi("Stufe aus Leistung erkennen",I`
                 ${e.toggle("Stufe aus Leistung erkennen","stage_from_power",!0)}
                 ${!1!==e.val("stage_from_power")?I`
                       ${e.slider("N1 ab mehr als","stage_watt_1",0,300," W",1)}
@@ -2794,35 +2851,35 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
               `):j}
       `:j}
   ${e.shown("show_temp")?I`
-        ${e.entity("Temperaturfühler","temp_entity","Zeigt das Thermometer.",...Oi)}
-        ${Ti("Thermometer — Position",I`
+        ${e.entity("Temperaturfühler","temp_entity","Zeigt das Thermometer.",...Vi)}
+        ${Wi("Thermometer — Position",I`
             ${e.slider("Von oben","temp_top",0,100)}
             ${e.slider("Von links","temp_left",0,100)}
             ${e.slider("Größe","temp_scale",50,200)}
           `)}
       `:j}
   ${e.shown("show_fan")?I`
-        ${Ti("Laufrad — Tempo",I`
+        ${Wi("Laufrad — Tempo",I`
             ${e.slider("Tempo N1","fan_speed_1",1,ft,"",1)}
             ${e.slider("Tempo N2","fan_speed_2",1,ft,"",1)}
             ${e.slider("Tempo N3","fan_speed_3",1,ft,"",1)}
             <small>Links langsam, rechts schnell (1–10, ohne Einheit).</small>
           `,!0)}
-        ${Ti("Laufrad — Position",I`
+        ${Wi("Laufrad — Position",I`
             ${e.slider("Von oben","fan_top",0,100,"%",.5)}
             ${e.slider("Von links","fan_left",0,100,"%",.5)}
             ${e.slider("Größe","fan_size",3,60,"%",.5)}
             ${e.select("Bei Stillstand","fan_inactive",[["gray","Grau + stehend"],["hidden","Ausblenden"]],"gray")}
             <small>Das Laufrad bleibt immer kreisrund.</small>
           `)}
-        ${Ti("Wann steht die Pumpe?",I`
+        ${Wi("Wann steht die Pumpe?",I`
             ${e.slider("Ruhewatt","idle_watt",0,200," W",1)}
             <small>Unter diesem Verbrauch gilt die Pumpe als stehend (Laufrad grau).
               Bei „Stufe aus Leistung erkennen" gilt stattdessen die N1-Schwelle.</small>
           `)}
       `:j}
 `)(i);case"uv":return(e=>I`
-  ${Mi(I`
+  ${Ki(I`
     ${e.element("⏻ Powerbutton","show_power_button",["switch_entity","confirm_off","power_btn_top","power_btn_left","power_btn_scale"])}
     ${e.element("⚡ Stromverbrauch","show_power",["power_entity","power_bottom","power_left","power_scale","power_box","power_label"])}
     ${e.element("🌡 Temperatur","show_temp",["temp_entity","temp_top","temp_left","temp_scale"])}
@@ -2831,17 +2888,17 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   <small>Die UV-Lampe läuft üblicherweise per Zeitschaltuhr parallel zur Poolpumpe.</small>
   ${e.text("Überschrift (optional)","label","","z.B. UV-C-Lampe")}
   ${e.shown("show_power_button")?I`
-        ${e.entity("Powerbutton — Schalter","switch_entity","Steckdose/Relais der Lampe.",...Wi)}
-        ${Ri(e)}
-        ${Ti("Powerbutton — Position",I`
+        ${e.entity("Powerbutton — Schalter","switch_entity","Steckdose/Relais der Lampe.",...Ni)}
+        ${Fi(e)}
+        ${Wi("Powerbutton — Position",I`
             ${e.slider("Von oben","power_btn_top",0,100)}
             ${e.slider("Von links","power_btn_left",0,100)}
             ${e.slider("Größe","power_btn_scale",50,200)}
           `)}
       `:j}
   ${e.shown("show_power")?I`
-        ${e.entity("Stromverbrauch","power_entity","W oder kW.",...Ki)}
-        ${Ti("Stromverbrauch — Darstellung",I`
+        ${e.entity("Stromverbrauch","power_entity","W oder kW.",...Di)}
+        ${Wi("Stromverbrauch — Darstellung",I`
             ${e.slider("Von unten","power_bottom",0,100)}
             ${e.slider("Von links","power_left",0,100)}
             ${e.slider("Größe","power_scale",50,150)}
@@ -2850,14 +2907,14 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           `)}
       `:j}
   ${e.shown("show_temp")?I`
-        ${e.entity("Temperaturfühler","temp_entity","Zeigt das Thermometer.",...Oi)}
-        ${Ti("Thermometer — Position",I`
+        ${e.entity("Temperaturfühler","temp_entity","Zeigt das Thermometer.",...Vi)}
+        ${Wi("Thermometer — Position",I`
             ${e.slider("Von oben","temp_top",0,100)}
             ${e.slider("Von links","temp_left",0,100)}
             ${e.slider("Größe","temp_scale",50,200)}
           `)}
       `:j}
-  ${e.shown("show_glow")?Ti("Glüheffekt — Lage auf dem Rohr",I`
+  ${e.shown("show_glow")?Wi("Glüheffekt — Lage auf dem Rohr",I`
           ${e.slider("Von oben","glow_top",0,100,"%",.5)}
           ${e.slider("Von links","glow_left",0,100,"%",.5)}
           ${e.slider("Länge","glow_size",5,100,"%",.5)}
@@ -2872,7 +2929,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
             hat, sieht ihn immer ruhig.
           </small>
         `):j}
-  ${Ti("Bild — Drehen, Spiegeln, Größe, Anschlussvariante",I`
+  ${Wi("Bild — Drehen, Spiegeln, Größe, Anschlussvariante",I`
       ${e.slider("Drehen","rotate",0,359,"°",1)}
       ${e.toggle("Waagrecht spiegeln","mirror",!1)}
       ${e.slider("Größe","uv_size",30,je)}
@@ -2885,7 +2942,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
       </small>
     `)}
 `)(i);case"solar":return(e=>I`
-  ${Mi(I`
+  ${Ki(I`
     ${e.element("⏻ Powerbutton","show_power_button",["switch_entity","confirm_off","power_btn_top","power_btn_left","power_btn_scale"])}
     ${e.element("🌡 Vorlauf (oben, ins Feld)","show_temp_in",["temp_in_entity","temp_in_top","temp_in_left","temp_in_scale"])}
     ${e.element("🌡 Rücklauf (unten, ins Becken)","show_temp_out",["temp_out_entity","temp_out_top","temp_out_left","temp_out_scale"])}
@@ -2898,34 +2955,35 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     drei Absorbern; der blaue Pfeil links unten ist der Zulauf, der rote rechts oben der Rücklauf.
   </small>
   ${e.text("Überschrift (optional)","label","","z.B. Solarheizung")}
+  ${e.entity("Läuft gerade? (optional)","active_entity","Z.B. Ventil-Rückmeldung „AN“: an = Wasser läuft übers Feld. Bestimmt den Zustand in der Mini-Ansicht; ohne Angabe zählt der Schalter.","binary_sensor","switch","input_boolean","sensor")}
   ${e.shown("show_power_button")?I`
-        ${e.entity("Powerbutton — Ventil oder Pumpe","switch_entity","Solarventil oder Solarpumpe.",...Wi)}
-        ${Ri(e)}
-        ${Ti("Powerbutton — Position",I`
+        ${e.entity("Powerbutton — Ventil oder Pumpe","switch_entity","Solarventil oder Solarpumpe.",...Ni)}
+        ${Fi(e)}
+        ${Wi("Powerbutton — Position",I`
             ${e.slider("Von oben","power_btn_top",0,100)}
             ${e.slider("Von links","power_btn_left",0,100)}
             ${e.slider("Größe","power_btn_scale",50,200)}
           `)}
       `:j}
   ${e.shown("show_temp_in")?I`
-        ${e.entity("Vorlauf-Temperatur","temp_in_entity","Wasser, das zum Absorber läuft — Zulauf links unten (blauer Pfeil).",...Oi)}
-        ${Ti("Vorlauf — Position",I`
+        ${e.entity("Vorlauf-Temperatur","temp_in_entity","Wasser, das zum Absorber läuft — Zulauf links unten (blauer Pfeil).",...Vi)}
+        ${Wi("Vorlauf — Position",I`
             ${e.slider("Von oben","temp_in_top",0,100,"%",.5)}
             ${e.slider("Von links","temp_in_left",0,100,"%",.5)}
             ${e.slider("Größe","temp_in_scale",50,200)}
           `)}
       `:j}
   ${e.shown("show_temp_out")?I`
-        ${e.entity("Rücklauf-Temperatur","temp_out_entity","Wasser, das zurück ins Becken läuft — Ablauf rechts oben (roter Pfeil).",...Oi)}
-        ${Ti("Rücklauf — Position",I`
+        ${e.entity("Rücklauf-Temperatur","temp_out_entity","Wasser, das zurück ins Becken läuft — Ablauf rechts oben (roter Pfeil).",...Vi)}
+        ${Wi("Rücklauf — Position",I`
             ${e.slider("Von oben","temp_out_top",0,100,"%",.5)}
             ${e.slider("Von links","temp_out_left",0,100,"%",.5)}
             ${e.slider("Größe","temp_out_scale",50,200)}
           `)}
       `:j}
   ${e.shown("show_power")?I`
-        ${e.entity("Stromverbrauch","power_entity","Solarpumpe in W oder kW.",...Ki)}
-        ${Ti("Stromverbrauch — Darstellung",I`
+        ${e.entity("Stromverbrauch","power_entity","Solarpumpe in W oder kW.",...Di)}
+        ${Wi("Stromverbrauch — Darstellung",I`
             ${e.slider("Von unten","power_bottom",0,100)}
             ${e.slider("Von links","power_left",0,100)}
             ${e.slider("Größe","power_scale",50,150)}
@@ -2933,7 +2991,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
             ${e.toggle("Einheit anzeigen","power_label",!0)}
           `)}
       `:j}
-  ${e.shown("show_arrows")?Ti("Richtungspfeile — Lage",I`
+  ${e.shown("show_arrows")?Wi("Richtungspfeile — Lage",I`
           ${e.slider("Zulauf (blau) — Von oben","arrow_in_top",0,100,"%",.5)}
           ${e.slider("Zulauf (blau) — Von links","arrow_in_left",0,100,"%",.5)}
           ${e.slider("Zulauf (blau) — Größe","arrow_in_size",2,20,"%",.5)}
@@ -2945,9 +3003,9 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
             oben warmes heraus. Sie sind reine Beschriftung und ändern sich nie.
           </small>
         `):j}
-`)(i);case"custom":return((e,t)=>{const i=Array.isArray(e.config?.entries)?e.config.entries:[],n=Xt(e.config).length,r=Math.min(8,Math.max(3,i.length+1)),s=qt(e.config);return I`
+`)(i);case"custom":return((e,t)=>{const i=Array.isArray(e.config?.entries)?e.config.entries:[],n=Yt(e.config).length,r=Math.min(8,Math.max(3,i.length+1)),s=ei(e.config);return I`
     ${e.text("Überschrift (optional)","title","","z.B. Wetter")}
-    ${e.select("Darstellung","layout",[["klassisch","Klassisch (mittig gestapelt)"],["liste","Liste (Zeilen mit Schalter, wie HA-Entities)"],["kacheln","Kacheln (2 Spalten)"]],Ut)}
+    ${e.select("Darstellung","layout",[["klassisch","Klassisch (mittig gestapelt)"],["liste","Liste (Zeilen mit Schalter, wie HA-Entities)"],["kacheln","Kacheln (2 Spalten)"]],Xt)}
     ${e.select("Ausrichtung","align",[["oben","Oben"],["mitte","Mitte"],["unten","Unten"]],"klassisch"===s?"mitte":"oben")}
     ${n>8?I`<div class="limit-warnung" role="alert">
           ⚠ ${n} Einträge eingetragen — der Kasten zeigt höchstens ${8}.
@@ -2957,7 +3015,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     ${"liste"===s&&n>4?I`<small class="limit-hinweis">
           Ab 5 Zeilen wird der Kasten höher als eine Standard-Karte (Titel + 4 Zeilen).
         </small>`:j}
-    ${Array.from({length:r},(e,i)=>Ti(`Eintrag ${i+1}`,t(i),0===i))}
+    ${Array.from({length:r},(e,i)=>Wi(`Eintrag ${i+1}`,t(i),0===i))}
     <small>Bis zu ${8} Einträge. Leere Einträge werden nicht angezeigt.</small>
   `})(i,i=>(e=>I`
   ${e.select("Art","kind",[["entity","Entity mit Wert"],["button","Button (schaltet)"],["text","Freitext"]],"entity")}
@@ -2965,12 +3023,12 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         ${e.entity("Entity","entity","","sensor","binary_sensor","switch","light","input_boolean","input_number","number","climate")}
         ${e.text("Beschriftung (optional)","label","","leer = Name der Entity")}
         ${"button"===e.config?.kind?e.icon("Icon (optional)","icon"):j}
-        ${"button"===e.config?.kind?Ri(e,!1,"An = vor dem Ausschalten kommt eine Rückfrage."):j}
+        ${"button"===e.config?.kind?Fi(e,!1,"An = vor dem Ausschalten kommt eine Rückfrage."):j}
       `}
-`)(new Pi({hass:this.hass,config:(Array.isArray(t.entries)?t.entries:[])[i]||{},update:t=>this._updateEntry(e,i,t),idPrefix:`slot${e}e${i}`,stash:this._stash})));case"hidden":return I`<small>Dieser Slot wird nicht angezeigt; die anderen rücken nach.</small>`;default:return(e=>I`
+`)(new Li({hass:this.hass,config:(Array.isArray(t.entries)?t.entries:[])[i]||{},update:t=>this._updateEntry(e,i,t),idPrefix:`slot${e}e${i}`,stash:this._stash})));case"hidden":return I`<small>Dieser Slot wird nicht angezeigt; die anderen rücken nach.</small>`;default:return(e=>I`
   ${e.text("Überschrift (optional)","title","","z.B. Platzhalter")}
   ${e.text("Hinweistext (optional)","hint","","")}
-`)(i)}}render(){if(!this._config)return j;const e=this._config.hero||{},t=this._config.frame||{},i=new Pi({hass:this.hass,config:e,defaults:at(e.shape),update:e=>this._updateHero(e),idPrefix:"hero",stash:this._stash}),n=new Pi({hass:this.hass,config:t,update:e=>this._updateFrame(e),idPrefix:"frame",stash:this._stash}),r=this._slots();return I`
+`)(i)}}render(){if(!this._config)return j;const e=this._config.hero||{},t=this._config.frame||{},i=new Li({hass:this.hass,config:e,defaults:ot(e.shape),update:e=>this._updateHero(e),idPrefix:"hero",stash:this._stash}),n=new Li({hass:this.hass,config:t,update:e=>this._updateFrame(e),idPrefix:"frame",stash:this._stash}),r=this._slots();return I`
       <div class="editor">
         <div class="kopf-reihe">${this._renderAnsicht()} ${this._renderKiosk()}</div>
         <div class="step-head">Schritt 1 — Becken</div>
@@ -2980,7 +3038,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
             ${i.toggle("Becken anzeigen","enabled",!0)}
             ${!1===e.enabled?j:this._renderMiniWahl(e,"hero",e=>this._updateHero(e))}
             ${!1===e.enabled?j:(e=>I`
-  ${Mi(I`
+  ${Ki(I`
     ${e.element("🌡 Thermometer","show_thermo",["temp_entity","thermo_scale","thermo_top","thermo_left"])}
     ${e.element("🧪 pH-Kästchen","show_ph",["ph_entity","ph_top","ph_left"])}
     ${e.element("⚗ Redox / RX-Kästchen","show_rx",["rx_entity","rx_top","rx_left"])}
@@ -2990,40 +3048,40 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   `)}
   ${e.select("Beckenform","shape",Object.entries($e).map(([e,t])=>[e,t.label]),"oval")}
   ${e.shown("show_thermo")?I`
-        ${e.entity("Wassertemperatur","temp_entity","Zeigt das Thermometer auf der Wasserfläche.",...Oi)}
-        ${Ti("Thermometer — Position",I`
+        ${e.entity("Wassertemperatur","temp_entity","Zeigt das Thermometer auf der Wasserfläche.",...Vi)}
+        ${Wi("Thermometer — Position",I`
             ${e.slider("Größe","thermo_scale",50,200)}
             ${e.slider("Von oben","thermo_top",0,100,"%",.5)}
             ${e.slider("Von links","thermo_left",0,100,"%",.5)}
           `)}
       `:j}
   ${e.shown("show_ph")?I`
-        ${e.entity("pH-Wert","ph_entity","Kästchen auf der Beckenwand.",...Oi)}
-        ${Ti("pH — Position",I`
+        ${e.entity("pH-Wert","ph_entity","Kästchen auf der Beckenwand.",...Vi)}
+        ${Wi("pH — Position",I`
             ${e.slider("Von oben","ph_top",0,100,"%",.5)}
             ${e.slider("Von links","ph_left",0,100,"%",.5)}
           `)}
       `:j}
   ${e.shown("show_rx")?I`
-        ${e.entity("Redox / RX","rx_entity","Kästchen auf der Beckenwand.",...Oi)}
-        ${Ti("RX — Position",I`
+        ${e.entity("Redox / RX","rx_entity","Kästchen auf der Beckenwand.",...Vi)}
+        ${Wi("RX — Position",I`
             ${e.slider("Von oben","rx_top",0,100,"%",.5)}
             ${e.slider("Von links","rx_left",0,100,"%",.5)}
           `)}
       `:j}
-  ${Hi(e,"Skimmer","skimmer","show_skimmer",!0)}
-  ${Hi(e,"Einlaufdüse","inlet","show_inlet",!0)}
+  ${ji(e,"Skimmer","skimmer","show_skimmer",!0)}
+  ${ji(e,"Einlaufdüse","inlet","show_inlet",!0)}
   ${e.shown("show_inlet",!0)?I`
-        ${e.entity("Temperatur am Einlauf (optional)","inlet_temp_entity","Kleines Kästchen neben der Düse — zeigt, was gerade ins Becken läuft.",...Oi)}
-        ${e.raw("inlet_temp_entity")?Ti("Einlauf-Temperatur — Position",I`
+        ${e.entity("Temperatur am Einlauf (optional)","inlet_temp_entity","Kleines Kästchen neben der Düse — zeigt, was gerade ins Becken läuft.",...Vi)}
+        ${e.raw("inlet_temp_entity")?Wi("Einlauf-Temperatur — Position",I`
                 ${e.slider("Von oben","inlet_temp_top",0,100,"%",.5)}
                 ${e.slider("Von links","inlet_temp_left",0,100,"%",.5)}
                 <small>Ohne eigene Werte sitzt das Kästchen automatisch neben der Düse.</small>
               `):j}
       `:j}
-  ${Hi(e,"Bodenablauf","drain","show_drain",!1)}
+  ${ji(e,"Bodenablauf","drain","show_drain",!1)}
   ${e.text("Freitext auf dem Becken (optional)","label_text","","z.B. Pool")}
-  ${e.raw("label_text")?Ti("Freitext — Darstellung",I`
+  ${e.raw("label_text")?Wi("Freitext — Darstellung",I`
           ${e.slider("Größe","label_scale",50,200)}
           ${e.slider("Von oben","label_top",0,100,"%",.5)}
           ${e.slider("Von links","label_left",0,100,"%",.5)}
@@ -3089,7 +3147,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           Schriftfarbe. Transparent nimmt den Hintergrund des HA-Themes.
         </small>
       </div>
-    `}static styles=[Li]}customElements.define("tomtut-pool-dashboard-editor",Gi),
+    `}static styles=[Oi]}customElements.define("tomtut-pool-dashboard-editor",Qi),
 /*!
  * tomtut-pool-cards.js — Lovelace-Sammlung für Pool-Dashboards
  *
@@ -3100,4 +3158,4 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
  * Entities. Die Bilder liegen im Repo unter dist/ und werden von HACS nach
  * www/community/tomtut-pool-cards/ kopiert.
  */
-window.customCards=window.customCards||[],window.customCards.push({type:"tomtut-pool-dashboard",name:"TomTuT Pool Dashboard",description:"Pool-Becken mit Live-Werten plus Kästen für Wärmepumpe, Poolpumpe und eigene Werte — beliebige Entities, keine Integration nötig",preview:!0,documentationURL:"https://github.com/TomTuTHub/tomtut-pool-cards"});export{ei as ANSICHTEN,ti as ANSICHT_DEFAULT,Pe as ASSET_VERSION,ke as BECKEN_RATIOS,Oe as BLOCK_FARBEN,Gt as CUSTOM_LAYOUTS,Ut as CUSTOM_LAYOUT_DEFAULT,jt as CUSTOM_MAX_ENTRIES,ze as DEVICE_IMAGES,Ee as DEVICE_RATIOS,Ae as DEVICE_VARIANTS,Je as FAN_DESIGNS,Ye as FAN_DESIGN_DEFAULT,Be as FLOW_MARKERS,Kt as GLOW_PULSE_MAX,je as GROESSE_MAX,Fe as GROESSE_MIN,wt as HEATPUMP_DEFAULTS,ot as HERO_DEFAULTS,Se as HERO_SPRITES,$t as HP_MODES,st as INLET_TEMP_VERSATZ,ct as KIOSK_BECKEN,ri as MINI_LEER,si as MINI_MAX_SPALTEN,ni as MINI_TYPEN,mi as MINI_WERTE,fi as MINI_WERTE_EMPFOHLEN,vt as MODE_FARBEN,At as MODE_WOERTER,ut as PUMP_DEFAULTS,$e as SHAPES,Ke as SLOT_GRAU,We as SLOT_TYPES,De as SLOT_TYPE_GROUPS,Dt as SOLAR_DEFAULTS,Ci as TomtutPoolDashboardCard,Gi as TomtutPoolDashboardEditor,Wt as UV_DEFAULTS,ii as ansichtVon,ji as applyPatch,Ue as bildTransform,Xt as customEintraege,qt as customLayout,gt as fanDuration,Ot as glowPulsWerte,Ge as groesseFaktor,at as heroDefaultsFor,Te as imagePath,pi as kachelName,pt as kioskGilt,ht as kioskSchluessel,yi as miniBecken,zi as miniDichte,vi as miniKachel,wi as miniSichtbar,oi as miniSpalten,bi as miniWahl,zt as modeAuto,Pt as modeBadge,St as modeFromState,Ct as modeWort,Mt as modusWahl,Re as normGrad,he as numOf,be as numText,Ie as passFaktor,me as seit,fe as seitMinuten,xe as shapeRatio,Ne as slotFarbe,Ve as slotTypeOptions,mt as stageFromWatt,ue as toWatt};
+window.customCards=window.customCards||[],window.customCards.push({type:"tomtut-pool-dashboard",name:"TomTuT Pool Dashboard",description:"Pool-Becken mit Live-Werten plus Kästen für Wärmepumpe, Poolpumpe und eigene Werte — beliebige Entities, keine Integration nötig",preview:!0,documentationURL:"https://github.com/TomTuTHub/tomtut-pool-cards"});export{ni as ANSICHTEN,ri as ANSICHT_DEFAULT,Pe as ASSET_VERSION,ke as BECKEN_RATIOS,Oe as BLOCK_FARBEN,Qt as CUSTOM_LAYOUTS,Xt as CUSTOM_LAYOUT_DEFAULT,Zt as CUSTOM_MAX_ENTRIES,ze as DEVICE_IMAGES,Ee as DEVICE_RATIOS,Ae as DEVICE_VARIANTS,Je as FAN_DESIGNS,Ye as FAN_DESIGN_DEFAULT,Be as FLOW_MARKERS,Nt as GLOW_PULSE_MAX,je as GROESSE_MAX,Fe as GROESSE_MIN,wt as HEATPUMP_DEFAULTS,at as HERO_DEFAULTS,Se as HERO_SPRITES,$t as HP_MODES,st as INLET_TEMP_VERSATZ,ct as KIOSK_BECKEN,oi as MINI_LEER,li as MINI_MAX_SPALTEN,ai as MINI_TYPEN,_i as MINI_WERTE,bi as MINI_WERTE_EMPFOHLEN,vt as MODE_FARBEN,At as MODE_WOERTER,ut as PUMP_DEFAULTS,$e as SHAPES,Ke as SLOT_GRAU,We as SLOT_TYPES,De as SLOT_TYPE_GROUPS,Rt as SOLAR_DEFAULTS,Mi as TomtutPoolDashboardCard,Qi as TomtutPoolDashboardEditor,Ot as UV_DEFAULTS,si as ansichtVon,Zi as applyPatch,Ue as bildTransform,Yt as customEintraege,ei as customLayout,gt as fanDuration,Dt as glowPulsWerte,Ge as groesseFaktor,ot as heroDefaultsFor,Te as imagePath,fi as kachelName,pt as kioskGilt,ht as kioskSchluessel,Wt as klimaAus,Lt as klimaEntity,zi as miniBecken,Ei as miniDichte,xi as miniKachel,yi as miniSichtbar,ci as miniSpalten,vi as miniWahl,zt as modeAuto,Pt as modeBadge,St as modeFromState,Ct as modeWort,Mt as modusWahl,Re as normGrad,he as numOf,be as numText,Ie as passFaktor,me as seit,fe as seitMinuten,xe as shapeRatio,Ne as slotFarbe,Ve as slotTypeOptions,Ht as solarAktiv,mt as stageFromWatt,ue as toWatt};

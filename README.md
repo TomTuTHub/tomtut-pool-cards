@@ -259,6 +259,11 @@ im 2er-Raster. Leere Rahmen und ausgeblendete Slots entfallen. Pro Kachel:
 | `uv` | An/Aus + Watt (ohne Leistungssensor: nur An/Aus) |
 | `custom` | erster Eintrag: Wert + Name |
 
+Der Punkt oben rechts: grün = läuft, rot = aus, grau = unbekannt bzw. kein Schalter. Die
+Wärmepumpe gilt als aus, sobald ihre `climate`-Entity `off` ist — auch wenn die Steckdose Strom
+gibt (dieselbe Regel im vollen Kasten: Modus-Badge „Aus", Rad steht, Powerbutton bernstein mit
+„Strom an / WP aus"). Die Solarheizung nimmt `active_entity` (z.B. Ventil-Rückmeldung), falls
+gesetzt — eine eingeschaltete Solarsteuerung kann auch auf Bypass stehen.
 Ein fehlender Wert (unknown/unavailable) erscheint als „–". Tipp auf eine Kachel oder das
 Becken öffnet den vollen Kasten als Dialog über allem (Schließen per ✕, Tipp daneben oder Esc).
 Kästen im Kiosk bleiben auch dort reine Anzeige.
@@ -504,6 +509,7 @@ Entities sind optional; es reicht eine.
 | `label` | – | Überschrift über dem Bild |
 | `switch_entity` | – | Solarventil oder Solarpumpe → Powerbutton (`switch`, `input_boolean`, `light`) |
 | `confirm_off` | `true` | Vor dem Ausschalten nachfragen. `false` = sofort aus |
+| `active_entity` | – | Läuft das Wasser gerade übers Feld? (z.B. `binary_sensor` Ventil „AN“). Bestimmt den Zustand in der Mini-Ansicht; ohne Angabe zählt `switch_entity` |
 | `temp_in_entity` | – | Vorlauf (Wasser zum Absorber) → Thermometer am Zulauf **links unten**, beim blauen Pfeil |
 | `temp_out_entity` | – | Rücklauf (Wasser zurück ins Becken) → Thermometer am Ablauf **rechts oben**, beim roten Pfeil |
 | `power_entity` | – | Leistung der Solarpumpe in W oder kW → Watt-Box |

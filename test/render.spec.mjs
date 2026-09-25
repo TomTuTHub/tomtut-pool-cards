@@ -1326,7 +1326,8 @@ await checkAsync("It16 hell: --tt-deck ist unsichtbar, Alles-Config pixelgleich 
  * kein Wert abgeschnitten (kein Ellipsis), alles in seiner Kachel, keine
  * Überlappung, Kontrast >= 4,5:1, deckende Kacheln im Dunkeln.
  */
-const I17_MAX_500 = 290;
+/* Iteration 18: nicht höher als Thomas' Original (282) */
+const I17_MAX_500 = 282;
 const I17_MAX_380 = 400;
 const I17_THEMES = {
   hell: I16_THEMES.hell,
@@ -1350,9 +1351,9 @@ const I17_THEMES = {
   },
 };
 
-const i17Bauen = (pg, breite, theme, extra = {}) =>
+const i17Bauen = (pg, breite, theme, extra = {}, zustaende = {}) =>
   pg.evaluate(
-    async ({ breite, theme, extra }) => {
+    async ({ breite, theme, extra, zustaende }) => {
       document.body.innerHTML = "";
       document.body.style.cssText = `margin:0;padding:20px;background:${theme.seite};min-height:100vh`;
       const buehne = document.createElement("div");
@@ -1367,6 +1368,7 @@ const i17Bauen = (pg, breite, theme, extra = {}) =>
         states: {
           ...window.demo.DEMO_HASS.states,
           "input_select.wp_modus_heizen": { state: "Heizen Smart", attributes: {}, last_changed: new Date().toISOString() },
+          ...zustaende,
         },
       };
       buehne.appendChild(card);
@@ -1439,7 +1441,7 @@ const i17Bauen = (pg, breite, theme, extra = {}) =>
         kaputt,
       };
     },
-    { breite, theme, extra }
+    { breite, theme, extra, zustaende }
   );
 
 const i17Masse = {};
@@ -1492,6 +1494,63 @@ for (const [themeName, theme] of Object.entries(I17_THEMES)) {
     await page.locator("#buehne").screenshot({ path: join(ausgabe, `it17-mini-voll-${breite}.png`), animations: "disabled" });
   }
 }
+/* Iteration 18: Kopf mit unknown-Temperatur + WP im Standby */
+await checkAsync("It18 Mini 500 px, Liquid Glass, Temperatur unknown + WP climate off: dezent, <= 282 px", async () => {
+  const m = await i17Bauen(page, 500, I17_THEMES["Liquid Glass"], {}, {
+    "sensor.pool_wassertemperatur": { state: "unknown", attributes: { unit_of_measurement: "°C" } },
+    "climate.waermepumpe": { state: "off", attributes: { temperature: 32, current_temperature: 23.6 } },
+  });
+  assert.deepEqual(m.befunde, []);
+  assert.ok(m.hoehe <= I17_MAX_500, `${m.hoehe} px`);
+  assert.equal(m.temp, undefined, "großer Temperatur-Kasten trotz unknown");
+  assert.deepEqual(m.texte[0], ["Aus", "1840 W"]);
+  results.push(`       It18 unknown/Standby 500 px: Card ${m.breite}x${m.hoehe} px, Kopf ${m.kopfHoehe} px`);
+});
+await page.locator("#buehne").screenshot({ path: join(ausgabe, "it18-mini-leer.png"), animations: "disabled" });
+
+for (const breite of [536, 380]) {
+  await checkAsync(`It18 WP-Kasten ${breite} px, Standby: Hinweis 'Strom an / WP aus' im Bild, überlappt nichts`, async () => {
+    const r = await page.evaluate(async (breite) => {
+      document.body.innerHTML = `<div id="buehne" style="width:${breite}px"></div>`;
+      const card = document.createElement("tomtut-pool-dashboard");
+      const wp = window.demo.miniConfig().slots[0];
+      card.setConfig({ hero: { enabled: false }, slots: [{ ...wp, label_text: "Wärmepumpe" }] });
+      card.hass = {
+        ...window.demo.DEMO_HASS,
+        states: { ...window.demo.DEMO_HASS.states, "climate.waermepumpe": { state: "off", attributes: { temperature: 32, current_temperature: 23.6 } } },
+      };
+      document.getElementById("buehne").appendChild(card);
+      await card.updateComplete;
+      const slot = card.shadowRoot.querySelector("tomtut-pool-slot-heatpump");
+      await slot.updateComplete;
+      await Promise.all([...slot.shadowRoot.querySelectorAll("img")].map((i) => (i.complete ? null : new Promise((f) => (i.onload = i.onerror = f)))));
+      await new Promise((f) => requestAnimationFrame(() => requestAnimationFrame(f)));
+      const sr = slot.shadowRoot;
+      const R = (e) => e.getBoundingClientRect();
+      const h = sr.querySelector(".power-hinweis");
+      const hr = R(h);
+      const bild = R(sr.querySelector(".img-wrap"));
+      const ueber = (a, b) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+      const kollision = [...sr.querySelectorAll(".label-badge, .value-box, .mode-badge, .release-badge, .thermo")]
+        .filter((e) => ueber(hr, R(e)))
+        .map((e) => e.className);
+      return {
+        drin: hr.left >= bild.left && hr.right <= bild.right && hr.top >= bild.top && hr.bottom <= bild.bottom,
+        kollision,
+        text: h.textContent,
+        badge: sr.querySelector(".mode-badge .val").textContent.trim(),
+        knopf: sr.querySelector(".power-badge").className,
+      };
+    }, breite);
+    assert.ok(r.drin, "Hinweis ragt aus dem Bild");
+    assert.deepEqual(r.kollision, []);
+    assert.match(r.text, /Strom an\s*WP aus/);
+    assert.equal(r.badge, "Aus");
+    assert.match(r.knopf, /standby/);
+  });
+  await page.locator("#buehne").screenshot({ path: join(ausgabe, `it18-wp-standby-${breite}.png`), animations: "disabled" });
+}
+
 check("It17 Mini: Pooltemperatur mit Wert", () => assert.equal(i17Masse["500-hell"]?.temp, "24,6 °C"));
 /* ab hier: 500 px in Liquid Glass (Studio-Tablet) */
 await i17Bauen(page, 500, I17_THEMES["Liquid Glass"]);
@@ -1500,9 +1559,11 @@ await checkAsync("It17 Mini: unknown -> '–' im Browser", async () => {
     const card = document.querySelector("tomtut-pool-dashboard");
     card.hass = { ...card.hass, states: { ...card.hass.states, "sensor.pool_wassertemperatur": { state: "unknown", attributes: { unit_of_measurement: "°C" } } } };
     await card.updateComplete;
-    return card.shadowRoot.querySelector(".m-temp-wert").textContent;
+    const el = card.shadowRoot.querySelector(".m-temp.leer");
+    return el ? el.textContent.replace(/\s+/g, "") : null;
   });
-  assert.equal(t, "–");
+  /* seit Iteration 18 dezent statt großer Kasten */
+  assert.equal(t, "Wasser–");
 });
 
 /*

@@ -228,15 +228,28 @@ export class SlotBase extends LitElement {
     `;
   }
 
-  renderPowerButton({ on, top, left, scale }) {
+  /*
+   * standby (Iteration 18, Wärmepumpe): Steckdose an, Gerät aber per
+   * climate aus — Knopf bernsteinfarben statt grün plus Hinweis daneben,
+   * damit "Steckdose an, WP aus" lesbar ist. Der Knopf schaltet weiter die
+   * Steckdose.
+   */
+  renderPowerButton({ on, top, left, scale, standby = false }) {
     return html`
       <div
-        class="power-badge ${on ? "on" : "off"}"
+        class="power-badge ${on ? "on" : "off"} ${standby ? "standby" : ""}"
         style="top:${top}%; left:${left}%; transform:scale(${(scale ?? 100) / 100});"
-        title="${on ? "Ausschalten (mit Rückfrage)" : "Einschalten"}"
+        title="${standby
+          ? "Steckdose an, Wärmepumpe aus (Standby) — Steckdose ausschalten (mit Rückfrage)"
+          : on
+          ? "Ausschalten (mit Rückfrage)"
+          : "Einschalten"}"
         @click="${this._onPowerClick}"
       >
         <ha-icon icon="mdi:power"></ha-icon>
+        ${standby
+          ? html`<span class="power-hinweis"><b>Strom an</b><span>WP aus</span></span>`
+          : nothing}
       </div>
     `;
   }

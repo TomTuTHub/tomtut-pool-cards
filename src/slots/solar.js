@@ -2,7 +2,7 @@ import { html, css, nothing } from "lit";
 import { SlotBase } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { FLOW_MARKERS, imagePath } from "../shared/assets.js";
-import { numText } from "../shared/util.js";
+import { numText, isOn } from "../shared/util.js";
 
 /*
  * Slot "solar" — Solarabsorber / Solarheizung.
@@ -61,6 +61,24 @@ export const SOLAR_DEFAULTS = {
   power_scale: 100,
   power_box: true,
   power_label: true,
+};
+
+/*
+ * Läuft die Solarheizung gerade (Iteration 18)? Mit `active_entity`
+ * (z.B. binary_sensor "Motorventil AN") zählt, ob das Wasser tatsächlich
+ * übers Feld läuft — eine eingeschaltete Solarsteuerung kann auch auf
+ * Bypass stehen. Ohne sie: der Schalter. Rückgabe true/false, null =
+ * unbekannt oder nichts konfiguriert.
+ */
+export const solarAktiv = (c = {}, hass) => {
+  for (const id of [c.active_entity, c.switch_entity]) {
+    if (!id) continue;
+    const e = hass?.states?.[id];
+    const s = String(e?.state ?? "").toLowerCase();
+    if (!e || ["", "unknown", "unavailable"].includes(s)) return null;
+    return isOn(s);
+  }
+  return null;
 };
 
 export const solarHasEntity = (c = {}) =>

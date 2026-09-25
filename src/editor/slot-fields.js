@@ -891,6 +891,15 @@ export const solarFields = (f) => html`
     drei Absorbern; der blaue Pfeil links unten ist der Zulauf, der rote rechts oben der Rücklauf.
   </small>
   ${f.text("Überschrift (optional)", "label", "", "z.B. Solarheizung")}
+  ${f.entity(
+    "Läuft gerade? (optional)",
+    "active_entity",
+    "Z.B. Ventil-Rückmeldung „AN“: an = Wasser läuft übers Feld. Bestimmt den Zustand in der Mini-Ansicht; ohne Angabe zählt der Schalter.",
+    "binary_sensor",
+    "switch",
+    "input_boolean",
+    "sensor"
+  )}
   ${f.shown("show_power_button")
     ? html`
         ${f.entity(

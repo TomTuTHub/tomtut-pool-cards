@@ -2,6 +2,7 @@ import { html, css, nothing, unsafeCSS } from "lit";
 import { TomtutPoolHero } from "./hero.js";
 import { TomtutPoolSlotPump, pumpHasEntity } from "./slots/pump.js";
 import { TomtutPoolSlotHeatpump, MODE_FARBEN } from "./slots/heatpump.js";
+import { solarAktiv } from "./slots/solar.js";
 import { customEintraege, DOMAIN_ICONS, TOGGLE_DOMAINS } from "./slots/custom.js";
 import { thermoGrafik } from "./shared/slot-base.js";
 import { kioskGilt, KIOSK_BECKEN } from "./shared/kiosk.js";
@@ -285,12 +286,9 @@ export const miniKachel = (slotRoh = {}, hass) => {
       const frei = w._freigabe;
       k.gesperrt = frei === false;
       const sw = slot.switch_entity;
-      /* Steckdose an, Gerät per climate aus (Standby) = für die Kachel "Aus" —
-         so zeigt es auch das Bedienteil der Wärmepumpe */
-      const klima = [slot.mode_entity, slot.target_entity, slot.current_entity].find(
-        (id) => String(id || "").startsWith("climate.") && da(id)
-      );
-      const klimaAus = !!klima && String(hass.states[klima].state).toLowerCase() === "off";
+      /* climate aus = Aus, dieselbe Regel wie im vollen Kasten (klimaAus) */
+      const klimaAus = w._klimaAus;
+      const klima = klimaAus || [slot.mode_entity, slot.target_entity, slot.current_entity].some((id) => String(id || "").startsWith("climate."));
       const laeuft = !klimaAus && (da(sw) ? an(sw) : w._fanActive);
       k.zustand = k.gesperrt
         ? "gesperrt"
@@ -329,8 +327,8 @@ export const miniKachel = (slotRoh = {}, hass) => {
 
     case "solar": {
       k.bild = geraeteBild("solar");
-      const sw = slot.switch_entity;
-      if (da(sw)) k.zustand = an(sw) ? "an" : "aus";
+      const aktiv = solarAktiv(slot, hass);
+      if (aktiv !== null) k.zustand = aktiv ? "an" : "aus";
       werte = {
         vorlauf: () => z(wert(hass, slot.temp_in_entity), { pfeil: "in" }),
         ruecklauf: () => z(wert(hass, slot.temp_out_entity), { pfeil: "out" }),
@@ -462,9 +460,13 @@ const renderKopf = (card, b) => html`
       )}
     </div>
     <div class="m-werte">
-      ${b.temp !== null
-        ? html`<div class="m-temp">${thermoGrafik}<span class="m-temp-wert">${b.temp}</span></div>`
-        : nothing}
+      ${b.temp === null
+        ? nothing
+        : b.temp === MINI_LEER
+        ? html`<div class="m-temp leer" title="Wassertemperatur: kein Wert">
+            ${thermoGrafik}<span class="m-temp-leer"><span class="m-temp-key">Wasser</span>${MINI_LEER}</span>
+          </div>`
+        : html`<div class="m-temp">${thermoGrafik}<span class="m-temp-wert">${b.temp}</span></div>`}
       ${b.chips.length
         ? html`<div class="m-chips">
             ${b.chips.map(
@@ -505,7 +507,7 @@ const renderKachel = (card, k, nr) => html`
     @click="${() => card._miniOeffnen(nr)}"
     @keydown="${taste(() => card._miniOeffnen(nr))}"
   >
-    ${k.zustand === "neutral" ? nothing : html`<span class="k-status"></span>`}
+    <span class="k-status" title="${{ an: "an", aus: "aus", gesperrt: "gesperrt" }[k.zustand] || "unbekannt"}"></span>
     <div class="k-innen">
       <div class="k-bild">
         ${k.bild
@@ -615,11 +617,12 @@ export const miniStyles = css`
     line-height: 1.2;
   }
 
-  /* ---- Kopf: Becken + Werte ---- */
+  /* ---- Kopf: Becken + Werte (Iteration 18: Becken größer, Werte füllen
+     die Spalte — Temperatur als breiter Block, pH/RX/Zulauf als 2er-Raster) ---- */
   .m-kopf {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     min-width: 0;
     border-radius: 10px;
     cursor: pointer;
@@ -628,7 +631,7 @@ export const miniStyles = css`
   .m-becken {
     position: relative;
     flex: 0 0 auto;
-    width: min(58%, calc(128px * var(--r)));
+    width: min(62%, calc(150px * var(--r)));
     aspect-ratio: var(--r);
   }
   .m-becken > img {
@@ -650,46 +653,69 @@ export const miniStyles = css`
     min-width: 0;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: center;
-    gap: 8px;
+    gap: 5px;
   }
   .m-temp {
     display: flex;
     align-items: center;
     gap: 6px;
     line-height: 1;
-    max-width: 100%;
+    min-width: 0;
   }
   .m-temp svg {
     flex: none;
-    height: clamp(34px, 9.5cqw, 46px);
+    height: clamp(28px, 7.6cqw, 36px);
     width: auto;
     display: block;
     filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
   }
   .m-temp-wert {
-    font-size: clamp(19px, 5.8cqw, 28px);
+    flex: 1 1 auto;
+    text-align: center;
+    font-size: clamp(18px, 5cqw, 24px);
     font-weight: 800;
     white-space: nowrap;
-    padding: 0.14em 0.42em;
+    padding: 0.1em 0.3em;
     border-radius: 0.4em;
     background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
     color: var(--tt-box-fg);
     border: 1px solid var(--tt-line);
+    font-variant-numeric: tabular-nums;
   }
-  .m-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    max-width: 100%;
+  /* kein Wert: dezent, ohne großen leeren Kasten */
+  .m-temp.leer svg {
+    height: clamp(26px, 7cqw, 34px);
+    opacity: 0.75;
   }
-  .m-chip {
+  .m-temp-leer {
     display: inline-flex;
     align-items: baseline;
+    gap: 6px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--tt-fg);
+  }
+  .m-temp-key {
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.75;
+  }
+  /* Werte als kleine Tabelle untereinander: Schlüssel links, Wert rechts */
+  .m-chips {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+  .m-chip {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
     gap: 4px;
-    padding: 3px 8px;
-    border-radius: 8px;
+    min-width: 0;
+    padding: 2px 9px;
+    border-radius: 7px;
     border: 1px solid var(--tt-line);
     background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
     color: var(--tt-box-fg);
@@ -704,6 +730,7 @@ export const miniStyles = css`
   .m-chip-wert {
     font-size: 14px;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
 
   /* ---- Kacheln ---- */
@@ -754,7 +781,7 @@ export const miniStyles = css`
   .k-bild {
     position: relative;
     width: 100%;
-    height: 64px;
+    height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -888,6 +915,9 @@ export const miniStyles = css`
   }
   .kachel.gesperrt .k-status {
     background: #c62828;
+  }
+  .kachel.neutral .k-status {
+    background: var(--tt-line);
   }
   .k-sperre {
     position: absolute;
