@@ -20,36 +20,14 @@ import { css } from "lit";
  *
  * transparent = Theme-Hintergrund von Home Assistant, Schrift folgt dem Theme.
  */
-export const frameStyles = css`
-  /*
-   * Eigener Stacking-Context je Card/Slot.
-   *
-   * Ohne ihn steigen die z-index-Werte der Overlays (Kaestchen, Thermometer,
-   * Powerbutton, Sprites, Pfeile) in den Stapel der Home-Assistant-Oberflaeche
-   * auf und legen sich beim Scrollen ueber die Kopfleiste. isolation:isolate
-   * sperrt sie ein: innen zaehlt die Reihenfolge 1-5, nach aussen ist die
-   * ganze Card ein einziges Element auf z-index 0 — unter der Kopfleiste.
-   */
-  :host {
-    display: block;
-    height: 100%;
-    position: relative;
-    isolation: isolate;
-    z-index: 0;
-  }
+/*
+ * Die Füllungs-Tokens allein (Iteration 17 herausgelöst): frameStyles bindet
+ * sie unverändert ein, die Mini-Ansicht der Card nutzt sie ohne das
+ * Slot-Layout. Selektoren und Reihenfolge sind dieselben wie vorher — das
+ * Ergebnis ist pixelgleich.
+ */
+export const fillTokens = css`
   .slot {
-    position: relative;
-    box-sizing: border-box;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px;
-    border-radius: 18px;
-    border: 2px solid transparent;
-    background: var(--tt-bg);
-    color: var(--tt-fg);
     --tt-bg: transparent;
     --tt-fg: var(--primary-text-color, #111);
     --tt-line: rgba(127, 127, 127, 0.55);
@@ -92,6 +70,40 @@ export const frameStyles = css`
     --tt-box-bg: rgba(30, 30, 30, 0.9);
     --tt-box-fg: #ffffff;
   }
+`;
+
+export const frameStyles = css`
+  /*
+   * Eigener Stacking-Context je Card/Slot.
+   *
+   * Ohne ihn steigen die z-index-Werte der Overlays (Kaestchen, Thermometer,
+   * Powerbutton, Sprites, Pfeile) in den Stapel der Home-Assistant-Oberflaeche
+   * auf und legen sich beim Scrollen ueber die Kopfleiste. isolation:isolate
+   * sperrt sie ein: innen zaehlt die Reihenfolge 1-5, nach aussen ist die
+   * ganze Card ein einziges Element auf z-index 0 — unter der Kopfleiste.
+   */
+  :host {
+    display: block;
+    height: 100%;
+    position: relative;
+    isolation: isolate;
+    z-index: 0;
+  }
+  .slot {
+    position: relative;
+    box-sizing: border-box;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 18px;
+    border: 2px solid transparent;
+    background: var(--tt-bg);
+    color: var(--tt-fg);
+  }
+  ${fillTokens}
   .slot.framed {
     border-color: var(--tt-line);
   }

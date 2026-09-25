@@ -24,10 +24,10 @@ import { hasHaElement } from "../shared/ha-elements.js";
 export const CUSTOM_MAX_ENTRIES = 8;
 export const CUSTOM_LAYOUTS = ["klassisch", "liste", "kacheln"];
 export const CUSTOM_LAYOUT_DEFAULT = "klassisch";
-const TOGGLE_DOMAINS = ["switch", "light", "input_boolean", "fan", "siren"];
+export const TOGGLE_DOMAINS = ["switch", "light", "input_boolean", "fan", "siren"];
 
 /* Fallback-Icons, wenn weder `icon` gesetzt ist noch ha-state-icon existiert */
-const DOMAIN_ICONS = {
+export const DOMAIN_ICONS = {
   switch: "mdi:toggle-switch-variant",
   input_boolean: "mdi:toggle-switch-outline",
   light: "mdi:lightbulb",

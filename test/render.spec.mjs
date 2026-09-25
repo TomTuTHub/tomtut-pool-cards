@@ -1314,6 +1314,271 @@ await checkAsync("It16 hell: --tt-deck ist unsichtbar, Alles-Config pixelgleich 
   assert.ok(mit.equals(ohne), "helles Theme sieht mit Unterlage anders aus");
 });
 
+/* ------------------------------------------------------------------ */
+/* Iteration 17: Mini-Ansicht (view: mini) fürs Studio-Tablet          */
+/* ------------------------------------------------------------------ */
+/*
+ * Zusage: Becken + 4 Geräte passen bei 500 px Kartenbreite in <= 290 px
+ * Höhe — Thomas' handgebautes Kästchen auf dem Studio-Tablet (Lenovo Tab M9,
+ * 1340 × 800, dpr 1, Theme "Liquid Glass") ist 500 × 282. Bei 380 px darf
+ * es höher werden (2er-Raster), muss aber lesbar bleiben. Gemessen in
+ * hellem Theme und in Liquid Glass (Variablen 1:1 vom Dev-HA); dazu:
+ * kein Wert abgeschnitten (kein Ellipsis), alles in seiner Kachel, keine
+ * Überlappung, Kontrast >= 4,5:1, deckende Kacheln im Dunkeln.
+ */
+const I17_MAX_500 = 290;
+const I17_MAX_380 = 400;
+const I17_THEMES = {
+  hell: I16_THEMES.hell,
+  "Liquid Glass": {
+    seite: "linear-gradient(180deg, #1a3a6b 0%, #0a1a35 50%, #020508 100%)",
+    vars: {
+      "--primary-text-color": "rgba(255, 255, 255, 0.96)",
+      "--secondary-text-color": "rgba(222, 222, 222, 0.96)",
+      "--primary-background-color": "rgb(18, 11, 25)",
+      "--secondary-background-color": "rgb(18, 11, 25)",
+      "--card-background-color": "rgb(18, 11, 25)",
+      "--ha-card-background": "rgba(0, 0, 0, 0.3)",
+      "--ha-card-border-radius": "34px",
+      "--ha-card-border-width": "0",
+      "--ha-card-backdrop-filter": "blur(8px)",
+      "--ha-card-box-shadow":
+        "3px 3px 0.5px -3.5px rgba(255, 255, 255, 0.30) inset, -2px -2px 0.5px -2px rgba(255, 255, 255, 0.30) inset, 0 0 8px 1px rgba(255, 255, 255, 0.10) inset, 0 0 2px 0 rgba(0, 0, 0, 0.10)",
+      "--divider-color": "rgba(152, 152, 157, 0.3)",
+      "--primary-color": "#FF9F0A",
+    },
+  },
+};
+
+const i17Bauen = (pg, breite, theme, extra = {}) =>
+  pg.evaluate(
+    async ({ breite, theme, extra }) => {
+      document.body.innerHTML = "";
+      document.body.style.cssText = `margin:0;padding:20px;background:${theme.seite};min-height:100vh`;
+      const buehne = document.createElement("div");
+      buehne.id = "buehne";
+      buehne.style.cssText = `width:${breite}px`;
+      for (const [k, v] of Object.entries(theme.vars)) document.body.style.setProperty(k, v);
+      document.body.appendChild(buehne);
+      const card = document.createElement("tomtut-pool-dashboard");
+      card.setConfig(window.demo.miniConfig(extra));
+      card.hass = {
+        ...window.demo.DEMO_HASS,
+        states: {
+          ...window.demo.DEMO_HASS.states,
+          "input_select.wp_modus_heizen": { state: "Heizen Smart", attributes: {}, last_changed: new Date().toISOString() },
+        },
+      };
+      buehne.appendChild(card);
+      await card.updateComplete;
+      const sr = card.shadowRoot;
+      const bilder = [...sr.querySelectorAll("img")];
+      await Promise.all(bilder.map((img) => (img.complete && img.naturalWidth ? null : new Promise((f) => { img.onload = img.onerror = f; }))));
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      const farbe = (t) => {
+        const m = String(t).match(/(rgba?|color)\(([^)]+)\)/);
+        if (!m) return null;
+        const [r, g, b, a = 1] = m[2].replace("srgb", "").split(/[ ,/]+/).filter(Boolean).map(Number);
+        const k = m[1] === "color" ? 255 : 1;
+        return { r: r * k, g: g * k, b: b * k, a };
+      };
+      const lum = ({ r, g, b }) => {
+        const f = (c) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+      };
+      const kontrast = (x, y) => {
+        const [h, d] = [lum(x), lum(y)].sort((m, n) => n - m);
+        return (h + 0.05) / (d + 0.05);
+      };
+      const R = (el) => el.getBoundingClientRect();
+      const karte = R(sr.querySelector("ha-card"));
+      const kopf = R(sr.querySelector(".m-kopf"));
+      const kacheln = [...sr.querySelectorAll(".kachel")];
+      const befunde = [];
+      const drin = (r, box, name) => {
+        if (r.left < box.left - 0.5 || r.right > box.right + 0.5 || r.top < box.top - 0.5 || r.bottom > box.bottom + 0.5)
+          befunde.push(`${name} ragt heraus`);
+      };
+      const ueber = (a, b) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+      for (const el of sr.querySelectorAll(".m-becken, .m-temp, .m-chip")) drin(R(el), kopf, el.className);
+      drin(kopf, karte, "Kopf");
+      let minKontrast = 99;
+      let deckAlpha = [];
+      kacheln.forEach((k, i) => {
+        const kr = R(k);
+        drin(kr, karte, `Kachel ${i + 1}`);
+        if (ueber(kr, kopf)) befunde.push(`Kachel ${i + 1} liegt über dem Kopf`);
+        kacheln.forEach((k2, j) => { if (j > i && ueber(kr, R(k2))) befunde.push(`Kachel ${i + 1}/${j + 1} überlappen`); });
+        for (const el of k.querySelectorAll(".k-bild, .k-zeile, .k-sperre, .k-status")) drin(R(el), kr, `Kachel ${i + 1} ${el.className}`);
+        for (const t of k.querySelectorAll(".k-text")) {
+          if (t.scrollWidth > t.clientWidth + 0.5) befunde.push(`Kachel ${i + 1}: "${t.textContent}" abgeschnitten`);
+        }
+        const cs = getComputedStyle(k);
+        const deck = farbe(cs.backgroundImage);
+        deckAlpha.push(deck ? deck.a : null);
+        const grund = deck && deck.a === 1 ? deck : farbe(cs.backgroundColor);
+        for (const z of k.querySelectorAll(".k-zeile")) {
+          const c = farbe(getComputedStyle(z).color);
+          if (grund && c) minKontrast = Math.min(minKontrast, kontrast(c, grund));
+        }
+      });
+      const kaputt = bilder.filter((b) => !b.naturalWidth).map((b) => b.src);
+      const r1 = (x) => Math.round(x * 10) / 10;
+      return {
+        breite: r1(karte.width),
+        hoehe: r1(karte.height),
+        kopfHoehe: r1(kopf.height),
+        kachelMasse: kacheln.map((k) => `${r1(R(k).width)}x${r1(R(k).height)}`),
+        reihen: new Set(kacheln.map((k) => Math.round(R(k).top))).size,
+        texte: kacheln.map((k) => [...k.querySelectorAll(".k-text")].map((t) => t.textContent)),
+        temp: sr.querySelector(".m-temp-wert")?.textContent,
+        minKontrast: r1(minKontrast),
+        deckAlpha,
+        befunde,
+        kaputt,
+      };
+    },
+    { breite, theme, extra }
+  );
+
+const i17Masse = {};
+for (const [themeName, theme] of Object.entries(I17_THEMES)) {
+  for (const breite of [500, 380]) {
+    await checkAsync(`It17 Mini ${breite} px, ${themeName}: passt, lesbar, nichts abgeschnitten`, async () => {
+      const m = await i17Bauen(page, breite, theme);
+      i17Masse[`${breite}-${themeName}`] = m;
+      assert.equal(m.breite, breite);
+      assert.equal(m.kachelMasse.length, 4, "nicht 4 Kacheln");
+      assert.deepEqual(m.kaputt, [], "Bild lädt nicht");
+      assert.deepEqual(m.befunde, []);
+      assert.ok(m.minKontrast >= 4.5, `Kontrast nur ${m.minKontrast}:1`);
+      if (breite === 500) {
+        assert.ok(m.hoehe <= I17_MAX_500, `${m.hoehe} px hoch (max ${I17_MAX_500})`);
+        assert.equal(m.reihen, 1, "bei 500 px nicht in einer Zeile");
+      } else {
+        assert.ok(m.hoehe <= I17_MAX_380, `${m.hoehe} px hoch (max ${I17_MAX_380})`);
+        assert.equal(m.reihen, 2, "bei 380 px kein 2er-Raster");
+      }
+      if (themeName !== "hell") assert.ok(m.deckAlpha.every((a) => a === 1), `Kacheln nicht deckend: ${m.deckAlpha}`);
+      assert.deepEqual(m.texte[0], ["Heizen Smart", "1840 W"]);
+      results.push(
+        `       gemessen ${breite} px ${themeName}: Card ${m.breite}x${m.hoehe} px (Kopf ${m.kopfHoehe}), Kacheln ${m.kachelMasse.join(" ")}, Kontrast min ${m.minKontrast}:1`
+      );
+    });
+    await page.locator("#buehne").screenshot({ path: join(ausgabe, `it17-mini-${breite}-${themeName.replace(/\W+/g, "-")}.png`), animations: "disabled" });
+  }
+}
+
+check("It17 Mini: Pooltemperatur mit Wert", () => assert.equal(i17Masse["500-hell"]?.temp, "24,6 °C"));
+/* ab hier: 500 px in Liquid Glass (Studio-Tablet) */
+await i17Bauen(page, 500, I17_THEMES["Liquid Glass"]);
+await checkAsync("It17 Mini: unknown -> '–' im Browser", async () => {
+  const t = await page.evaluate(async () => {
+    const card = document.querySelector("tomtut-pool-dashboard");
+    card.hass = { ...card.hass, states: { ...card.hass.states, "sensor.pool_wassertemperatur": { state: "unknown", attributes: { unit_of_measurement: "°C" } } } };
+    await card.updateComplete;
+    return card.shadowRoot.querySelector(".m-temp-wert").textContent;
+  });
+  assert.equal(t, "–");
+});
+
+/*
+ * Dialog: Tipp auf die WP-Kachel öffnet den vollen Kasten. Er muss über
+ * einer (simulierten) HA-Kopfleiste mit z-index 1000 liegen — ohne selbst
+ * einen z-index > 10 zu vergeben (Top-Layer via showModal).
+ */
+await checkAsync("It17 Dialog: Top-Layer über der Kopfleiste, voller WP-Kasten, kein z-index > 10", async () => {
+  const d = await page.evaluate(async () => {
+    const kopf = document.createElement("div");
+    kopf.style.cssText = "position:fixed;top:0;left:0;right:0;height:56px;background:#123;z-index:1000";
+    document.body.appendChild(kopf);
+    const card = document.querySelector("tomtut-pool-dashboard");
+    card.shadowRoot.querySelector('.kachel[data-mini="1"]').click();
+    await card.updateComplete;
+    const dlg = card.shadowRoot.querySelector("dialog.m-dialog");
+    const slot = dlg.querySelector("tomtut-pool-slot-heatpump");
+    await slot.updateComplete;
+    await Promise.all([...slot.shadowRoot.querySelectorAll("img")].map((i) => (i.complete ? null : new Promise((f) => (i.onload = i.onerror = f)))));
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const r = dlg.getBoundingClientRect();
+    const sr = slot.getBoundingClientRect();
+    /* was liegt oben links im Dialog (unter der Kopfleiste)? */
+    const x = r.left + r.width / 2;
+    const y = Math.max(r.top + 5, 20);
+    const oben = document.elementFromPoint(x, y);
+    const zmax = [card.shadowRoot, slot.shadowRoot]
+      .flatMap((root) => [...root.querySelectorAll("*")])
+      .map((el) => parseInt(getComputedStyle(el).zIndex, 10))
+      .filter((z) => !isNaN(z));
+    return {
+      modal: dlg.matches(":modal"),
+      dialog: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+      slot: [Math.round(sr.width), Math.round(sr.height)],
+      obenIstCard: oben === card,
+      vp: [innerWidth, innerHeight],
+      zmax: Math.max(0, ...zmax),
+    };
+  });
+  assert.ok(d.modal, "nicht modal (kein Top-Layer)");
+  assert.ok(d.obenIstCard, "Kopfleiste liegt über dem Dialog");
+  assert.ok(d.slot[0] > 300 && d.slot[1] > 200, `Kasten zu klein: ${d.slot}`);
+  assert.ok(d.dialog[1] >= 0 && d.dialog[1] + d.dialog[3] <= d.vp[1] + 1, `Dialog passt nicht in den Viewport: ${d.dialog}`);
+  assert.ok(d.zmax <= 10, `z-index ${d.zmax}`);
+  results.push(`       Dialog ${d.dialog[2]}x${d.dialog[3]} px, Kasten ${d.slot.join("x")} px, max z-index ${d.zmax}`);
+});
+await page.screenshot({ path: join(ausgabe, "it17-dialog.png"), animations: "disabled" });
+await page.evaluate(async () => {
+  const card = document.querySelector("tomtut-pool-dashboard");
+  card.shadowRoot.querySelector(".m-zu").click();
+  await card.updateComplete;
+});
+
+/* Beleg: Mini (Liquid Glass, dpr 1) neben Thomas' Original-Kästchen im
+   gleichen Maßstab. Fehlt das Original, entfällt es — der Test hängt nicht
+   am NAS. */
+const I17_ORIGINAL =
+  process.env.IT17_ORIGINAL ||
+  "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/prod-ist/ausschnitt-tomtutstudio-poolkaestchen.png";
+await checkAsync("It17: Beleg Mini neben Original (500 px, dpr 1)", async () => {
+  let original = null;
+  try {
+    original = (await readFile(I17_ORIGINAL)).toString("base64");
+  } catch {
+    results.push("       ohne Original-Ausschnitt");
+  }
+  await page.evaluate(
+    async ({ theme, original }) => {
+      const card = document.querySelector("tomtut-pool-dashboard");
+      const buehne = document.getElementById("buehne");
+      const reihe = document.createElement("div");
+      reihe.id = "beleg";
+      reihe.style.cssText = "display:flex;gap:24px;align-items:flex-start;width:max-content";
+      document.body.insertBefore(reihe, buehne);
+      const spalte = (titel) => {
+        const d = document.createElement("div");
+        d.innerHTML = `<div style="color:#e1e1e1;font:600 13px system-ui;margin:0 0 8px">${titel}</div>`;
+        reihe.appendChild(d);
+        return d;
+      };
+      if (original) {
+        const img = document.createElement("img");
+        img.src = "data:image/png;base64," + original;
+        img.style.cssText = "width:500px;display:block";
+        spalte("Original (picture-elements, Studio-Tablet)").appendChild(img);
+        await img.decode();
+      }
+      spalte("tomtut-pool-dashboard · view: mini (It17)").appendChild(buehne);
+      card.hass = window.demo.DEMO_HASS;
+      await card.updateComplete;
+    },
+    { theme: I17_THEMES["Liquid Glass"], original }
+  );
+  const letzte = Object.keys(I17_THEMES).at(-1);
+  assert.equal(letzte, "Liquid Glass");
+  await page.locator("#beleg").screenshot({ path: join(ausgabe, "it17-beleg.png"), animations: "disabled" });
+});
+
 check("keine Fehler in der Browser-Konsole", () =>
   assert.deepEqual(konsolenfehler, [], konsolenfehler.join(" | "))
 );

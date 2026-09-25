@@ -98,6 +98,22 @@ export const DEFAULT_SHAPE = "oval";
 export const shapeOf = (name) => SHAPES[String(name || "").toLowerCase()] || SHAPES[DEFAULT_SHAPE];
 
 /*
+ * Seitenverhältnis (Breite/Höhe) der Becken-PNGs, nach Dateiname. Die
+ * Mini-Ansicht (Iteration 17) baut den Beckenkasten damit, bevor das Bild
+ * geladen ist, und legt die Sprites prozentgenau darauf. Wird ein Artwork
+ * ersetzt, gehört der Wert hier mit korrigiert (Smoke-Test prüft gegen dist/).
+ */
+export const BECKEN_RATIOS = {
+  "poolbecken_oval.png": 1090 / 389,
+  "poolbecken_rechteck.png": 1280 / 544,
+  "poolbecken_achtform.png": 1280 / 542,
+  "poolbecken_rund.png": 1280 / 716,
+  "poolbecken_nierenform.png": 1280 / 547,
+  "poolbecken_freiform.png": 1280 / 543,
+};
+export const shapeRatio = (name) => BECKEN_RATIOS[shapeOf(name).file] || 2.5;
+
+/*
  * Geräte-Artwork je Slot-Typ. Es gibt bewusst nur noch die transparente
  * Fassung: ob der Kasten hell, dunkel oder durchsichtig ist, entscheidet
  * allein `frame.fill` — das Bild legt sich einfach darüber.

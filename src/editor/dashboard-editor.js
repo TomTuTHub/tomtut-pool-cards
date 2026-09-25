@@ -8,6 +8,7 @@ import { UV_DEFAULTS } from "../slots/uv.js";
 import { SOLAR_DEFAULTS } from "../slots/solar.js";
 import { heroDefaultsFor } from "../hero.js";
 import { kioskSchluessel, kioskGilt, KIOSK_BECKEN } from "../shared/kiosk.js";
+import { ansichtVon } from "../mini.js";
 import {
   heroFields,
   heatpumpFields,
@@ -90,6 +91,39 @@ export class TomtutPoolDashboardEditor extends LitElement {
 
   _slots() {
     return Array.isArray(this._config?.slots) ? this._config.slots : [];
+  }
+
+  /* ---- Ansicht Voll / Mini (Iteration 17) ---- */
+
+  _setAnsicht(ansicht) {
+    /* voll = Default: Schlüssel raus, die Config bleibt schlank */
+    if (ansichtVon(this._config) === ansicht) return;
+    this._emit(applyPatch(this._config, { view: ansicht === "mini" ? "mini" : undefined }));
+  }
+
+  _renderAnsicht() {
+    const mini = ansichtVon(this._config) === "mini";
+    const knopf = (wert, text) => html`<button
+      type="button"
+      class="ansicht-knopf ${(wert === "mini") === mini ? "aktiv" : ""}"
+      data-ansicht="${wert}"
+      aria-pressed="${(wert === "mini") === mini ? "true" : "false"}"
+      @click="${() => this._setAnsicht(wert)}"
+    >
+      ${text}
+    </button>`;
+    return html`
+      <div class="ansicht-block ${mini ? "mini" : ""}">
+        <span class="ansicht-titel">Ansicht</span>
+        <div class="ansicht-wahl" role="group" aria-label="Ansicht">
+          ${knopf("voll", "Voll")} ${knopf("mini", "Mini")}
+        </div>
+        <small>
+          Mini: die ganze Anlage kompakt in einer Card (z.B. kleines Tablet) — Becken oben, Geräte als
+          Kacheln. Tipp auf eine Kachel öffnet den vollen Kasten. Dieselbe Einrichtung wie Voll.
+        </small>
+      </div>
+    `;
   }
 
   /* ---- Kiosk-Modus (Iteration 15) ---- */
@@ -275,7 +309,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
 
     return html`
       <div class="editor">
-        ${this._renderKiosk()}
+        <div class="kopf-reihe">${this._renderAnsicht()} ${this._renderKiosk()}</div>
         <div class="step-head">Schritt 1 — Becken</div>
         <div class="slot-block becken-block" style="--slot-farbe:${slotFarbe("hero")};">
           <div class="slot-ueberschrift">Becken</div>

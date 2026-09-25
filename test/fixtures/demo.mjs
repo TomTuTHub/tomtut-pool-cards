@@ -191,3 +191,55 @@ export const UV_LAGEN = [0, 45, 90, 180, 270].flatMap((grad) => [
   { grad, mirror: false },
   { grad, mirror: true },
 ]);
+
+/*
+ * Mini-Ansicht (Iteration 17): Becken + genau 4 Geräte, wie Thomas'
+ * Studio-Kästchen (Becken, Solar, Pumpe, Wärmepumpe) plus UV. Gleiche
+ * Config-Form wie die volle Ansicht — nur `view: mini`.
+ */
+export const miniConfig = (extra = {}) => ({
+  type: "custom:tomtut-pool-dashboard",
+  version: 1,
+  view: "mini",
+  hero: {
+    enabled: true,
+    shape: "oval",
+    temp_entity: "sensor.pool_wassertemperatur",
+    ph_entity: "sensor.pool_ph",
+    rx_entity: "sensor.pool_redox",
+    inlet_temp_entity: "sensor.einlauf_temperatur",
+  },
+  frame: { enabled: true, fill: "transparent" },
+  slots: [
+    {
+      type: "heatpump",
+      label_text: "Wärmepumpe",
+      switch_entity: "switch.waermepumpe",
+      power_entity: "sensor.waermepumpe_power",
+      target_entity: "climate.waermepumpe",
+      current_entity: "climate.waermepumpe",
+      release_entity: "input_boolean.wp_freigabe",
+      mode_entity: "input_select.wp_modus_heizen",
+    },
+    {
+      type: "pump",
+      label: "Poolpumpe",
+      stage_mode: "momentary",
+      stage_entities: ["switch.shelly_pumpe_n1", "switch.shelly_pumpe_n2", "switch.shelly_pumpe_n3"],
+      stop_entity: "switch.shelly_pumpe_stopp",
+      main_entity: "input_boolean.poolpumpe_schalter",
+      power_entity: "sensor.poolpumpe_power",
+      temp_entity: "sensor.poolpumpe_druckseite_temperature",
+    },
+    uvSlot(0, false),
+    {
+      type: "solar",
+      label: "Solarheizung",
+      switch_entity: "switch.solarventil",
+      temp_in_entity: "sensor.solar_vorlauf",
+      temp_out_entity: "sensor.solar_ruecklauf",
+      power_entity: "sensor.solar_power",
+    },
+  ],
+  ...extra,
+});

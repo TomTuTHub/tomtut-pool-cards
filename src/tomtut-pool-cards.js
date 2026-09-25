@@ -41,6 +41,8 @@ export { SOLAR_DEFAULTS } from "./slots/solar.js";
 export { HERO_DEFAULTS, heroDefaultsFor, INLET_TEMP_VERSATZ } from "./hero.js";
 export {
   SHAPES,
+  BECKEN_RATIOS,
+  shapeRatio,
   HERO_SPRITES,
   DEVICE_IMAGES,
   DEVICE_VARIANTS,
@@ -58,6 +60,18 @@ export {
 export { numText, numOf, toWatt, seit, seitMinuten } from "./shared/util.js";
 export { applyPatch } from "./editor/dashboard-editor.js";
 export { kioskGilt, kioskSchluessel, KIOSK_BECKEN } from "./shared/kiosk.js";
+export {
+  ANSICHTEN,
+  ANSICHT_DEFAULT,
+  ansichtVon,
+  MINI_TYPEN,
+  MINI_LEER,
+  MINI_MAX_SPALTEN,
+  miniSpalten,
+  miniKachel,
+  miniBecken,
+  kachelName,
+} from "./mini.js";
 export {
   CUSTOM_MAX_ENTRIES,
   CUSTOM_LAYOUTS,

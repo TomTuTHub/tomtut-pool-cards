@@ -67,6 +67,22 @@ export const FAN_DESIGN_DEFAULT = "klassisch";
 export const fanDesignSvg = (key) => (FAN_DESIGNS[key] || FAN_DESIGNS[FAN_DESIGN_DEFAULT]).svg;
 
 /*
+ * Thermometer im Skizzenstil des Artworks — eine Grafik für den vollen
+ * Kasten (renderThermo) und die Mini-Ansicht (Iteration 17).
+ */
+export const thermoGrafik = html`<svg viewBox="0 0 24 60" aria-hidden="true">
+  <rect x="8" y="3" width="8" height="38" rx="4" fill="#ffffff" stroke="#111" stroke-width="1.6" />
+  <circle cx="12" cy="48" r="8" fill="#e8483c" stroke="#111" stroke-width="1.6" />
+  <rect x="10" y="20" width="4" height="26" fill="#e8483c" />
+  <g stroke="#111" stroke-width="1.2" stroke-linecap="round">
+    <line x1="16" y1="10" x2="20" y2="10" />
+    <line x1="16" y1="16" x2="20" y2="16" />
+    <line x1="16" y1="22" x2="20" y2="22" />
+    <line x1="16" y1="28" x2="20" y2="28" />
+  </g>
+</svg>`;
+
+/*
  * Gemeinsame Basis aller Slots.
  *
  * Eigenschaften von außen (die Dashboard-Card setzt sie):
@@ -249,17 +265,7 @@ export class SlotBase extends LitElement {
         data-entity="${entity || ""}"
         @click="${this._moreInfo}"
       >
-        <svg viewBox="0 0 24 60" aria-hidden="true">
-          <rect x="8" y="3" width="8" height="38" rx="4" fill="#ffffff" stroke="#111" stroke-width="1.6" />
-          <circle cx="12" cy="48" r="8" fill="#e8483c" stroke="#111" stroke-width="1.6" />
-          <rect x="10" y="20" width="4" height="26" fill="#e8483c" />
-          <g stroke="#111" stroke-width="1.2" stroke-linecap="round">
-            <line x1="16" y1="10" x2="20" y2="10" />
-            <line x1="16" y1="16" x2="20" y2="16" />
-            <line x1="16" y1="22" x2="20" y2="22" />
-            <line x1="16" y1="28" x2="20" y2="28" />
-          </g>
-        </svg>
+        ${thermoGrafik}
         ${value ? html`<span class="thermo-val">${value}</span>` : nothing}
       </div>
     `;

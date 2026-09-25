@@ -8,6 +8,8 @@ import "./slots/solar.js";
 import "./slots/custom.js";
 import "./slots/placeholder.js";
 import { SLOT_TYPES, DEFAULT_SHAPE } from "./shared/assets.js";
+import { fillTokens } from "./shared/styles.js";
+import { renderMini, miniStyles, ansichtVon, MINI_TYPEN } from "./mini.js";
 
 /*
  * custom:tomtut-pool-dashboard — die EINE Card der Sammlung.
@@ -43,7 +45,15 @@ export class TomtutPoolDashboardCard extends LitElement {
   static properties = {
     hass: { attribute: false },
     _config: { state: true },
+    /* Mini-Ansicht: welcher Kasten gerade als Dialog offen ist
+       (null = keiner, "becken" oder die Kasten-Nummer 1..n) */
+    _miniOffen: { state: true },
   };
+
+  constructor() {
+    super();
+    this._miniOffen = null;
+  }
 
   setConfig(config) {
     if (!config || typeof config !== "object") throw new Error("Ungültige Konfiguration");
@@ -65,6 +75,8 @@ export class TomtutPoolDashboardCard extends LitElement {
       frame: { ...DEFAULT_FRAME, ...(config.frame || {}) },
       slots: Array.isArray(config.slots) ? config.slots : [],
     };
+    /* neue Config (Editor-Vorschau) = kein alter Dialog mehr */
+    this._miniOffen = null;
   }
 
   static getConfigElement() {
@@ -82,6 +94,10 @@ export class TomtutPoolDashboardCard extends LitElement {
 
   getCardSize() {
     const c = this._config || {};
+    if (ansichtVon(c) === "mini") {
+      const n = (c.slots || []).filter((s) => MINI_TYPEN.includes(String(s?.type || "").toLowerCase())).length;
+      return (c.hero?.enabled === false ? 0 : 3) + (n ? 2 : 0) || 2;
+    }
     const slots = (c.slots || []).filter((s) => (s?.type || "frame") !== "hidden");
     return (c.hero?.enabled === false ? 0 : 6) + Math.ceil(slots.length / 3) * 5 || 3;
   }
@@ -100,9 +116,43 @@ export class TomtutPoolDashboardCard extends LitElement {
       .filter(({ slot }) => slot.type !== "hidden");
   }
 
+  /* ---- Mini-Ansicht (Iteration 17, src/mini.js) ---- */
+
+  _miniOeffnen(key) {
+    this._miniOffen = key;
+  }
+
+  _miniZu() {
+    if (this._miniOffen !== null) this._miniOffen = null;
+  }
+
+  /* Tipp daneben: der Klick landet auf dem <dialog> selbst (Backdrop) */
+  _miniBackdrop(ev) {
+    if (ev?.target === ev?.currentTarget) this._miniZu();
+  }
+
+  /*
+   * showModal() hebt den Dialog in den Top-Layer (über die HA-Kopfleiste,
+   * ohne z-index). Ohne die Methode (sehr alte Browser, jsdom) bleibt er
+   * ein normales offenes <dialog>.
+   */
+  updated(changed) {
+    super.updated?.(changed);
+    const d = this.renderRoot?.querySelector?.("dialog.m-dialog");
+    if (!d || d.open) return;
+    try {
+      if (typeof d.showModal === "function") d.showModal();
+      else d.setAttribute("open", "");
+    } catch (err) {
+      console.warn("tomtut-pool-cards: Dialog ohne showModal —", err?.message || err);
+      d.setAttribute("open", "");
+    }
+  }
+
   render() {
     if (!this._config) return nothing;
     const c = this._config;
+    if (ansichtVon(c) === "mini") return renderMini(this);
     const heroOn = c.hero?.enabled !== false;
 
     return html`
@@ -182,7 +232,8 @@ export class TomtutPoolDashboardCard extends LitElement {
     }
   }
 
-  static styles = css`
+  static styles = [
+    css`
     /*
      * Der aeussere Riegel gegen das Durchschlagen in die HA-Oberflaeche:
      * Host und ha-card bilden je einen eigenen Stacking-Context. Alles,
@@ -234,7 +285,10 @@ export class TomtutPoolDashboardCard extends LitElement {
         grid-column: span 2;
       }
     }
-  `;
+  `,
+    fillTokens,
+    miniStyles,
+  ];
 }
 
 customElements.define("tomtut-pool-dashboard", TomtutPoolDashboardCard);

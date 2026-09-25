@@ -3649,9 +3649,10 @@ await ed15.updateComplete;
 let ed15Fired = null;
 ed15.addEventListener("config-changed", (e) => (ed15Fired = e.detail.config));
 const kioskBox = () => ed15.shadowRoot.querySelector('.kiosk-block input[data-key="kiosk"]');
-check("Editor: Kiosk-Kasten steht ganz oben, Schalter aus, keine Liste", () => {
-  const erstes = ed15.shadowRoot.querySelector(".editor").firstElementChild;
-  assert.ok(erstes.classList.contains("kiosk-block"), "nicht ganz oben");
+check("Editor: Kiosk-Kasten steht ganz oben (Kopfzeile, seit It17 neben der Ansicht), Schalter aus, keine Liste", () => {
+  const kopf = ed15.shadowRoot.querySelector(".editor").firstElementChild;
+  const erstes = kopf.querySelector(".kiosk-block");
+  assert.ok(kopf.classList.contains("kopf-reihe") && erstes, "nicht ganz oben");
   assert.match(erstes.textContent, /Kiosk-Modus \(nur anzeigen\)/);
   assert.equal(kioskBox().checked, false);
   assert.equal(ed15.shadowRoot.querySelectorAll("[data-kiosk-slot]").length, 0);
@@ -3890,6 +3891,313 @@ check("It16: ohne Rahmenfüllung trägt liste den HA-Kartenhintergrund und die T
     assert.doesNotMatch(ed16.shadowRoot.textContent, /Eintrag 6/);
   });
   ed16.remove();
+}
+
+/* ------------------------------------------------------------------ */
+/* Iteration 17: Mini-Ansicht (view: mini)                             */
+/* ------------------------------------------------------------------ */
+
+const LEER = pkg.MINI_LEER;
+check("It17: view ist ab Werk voll, nur 'mini' schaltet um", () => {
+  assert.equal(pkg.ANSICHT_DEFAULT, "voll");
+  assert.deepEqual(pkg.ANSICHTEN, ["voll", "mini"]);
+  assert.equal(pkg.ansichtVon({}), "voll");
+  assert.equal(pkg.ansichtVon({ view: "voll" }), "voll");
+  assert.equal(pkg.ansichtVon({ view: "Mini " }), "mini");
+  assert.equal(pkg.ansichtVon({ view: "kompakt" }), "voll");
+  assert.equal(LEER, "–");
+});
+check("It17: Spalten — bis 5 Geräte eine Zeile, darüber zwei Zeilen", () => {
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 8].map(pkg.miniSpalten), [1, 2, 3, 4, 5, 3, 4, 4]);
+});
+check("It17: Becken-Seitenverhältnisse passen zu den PNGs in dist/", () => {
+  for (const [datei, ratio] of Object.entries(pkg.BECKEN_RATIOS)) {
+    const b = readFileSync(join(here, "..", "dist", datei));
+    const w = b.readUInt32BE(16);
+    const h = b.readUInt32BE(20);
+    assert.ok(Math.abs(w / h - ratio) < 0.002, `${datei}: ${w}x${h} vs ${ratio}`);
+  }
+  for (const form of Object.keys(pkg.SHAPES)) assert.ok(pkg.shapeRatio(form) > 1, form);
+});
+
+const zeilen = (k) => k.zeilen.map((z) => z.text);
+
+/* ---- Pumpe: Stufe + Watt ---- */
+check("It17 Kachel Pumpe: Stufe aus Watt (737 W -> N3) + Watt, an", () => {
+  const k = pkg.miniKachel({ ...PUMP_CONFIG, stage_from_power: true }, makeHass());
+  assert.equal(k.typ, "pump");
+  assert.deepEqual(zeilen(k), ["N3", "737 W"]);
+  assert.equal(k.zustand, "an");
+  assert.match(k.bild.src, /poolpumpe_transparent\.png/);
+});
+check("It17 Kachel Pumpe: ohne Watt-Erkennung zählt der jüngste Taster (N2)", () => {
+  const k = pkg.miniKachel(PUMP_CONFIG, makeHass());
+  assert.deepEqual(zeilen(k), ["N2", "737 W"]);
+});
+check("It17 Kachel Pumpe: Hauptschalter aus -> Aus, grau", () => {
+  const k = pkg.miniKachel(
+    PUMP_CONFIG,
+    makeHass({ "input_boolean.poolpumpe_schalter": { state: "off", attributes: {}, last_changed: iso(60) } })
+  );
+  assert.deepEqual(zeilen(k), ["Aus", "737 W"]);
+  assert.equal(k.zustand, "aus");
+});
+check("It17 Kachel Pumpe: 10 W -> Stopp; Watt unknown -> '–'", () => {
+  const w = (s) => ({ "sensor.poolpumpe_power": { state: s, attributes: { unit_of_measurement: "W" }, last_changed: iso(5) } });
+  const k1 = pkg.miniKachel({ ...PUMP_CONFIG, stage_from_power: true }, makeHass(w("10")));
+  assert.deepEqual(zeilen(k1), ["Stopp", "10 W"]);
+  assert.equal(k1.zustand, "aus");
+  const k2 = pkg.miniKachel(PUMP_CONFIG, makeHass(w("unknown")));
+  assert.equal(zeilen(k2)[1], LEER);
+});
+
+/* ---- Wärmepumpe: Modus-Badge + Watt, gesperrt ---- */
+check("It17 Kachel WP: Modus-Badge (Punkt heizen) + Watt, an", () => {
+  const k = pkg.miniKachel({ ...MODUS_SEL, release_entity: FREI_ENT }, selHass("Heizen Smart", {
+    [FREI_ENT]: { state: "on", attributes: {}, last_changed: iso(60) },
+  }));
+  assert.deepEqual(zeilen(k), ["Heizen Smart", "820 W"]);
+  assert.equal(k.zeilen[0].punkt, "heizen");
+  assert.equal(k.zustand, "an");
+  assert.equal(k.gesperrt, false);
+});
+check("It17 Kachel WP: Freigabekontakt offen -> gesperrt", () => {
+  const k = pkg.miniKachel({ ...MODUS_SEL, release_entity: FREI_ENT }, selHass("Kuehlen Smart", {
+    [FREI_ENT]: { state: "off", attributes: {}, last_changed: iso(60) },
+  }));
+  assert.equal(k.gesperrt, true);
+  assert.equal(k.zustand, "gesperrt");
+  assert.equal(k.zeilen[0].text, "Kühlen Smart");
+  assert.equal(k.zeilen[0].punkt, "kuehlen");
+});
+check("It17 Kachel WP: Schalter aus -> 'Aus' statt Modus", () => {
+  const k = pkg.miniKachel(MODUS_SEL, selHass("Heizen Smart", {
+    "switch.waermepumpe": { state: "off", attributes: {}, last_changed: iso(60) },
+  }));
+  assert.deepEqual(zeilen(k), ["Aus", "820 W"]);
+  assert.equal(k.zustand, "aus");
+});
+
+/* ---- Solar, UV, custom ---- */
+const SOLAR_MINI = {
+  type: "solar",
+  switch_entity: "switch.solarventil",
+  temp_in_entity: "sensor.solar_vorlauf",
+  temp_out_entity: "sensor.solar_ruecklauf",
+};
+const solarMiniHass = (vor) =>
+  makeHass({
+    "switch.solarventil": { state: "on", attributes: {}, last_changed: iso(60) },
+    "sensor.solar_vorlauf": { state: vor, attributes: { unit_of_measurement: "°C" }, last_changed: iso(60) },
+    "sensor.solar_ruecklauf": { state: "21.0", attributes: { unit_of_measurement: "°C" }, last_changed: iso(60) },
+  });
+check("It17 Kachel Solar: Vorlauf (Pfeil blau) + Rücklauf (Pfeil rot), an", () => {
+  const k = pkg.miniKachel(SOLAR_MINI, solarMiniHass("22.81"));
+  assert.deepEqual(zeilen(k), ["22,8 °C", "21 °C"]);
+  assert.deepEqual(k.zeilen.map((z) => z.pfeil), ["in", "out"]);
+  assert.equal(k.zustand, "an");
+});
+check("It17 Kachel Solar: unknown -> '–'", () => {
+  const k = pkg.miniKachel(SOLAR_MINI, solarMiniHass("unknown"));
+  assert.equal(zeilen(k)[0], LEER);
+});
+check("It17 Kachel UV: an/aus + Watt; ohne Watt-Sensor nur an/aus", () => {
+  const k = pkg.miniKachel({ type: "uv", switch_entity: "switch.uv_lampe", power_entity: "sensor.uv_lampe_power" }, makeHass());
+  assert.deepEqual(zeilen(k), ["An", "41 W"]);
+  assert.equal(k.zustand, "an");
+  const k2 = pkg.miniKachel(
+    { type: "uv", switch_entity: "switch.uv_lampe" },
+    makeHass({ "switch.uv_lampe": { state: "off", attributes: {}, last_changed: iso(60) } })
+  );
+  assert.deepEqual(zeilen(k2), ["Aus"]);
+  assert.equal(k2.zustand, "aus");
+});
+check("It17 Kachel custom: erster Wert + Name; Schalter an/aus; Text", () => {
+  const k = pkg.miniKachel(
+    { type: "custom", title: "Werte", entries: [{ kind: "entity", entity: "sensor.pool_lufttemperatur", label: "Luft" }, { kind: "text", text: "x" }] },
+    makeHass()
+  );
+  assert.deepEqual(zeilen(k), ["21,3 °C", "Luft"]);
+  assert.equal(k.zustand, "neutral");
+  const k2 = pkg.miniKachel(CUSTOM_BTN(), lichtAn());
+  assert.deepEqual(zeilen(k2), ["An", "Licht"]);
+  assert.equal(k2.zustand, "an");
+  const k3 = pkg.miniKachel({ type: "custom", entries: [{ kind: "text", text: "Sommerbetrieb" }] }, makeHass());
+  assert.deepEqual(zeilen(k3), ["Sommerbetrieb"]);
+});
+check("It17 Becken: Temperatur unknown -> '–', pH/RX als Kästchen", () => {
+  const b = pkg.miniBecken(
+    { temp_entity: "sensor.pool_wassertemperatur", ph_entity: "sensor.pool_ph", rx_entity: "sensor.pool_redox" },
+    makeHass({ "sensor.pool_wassertemperatur": { state: "unknown", attributes: { unit_of_measurement: "°C" }, last_changed: iso(5) } })
+  );
+  assert.equal(b.temp, LEER);
+  assert.deepEqual(b.chips.map((c) => [c.key, c.text]), [["pH", "7,1"], ["RX", "712 mV"]]);
+  assert.match(b.bild, /poolbecken_oval\.png/);
+  assert.ok(b.sprites.length >= 2);
+});
+
+/* ---- Card im Mini-Modus ---- */
+const MINI_SLOTS = [
+  { ...MODUS_SEL, release_entity: FREI_ENT, label_text: "WP" },
+  PUMP_CONFIG,
+  { type: "uv", label: "UV", switch_entity: "switch.uv_lampe", power_entity: "sensor.uv_lampe_power" },
+  { type: "frame", title: "leer" },
+  { type: "hidden" },
+  CUSTOM_BTN(),
+];
+const miniCard = async (extra = {}) =>
+  mount(
+    Dashboard,
+    { view: "mini", hero: { temp_entity: "sensor.pool_wassertemperatur", ph_entity: "sensor.pool_ph" }, slots: MINI_SLOTS, ...extra },
+    KIOSK_HASS()
+  );
+const mc = await miniCard();
+const mcRoot = () => mc.shadowRoot;
+check("It17 Card: mini rendert Kopf + Kacheln statt Kästen, Rahmen/hidden fallen weg", () => {
+  assert.ok(mcRoot().querySelector("ha-card.mini-karte .mini"));
+  assert.equal(mcRoot().querySelector(".grid"), null);
+  assert.ok(mcRoot().querySelector('.m-kopf[data-mini="becken"]'));
+  const k = [...mcRoot().querySelectorAll(".kachel")];
+  assert.deepEqual(k.map((x) => x.dataset.mini), ["1", "2", "3", "6"]);
+  assert.equal(mcRoot().querySelector(".mini").style.getPropertyValue("--m-spalten").trim(), "4");
+  assert.equal(mcRoot().querySelectorAll("tomtut-pool-slot-pump, tomtut-pool-slot-heatpump").length, 0);
+  assert.equal(mcRoot().querySelectorAll("button.stage-btn, .step, input[type=range]").length, 0);
+});
+check("It17 Card: Kachelwerte und Zustandsklassen im DOM", () => {
+  const k = [...mcRoot().querySelectorAll(".kachel")];
+  assert.match(k[0].textContent, /Heizen Smart/);
+  assert.match(k[0].textContent, /820 W/);
+  assert.ok(k[0].classList.contains("an"));
+  assert.match(k[1].textContent, /N2/);
+  assert.match(k[2].textContent, /An/);
+  assert.match(k[2].textContent, /41 W/);
+  assert.match(mcRoot().querySelector(".m-temp-wert").textContent, /24,6 °C/);
+});
+check("It17 Card: volle Ansicht bleibt Default (ohne view kein Mini)", () => {
+  assert.ok(kAus.shadowRoot.querySelector(".grid"));
+  assert.equal(kAus.shadowRoot.querySelector(".mini"), null);
+});
+
+/* Tipp auf Kachel 2 (Pumpe) */
+mcRoot().querySelector('.kachel[data-mini="2"]').click();
+await mc.updateComplete;
+const dlg = () => mcRoot().querySelector("dialog.m-dialog");
+check("It17 Tipp: öffnet den vollen Kasten der Pumpe als Dialog", () => {
+  assert.ok(dlg(), "kein Dialog");
+  assert.ok(dlg().open || dlg().hasAttribute("open"), "Dialog nicht offen");
+  assert.equal(dlg().dataset.miniDialog, "2");
+  const slot = dlg().querySelector("tomtut-pool-slot-pump");
+  assert.ok(slot, "kein Pumpen-Kasten");
+  assert.equal(slot.config.stage_entities.length, 3);
+  assert.equal(slot.kiosk, false);
+  assert.match(dlg().querySelector(".m-dialog-titel").textContent, /Poolpumpe/);
+});
+{
+  const slot = dlg().querySelector("tomtut-pool-slot-pump");
+  await slot.updateComplete;
+  calls.length = 0;
+  slot.shadowRoot.querySelectorAll(".stage-btn")[2].click();
+  await slot.updateComplete;
+  check("It17 Dialog: voll bedienbar (Stufe N3 -> turn_on)", () =>
+    assert.deepEqual(calls.map((c) => [c.service, c.data.entity_id]), [["turn_on", "switch.shelly_pumpe_n3"]])
+  );
+}
+dlg().querySelector(".m-zu").click();
+await mc.updateComplete;
+check("It17 Dialog: X schließt", () => assert.equal(dlg(), null));
+
+mcRoot().querySelector('.kachel[data-mini="1"]').click();
+await mc.updateComplete;
+check("It17 Tipp: Kachel 1 öffnet die Wärmepumpe (Kasten-Nummer bleibt die aus dem Editor)", () => {
+  assert.equal(dlg().dataset.miniDialog, "1");
+  assert.ok(dlg().querySelector("tomtut-pool-slot-heatpump"));
+});
+dlg().querySelector(".m-dialog-inhalt").click();
+await mc.updateComplete;
+check("It17 Dialog: Tipp in den Inhalt schließt NICHT", () => assert.ok(dlg()));
+dlg().dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+await mc.updateComplete;
+check("It17 Dialog: Tipp daneben (Backdrop = der Dialog selbst) schließt", () => assert.equal(dlg(), null));
+
+mcRoot().querySelector(".m-kopf").click();
+await mc.updateComplete;
+check("It17 Tipp aufs Becken öffnet den Becken-Kasten", () => {
+  assert.equal(dlg().dataset.miniDialog, "becken");
+  assert.ok(dlg().querySelector("tomtut-pool-hero"));
+});
+{
+  const hero = dlg().querySelector("tomtut-pool-hero");
+  await hero.updateComplete;
+  const mehr = [];
+  const lausch = (e) => mehr.push(e.detail.entityId);
+  document.body.addEventListener("hass-more-info", lausch);
+  hero.shadowRoot.querySelector(".thermo").click();
+  await mc.updateComplete;
+  document.body.removeEventListener("hass-more-info", lausch);
+  check("It17 Dialog: more-info geht an HA durch und schließt unseren Dialog vorher", () => {
+    assert.deepEqual(mehr, ["sensor.pool_wassertemperatur"]);
+    assert.equal(dlg(), null);
+  });
+}
+
+/* Kiosk im Dialog */
+const mk = await miniCard({ kiosk: true, kiosk_slots: [2] });
+mk.shadowRoot.querySelector('.kachel[data-mini="2"]').click();
+await mk.updateComplete;
+{
+  const d = mk.shadowRoot.querySelector("dialog.m-dialog");
+  const slot = d.querySelector("tomtut-pool-slot-pump");
+  await slot.updateComplete;
+  calls.length = 0;
+  const erg = await allesAnklicken(slot);
+  check("It17 Kiosk: Kasten im Dialog ist nur Anzeige (kein Dienst, kein more-info)", () => {
+    assert.equal(slot.kiosk, true);
+    assert.ok(slot.shadowRoot.querySelector(".slot.kiosk"));
+    assert.deepEqual(calls, []);
+    assert.deepEqual(erg.mehrInfo, []);
+    assert.match(d.querySelector(".m-dialog-titel").textContent, /nur Anzeige/);
+  });
+  d.querySelector(".m-zu").click();
+  await mk.updateComplete;
+  mk.shadowRoot.querySelector('.kachel[data-mini="1"]').click();
+  await mk.updateComplete;
+  const wp = mk.shadowRoot.querySelector("dialog.m-dialog tomtut-pool-slot-heatpump");
+  check("It17 Kiosk-Teilmenge: nicht gesperrter Kasten bleibt im Dialog bedienbar", () => assert.equal(wp.kiosk, false));
+}
+check("It17 Card: getCardSize im Mini-Modus klein", () => {
+  assert.ok(mc.getCardSize() <= 5, String(mc.getCardSize()));
+});
+
+/* ---- Editor: Umschalter Voll / Mini ---- */
+{
+  const ed = new Editor();
+  ed.setConfig({ hero: { enabled: true }, slots: [{ type: "pump" }] });
+  ed.hass = makeHass();
+  document.body.appendChild(ed);
+  await ed.updateComplete;
+  let fired = null;
+  ed.addEventListener("config-changed", (e) => (fired = e.detail.config));
+  const kopf = ed.shadowRoot.querySelector(".editor").firstElementChild;
+  check("It17 Editor: Kopfzeile ganz oben = Ansicht-Umschalter neben dem Kiosk-Kasten", () => {
+    assert.ok(kopf.classList.contains("kopf-reihe"));
+    assert.deepEqual([...kopf.children].map((x) => x.className.split(" ")[0]), ["ansicht-block", "kiosk-block"]);
+    assert.match(kopf.textContent, /Ansicht/);
+    const k = [...kopf.querySelectorAll("[data-ansicht]")];
+    assert.deepEqual(k.map((x) => [x.dataset.ansicht, x.textContent.trim(), x.classList.contains("aktiv")]), [
+      ["voll", "Voll", true],
+      ["mini", "Mini", false],
+    ]);
+  });
+  kopf.querySelector('[data-ansicht="mini"]').click();
+  await ed.updateComplete;
+  check("It17 Editor: Mini -> view: mini", () => {
+    assert.equal(fired.view, "mini");
+    assert.ok(ed.shadowRoot.querySelector('[data-ansicht="mini"]').classList.contains("aktiv"));
+  });
+  ed.shadowRoot.querySelector('[data-ansicht="voll"]').click();
+  await ed.updateComplete;
+  check("It17 Editor: Voll -> Schlüssel view fällt weg (Default)", () => assert.equal("view" in fired, false));
+  ed.remove();
 }
 
 /* ------------------------------------------------------------------ */

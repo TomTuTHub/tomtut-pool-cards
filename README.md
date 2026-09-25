@@ -62,6 +62,13 @@ eine Herstellerintegration in Home Assistant landen.
 - **Freifeld (benutzerdefiniert)** — freie Überschrift plus bis zu acht Einträge: Entity-Wert,
   Schalt-Button oder Freitext. Als `layout: liste` ein kompakter Schalter-Kasten im Stil der
   HA-Entities-Karte (Titel + 4 Zeilen in 384 × 268 px), als `layout: kacheln` ein 2-Spalten-Raster.
+- **Mini-Ansicht** (`view: mini`) — die ganze Anlage kompakt in **einer** Card, z.B. fürs
+  kleine Wand-Tablet: oben das Becken mit Temperatur (pH/RX/Zulauf daneben), darunter jedes
+  Gerät als Kachel mit Selinas Bild, den ein, zwei wichtigsten Werten und seinem Zustand
+  (grün an, rot aus, „Gesperrt" beim offenen Freigabekontakt). Becken + 4 Geräte passen bei
+  500 px Breite in unter 290 px Höhe. Ein Tipp auf eine Kachel öffnet den vollen Kasten als
+  Dialog — voll bedienbar bzw. nur Anzeige im Kiosk-Modus. Dieselbe Einrichtung wie die volle
+  Ansicht, umgeschaltet im Editor ganz oben („Ansicht: Voll / Mini").
 - **Eine Optik-Einstellung für alles** — Rahmen an/aus und `fill: transparent | weiss | schwarz`.
   Die Füllung steuert den ganzen Kasten: Hintergrund, Bild, Kästchen, Buttons und Schriftfarbe.
 - **Mobil zuerst** — das Raster stapelt auf schmalen Bildschirmen sauber untereinander,
@@ -236,6 +243,35 @@ slots:
 | `hero` | – | Das Becken (siehe unten). `hero: {enabled: false}` blendet es aus. |
 | `frame` | – | Rahmen und Füllung für **alle** Slots. |
 | `slots` | `[]` | Liste der Kästen in ihrer Reihenfolge. |
+| `view` | `voll` | `voll` = Becken + Kästen wie gewohnt · `mini` = alles kompakt in einer Card (siehe unten) |
+
+#### Mini-Ansicht (`view: mini`)
+
+Dieselbe Config, nur kompakt: Becken klein oben (Form, Temperatur, pH/RX/Zulauf als Kästchen),
+darunter die Geräte als Kacheln — ab 440 px Breite in **einer** Zeile (bis 5 Geräte), schmaler
+im 2er-Raster. Leere Rahmen und ausgeblendete Slots entfallen. Pro Kachel:
+
+| Gerät | Kachel zeigt |
+|---|---|
+| `pump` | Stufe (auch aus der Leistung erkannt) + Watt |
+| `heatpump` | Modus-Badge (bzw. „Aus") + Watt; „Gesperrt" bei offenem Freigabekontakt |
+| `solar` | Vorlauf (blauer Pfeil) + Rücklauf (roter Pfeil) |
+| `uv` | An/Aus + Watt (ohne Leistungssensor: nur An/Aus) |
+| `custom` | erster Eintrag: Wert + Name |
+
+Ein fehlender Wert (unknown/unavailable) erscheint als „–". Tipp auf eine Kachel oder das
+Becken öffnet den vollen Kasten als Dialog über allem (Schließen per ✕, Tipp daneben oder Esc).
+Kästen im Kiosk bleiben auch dort reine Anzeige.
+
+```yaml
+type: custom:tomtut-pool-dashboard
+view: mini
+hero: { shape: oval, temp_entity: sensor.pool_temperatur }
+slots:
+  - { type: heatpump, switch_entity: switch.wp, power_entity: sensor.wp_power, mode_entity: select.wp_modus }
+  - { type: pump, stage_entities: [switch.n1, switch.n2, switch.n3], power_entity: sensor.pumpe_power }
+  - { type: solar, temp_in_entity: sensor.solar_vorlauf, temp_out_entity: sensor.solar_ruecklauf }
+```
 
 ### `hero` — das Becken
 

@@ -320,6 +320,57 @@ export const editorStyles = css`
     line-height: 1.4;
   }
   /* Kiosk-Modus (Iteration 15) — ganz oben im Editor */
+  /* Kopfzeile des Editors (Iteration 17): Ansicht + Kiosk nebeneinander,
+     auf schmalen Editoren untereinander */
+  .kopf-reihe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .kopf-reihe > * {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+  .ansicht-block {
+    text-align: left;
+    border: 2px solid var(--divider-color, #ccc);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ansicht-block.mini {
+    border-color: var(--primary-color, #03a9f4);
+  }
+  .ansicht-titel {
+    font-size: 17px;
+    font-weight: 800;
+  }
+  .ansicht-wahl {
+    display: inline-flex;
+    align-self: flex-start;
+    border: 1px solid var(--divider-color, #ccc);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .ansicht-knopf {
+    padding: 8px 18px;
+    border: none;
+    background: transparent;
+    color: var(--primary-text-color, #111);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .ansicht-knopf + .ansicht-knopf {
+    border-left: 1px solid var(--divider-color, #ccc);
+  }
+  .ansicht-knopf.aktiv {
+    background: var(--primary-color, #03a9f4);
+    color: var(--text-primary-color, #fff);
+  }
   .kiosk-block {
     text-align: left;
     border: 2px solid var(--divider-color, #ccc);
