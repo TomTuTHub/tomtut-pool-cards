@@ -14,6 +14,9 @@ import { css } from "lit";
  *   --tt-soft    dezente Flächen (Taster, Powerbutton)
  *   --tt-box-bg  Hintergrund der Overlay-Kästchen auf dem Bild
  *   --tt-box-fg  Schrift in den Overlay-Kästchen
+ *   --tt-deck    deckende Unterlage unter Kästchen und Powerbutton (Iteration 16):
+ *                nur bei fill transparent UND heller Theme-Schrift (= dunkles
+ *                Theme) eine undurchsichtige dunkle Fläche, sonst transparent.
  *
  * transparent = Theme-Hintergrund von Home Assistant, Schrift folgt dem Theme.
  */
@@ -53,6 +56,25 @@ export const frameStyles = css`
     --tt-soft: rgba(127, 127, 127, 0.16);
     --tt-box-bg: var(--ha-card-background, var(--card-background-color, rgba(255, 255, 255, 0.92)));
     --tt-box-fg: var(--primary-text-color, #111);
+    --tt-deck: transparent;
+  }
+  /*
+   * Dunkles Theme, fill transparent (Iteration 16, Kiosk-Flur): viele Themes
+   * haben einen halbtransparenten Kartenhintergrund (Glas-Look). Als
+   * Kästchen-Hintergrund scheint dann das Gerätebild durch, die helle Zahl
+   * säuft ab, der Powerbutton verschwindet. --tt-deck legt eine deckende
+   * Fläche darunter — abgeleitet aus der Schriftfarbe: Kehrwert der Farbe
+   * (helle Schrift -> dunkle Fläche), Deckkraft 1 bei heller, 0 bei dunkler
+   * Schrift. Helles Theme bleibt dadurch pixelgleich (Render-Test).
+   * Ohne relative Farbsyntax (alte Browser) bleibt alles wie bisher.
+   */
+  @supports (color: rgb(from red r g b)) {
+    .slot.fill-transparent {
+      --tt-deck: rgb(
+        from var(--tt-box-fg) calc(255 - r * 0.88) calc(255 - g * 0.88) calc(255 - b * 0.88) /
+          clamp(0, calc((r + g + b) / 765 * 4 - 2), 1)
+      );
+    }
   }
   .slot.fill-weiss {
     --tt-bg: #ffffff;
@@ -228,7 +250,7 @@ export const overlayStyles = css`
     --mdc-icon-size: 1.75em;
     transition: box-shadow 0.3s, color 0.3s, opacity 0.3s;
     line-height: 0;
-    background: var(--tt-soft);
+    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-soft);
     border: 1px solid var(--tt-line);
     transform-origin: top left;
     z-index: 5;
@@ -252,7 +274,7 @@ export const overlayStyles = css`
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: var(--tt-box-bg);
+    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
     color: var(--tt-box-fg);
     border: 1px solid var(--tt-line);
     border-radius: 0.7em;
@@ -290,7 +312,7 @@ export const overlayStyles = css`
   .label-badge {
     position: absolute;
     padding: 0.15em 0.55em;
-    background: var(--tt-box-bg);
+    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
     color: var(--tt-box-fg);
     border-radius: 0.3em;
     font-size: 0.8em;
@@ -329,7 +351,7 @@ export const overlayStyles = css`
     padding: 0.2em 0.55em;
     border-radius: 0.55em;
     white-space: nowrap;
-    background: var(--tt-box-bg);
+    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
     color: var(--tt-box-fg);
     border: 1px solid var(--tt-line);
   }
@@ -345,7 +367,7 @@ export const overlayStyles = css`
     min-width: 15%;
     padding: 0.3em 0.7em;
     border-radius: 0.7em;
-    background: var(--tt-box-bg);
+    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
     color: var(--tt-box-fg);
     border: 1.5px solid var(--tt-line);
     line-height: 1.15;

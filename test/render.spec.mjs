@@ -1199,6 +1199,121 @@ await checkAsync("It16: Beleg dunkel neben Original", async () => {
   }
 });
 
+/* ------------------------------------------------------------------ */
+/* Iteration 16: Overlays im dunklen Theme deckend, helles unverändert */
+/* ------------------------------------------------------------------ */
+/*
+ * Anlass: Kiosk-Flur (Prod, Theme "Liquid Glass" dunkel). Dessen
+ * --ha-card-background ist rgba(0,0,0,0.3) — als Kästchen-Hintergrund schien
+ * das Pumpenbild durch, "736 WATT" war kaum lesbar, der Powerbutton fast
+ * unsichtbar. Geprüft wird jetzt für ALLE Overlays der Alles-Config
+ * (Becken, WP, Pumpe, UV, Solar): Unterlage deckend + Kontrast; und dass das
+ * helle Theme pixelgleich bleibt (Screenshot mit und ohne --tt-deck).
+ */
+const I16_OVERLAYS =
+  ".value-box:not(.no-bg), .thermo-val, .chem-box, .label-badge:not(.no-bg), .mode-badge, .release-badge, .power-badge";
+const I16_DUNKEL_THEMES = {
+  "Liquid Glass dunkel": {
+    "--primary-text-color": "rgba(255, 255, 255, 0.96)",
+    "--secondary-text-color": "rgba(222, 222, 222, 0.96)",
+    "--ha-card-background": "rgba(0, 0, 0, 0.3)",
+  },
+  "HA-Standard dunkel": {
+    "--primary-text-color": "#e1e1e1",
+    "--secondary-text-color": "#9b9b9b",
+    "--card-background-color": "#1c1c1c",
+  },
+};
+const i16Alles = (vars, breite = 1200) =>
+  page.evaluate(
+    async ({ vars, breite, sel }) => {
+      document.body.innerHTML = "";
+      document.body.style.background = Object.keys(vars).length ? "#101826" : "";
+      const buehne = document.createElement("div");
+      buehne.id = "buehne";
+      buehne.style.width = breite + "px";
+      for (const [k, v] of Object.entries(vars)) buehne.style.setProperty(k, v);
+      document.body.appendChild(buehne);
+      const card = document.createElement("tomtut-pool-dashboard");
+      const cfg = window.demo.allesConfig(0, false);
+      card.setConfig({ ...cfg, frame: { enabled: true, fill: "transparent" } });
+      card.hass = window.demo.DEMO_HASS;
+      buehne.appendChild(card);
+      await card.updateComplete;
+      const kinder = [...card.shadowRoot.querySelector(".grid").children];
+      await Promise.all(kinder.map((el) => el.updateComplete));
+      const bilder = kinder.flatMap((el) => [...(el.shadowRoot?.querySelectorAll("img") || [])]);
+      await Promise.all(bilder.map((img) => (img.complete ? null : new Promise((f) => { img.onload = img.onerror = f; }))));
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      /* erste Farbe eines Werts; Chromium serialisiert relative Farben als
+         color(srgb 0..1 …), klassische als rgb()/rgba() mit 0..255 */
+      const farbe = (t) => {
+        const m = String(t).match(/(rgba?|color)\(([^)]+)\)/);
+        if (!m) return null;
+        const teile = m[2].replace("srgb", "").split(/[ ,/]+/).filter(Boolean).map(Number);
+        const [r, g, b, a = 1] = teile;
+        const k = m[1] === "color" ? 255 : 1;
+        return { r: r * k, g: g * k, b: b * k, a };
+      };
+      const lum = ({ r, g, b }) => {
+        const f = (c) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+      };
+      const kontrast = (x, y) => {
+        const [h, d] = [lum(x), lum(y)].sort((m, n) => n - m);
+        return (h + 0.05) / (d + 0.05);
+      };
+      const befunde = [];
+      for (const el of kinder) {
+        const name = el.tagName.toLowerCase().replace("tomtut-pool-", "");
+        for (const o of el.shadowRoot?.querySelectorAll(sel) || []) {
+          const cs = getComputedStyle(o);
+          const deck = farbe(cs.backgroundImage);
+          const text = farbe(o.classList.contains("power-badge") ? cs.color : cs.color);
+          befunde.push({
+            wo: `${name} > .${String(o.className).split(" ").join(".")}`,
+            deckAlpha: deck ? deck.a : null,
+            kontrast: deck && text ? Math.round(kontrast(text, deck) * 10) / 10 : null,
+            power: o.classList.contains("power-badge"),
+          });
+        }
+      }
+      return befunde;
+    },
+    { vars, breite, sel: I16_OVERLAYS }
+  );
+
+for (const [thema, vars] of Object.entries(I16_DUNKEL_THEMES)) {
+  await checkAsync(`It16 dunkel (${thema}): alle Overlays deckend + lesbar (Becken, WP, Pumpe, UV, Solar)`, async () => {
+    const b = await i16Alles(vars);
+    const typen = new Set(b.map((x) => x.wo.split(" > ")[0]));
+    for (const t of ["hero", "slot-heatpump", "slot-pump", "slot-uv", "slot-solar"]) assert.ok(typen.has(t), `keine Overlays in ${t}`);
+    const schlecht = b.filter((x) => x.deckAlpha !== 1 || x.kontrast < (x.power ? 3 : 4.5));
+    assert.deepEqual(schlecht, [], JSON.stringify(schlecht));
+    const min = Math.min(...b.filter((x) => !x.power).map((x) => x.kontrast));
+    results.push(`       ${thema}: ${b.length} Overlays deckend, kleinster Text-Kontrast ${min}:1`);
+  });
+  await page.locator("#buehne").screenshot({ path: join(ausgabe, `it16-dunkel-${thema.replace(/\W+/g, "-")}.png`), animations: "disabled" });
+}
+
+await checkAsync("It16 hell: --tt-deck ist unsichtbar, Alles-Config pixelgleich mit und ohne Unterlage", async () => {
+  const b = await i16Alles({});
+  assert.ok(b.length > 10, "zu wenig Overlays");
+  assert.deepEqual(b.filter((x) => x.deckAlpha !== 0), [], "Unterlage im hellen Theme sichtbar");
+  const mit = await page.locator("#buehne").screenshot({ animations: "disabled" });
+  await page.evaluate(() => {
+    const card = document.querySelector("tomtut-pool-dashboard");
+    for (const el of card.shadowRoot.querySelector(".grid").children) {
+      const st = document.createElement("style");
+      st.textContent = ".slot { --tt-deck: transparent !important; }";
+      el.shadowRoot.appendChild(st);
+    }
+  });
+  await new Promise((r) => setTimeout(r, 50));
+  const ohne = await page.locator("#buehne").screenshot({ animations: "disabled" });
+  assert.ok(mit.equals(ohne), "helles Theme sieht mit Unterlage anders aus");
+});
+
 check("keine Fehler in der Browser-Konsole", () =>
   assert.deepEqual(konsolenfehler, [], konsolenfehler.join(" | "))
 );

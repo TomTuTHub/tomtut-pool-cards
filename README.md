@@ -545,6 +545,16 @@ Jeder Eintrag:
 | `text` | Inhalt für `kind: text` |
 | `confirm_off` | Nur `button`: `true` = vor dem Ausschalten nachfragen. Standard `false` (schaltet sofort) |
 
+### Dunkles Theme
+
+Bei `fill: transparent` übernehmen Kästen die Farben des HA-Themes. Viele dunkle Themes (z.B.
+„Liquid Glass“) haben einen halbtransparenten Kartenhintergrund — damit Zahlen-Kästchen,
+Thermometer-Pillen, pH/RX, Modus-/Freigabe-Badge und Powerbutton auf dem Gerätebild trotzdem
+lesbar bleiben, legt die Card bei heller Theme-Schrift automatisch eine deckende dunkle Unterlage
+darunter (`--tt-deck`, aus der Schriftfarbe abgeleitet). Helle Themes und `fill: weiss|schwarz`
+bleiben unverändert. Braucht einen Browser mit relativer CSS-Farbsyntax (Chrome/WebView 119+,
+Safari 16.4+, Firefox 128+); ältere zeigen den bisherigen Look.
+
 ### Werte-Anzeige
 
 Overlays zeigen Zahlen einheitlich: Watt ganzzahlig, Temperaturen mit höchstens einer

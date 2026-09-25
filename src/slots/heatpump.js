@@ -898,7 +898,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
         gap: 0.45em;
         padding: 0.3em 0.6em;
         border-radius: 0.7em;
-        background: var(--tt-box-bg);
+        background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
         color: var(--tt-box-fg);
         border: 1.5px solid var(--tt-line);
         line-height: 1.15;
@@ -964,7 +964,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
         margin-top: 0.15em;
         padding: 0.05em 0.45em;
         border-radius: 0.5em;
-        background: var(--tt-box-bg);
+        background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
         color: var(--tt-box-fg);
         font-size: 0.72em;
         font-weight: 600;
@@ -983,7 +983,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
         gap: 0.45em;
         padding: 0.35em 0.7em;
         border-radius: 0.7em;
-        background: var(--tt-box-bg);
+        background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
         color: var(--tt-box-fg);
         border: 1.5px solid var(--tt-mode-farbe, var(--tt-line));
         line-height: 1.15;
