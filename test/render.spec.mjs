@@ -33,12 +33,10 @@ import { UV_LAGEN, UV_GROESSEN, miniConfig, allesConfig } from "./fixtures/demo.
 const here = dirname(fileURLToPath(import.meta.url));
 const wurzel = join(here, "..");
 const ausgabe = join(here, "render-out");
-/* Beleg für die Karte im Studio-Cockpit (ka-973 "TomTuT Pool Dashboard",
-   seit 21.09.2026 eigener Vorgang, vorher ka-839). Fehlt der Ordner, wird
-   der Beleg übersprungen — der Test hängt nicht am NAS. */
-const BELEG =
-  process.env.RENDER_BELEG ||
-  "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/pool-cards-it9-render.png";
+/* Zusätzlicher Beleg nur auf ausdrücklichen Wunsch (RENDER_BELEG=<pfad>).
+   Ohne die Variable bleibt alles in test/render-out/ (nicht versioniert) —
+   der Test schreibt nie ungefragt auf das NAS. */
+const BELEG = process.env.RENDER_BELEG || "";
 
 if (process.env.SKIP_RENDER_TEST === "1") {
   console.log("Render-Test uebersprungen (SKIP_RENDER_TEST=1)");
@@ -1137,8 +1135,8 @@ for (const themeName of Object.keys(I16_THEMES)) {
 const I16_ORIGINAL =
   process.env.IT16_ORIGINAL ||
   "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/prod-ist/ausschnitt-kioskflur-heizsteuerung-poolschalter.png";
-const I16_BELEG =
-  process.env.IT16_BELEG || "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/pool-cards-it16-schalter.png";
+/* Zusatz-Beleg nur auf Wunsch (IT16_BELEG=<pfad>), sonst nur test/render-out/ */
+const I16_BELEG = process.env.IT16_BELEG || "";
 await checkAsync("It16: Beleg dunkel neben Original", async () => {
   let original = null;
   try {
@@ -1206,10 +1204,12 @@ await checkAsync("It16: Beleg dunkel neben Original", async () => {
     );
     const pfad = join(ausgabe, "it16-beleg.png");
     await p2.screenshot({ path: pfad, fullPage: true });
-    try {
-      await p2.screenshot({ path: I16_BELEG, fullPage: true });
-    } catch (err) {
-      results.push(`       ohne Beleg auf dem NAS (${err?.message || err})`);
+    if (I16_BELEG) {
+      try {
+        await p2.screenshot({ path: I16_BELEG, fullPage: true });
+      } catch (err) {
+        results.push(`       ohne zusätzlichen Beleg (${err?.message || err})`);
+      }
     }
   } finally {
     await p2.close();
@@ -1851,10 +1851,13 @@ for (const breite of [536, 380]) {
       await Promise.all(imgs.map((i) => (i.complete ? null : new Promise((f) => (i.onload = i.onerror = f)))));
     }, I17_THEMES["Liquid Glass"]);
     await page.locator("#beleg20").screenshot({ path: join(ausgabe, "it20-becken-teile.png"), animations: "disabled" });
-    try {
-      await page.locator("#beleg20").screenshot({ path: process.env.IT20_BELEG || "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/pool-cards-it20-becken-teile.png", animations: "disabled" });
-    } catch (err) {
-      results.push(`       ohne Beleg auf dem NAS (${err?.message || err})`);
+    /* Zusatz-Beleg nur auf Wunsch (IT20_BELEG=<pfad>) */
+    if (process.env.IT20_BELEG) {
+      try {
+        await page.locator("#beleg20").screenshot({ path: process.env.IT20_BELEG, animations: "disabled" });
+      } catch (err) {
+        results.push(`       ohne zusätzlichen Beleg (${err?.message || err})`);
+      }
     }
   });
 }
@@ -2520,11 +2523,13 @@ const kontaktbogen = async () => {
   const bogen = join(ausgabe, "kontaktbogen.png");
   await page.screenshot({ path: bogen, fullPage: true });
   belegPfad = bogen;
-  try {
-    await page.screenshot({ path: BELEG, fullPage: true });
-    belegPfad = BELEG;
-  } catch (err) {
-    results.push(`  ohne Beleg auf dem NAS (${err?.message || err})`);
+  if (BELEG) {
+    try {
+      await page.screenshot({ path: BELEG, fullPage: true });
+      belegPfad = BELEG;
+    } catch (err) {
+      results.push(`  ohne zusätzlichen Beleg (${err?.message || err})`);
+    }
   }
 };
 

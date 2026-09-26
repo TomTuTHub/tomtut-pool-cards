@@ -810,8 +810,8 @@ Markup — er kennt kein Layout. Der Render-Test (`test/render.spec.mjs`, Chromi
 Playwright) prüft, was man sieht: er baut die Card in drei Breiten (360/768/1200 px) mit der
 UV-Lampe in zehn Lagen und misst, dass Bild und Overlays jedes Slots vollständig in ihrer
 Box liegen und kein Slot höher wird als das 1,6-fache seiner Breite. Die Screenshots landen
-in `test/render-out/` (nicht versioniert), ein Kontaktbogen zusätzlich unter dem Pfad aus
-`RENDER_BELEG`. Ohne Chromium: `SKIP_RENDER_TEST=1 npm test`.
+in `test/render-out/` (nicht versioniert), ein Kontaktbogen zusätzlich nur, wenn
+`RENDER_BELEG=<pfad>` gesetzt ist. Ohne Chromium: `SKIP_RENDER_TEST=1 npm test`.
 
 > Anlass war Iteration 6: die gedrehte UV-Lampe wurde riesig gerendert und legte sich über
 > die Nachbar-Cards — im jsdom-Test sah alles grün aus. Layout prüft man im Browser.
