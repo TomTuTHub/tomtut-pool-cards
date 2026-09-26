@@ -540,6 +540,19 @@ export const editorStyles = css`
   .modus-zeile.klar {
     border-left-color: var(--info-color, #039be5);
   }
+  /* "Vor dem Ausschalten nachfragen": eine Zeile, Hilfe klein daneben */
+  .nachfrage {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    margin-top: -2px;
+  }
+  .nachfrage small {
+    flex: 1 1 180px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
   .oder-einzeln {
     display: flex;
     flex-direction: column;

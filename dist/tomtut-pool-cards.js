@@ -2744,6 +2744,19 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   .modus-zeile.klar {
     border-left-color: var(--info-color, #039be5);
   }
+  /* "Vor dem Ausschalten nachfragen": eine Zeile, Hilfe klein daneben */
+  .nachfrage {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    margin-top: -2px;
+  }
+  .nachfrage small {
+    flex: 1 1 180px;
+    font-size: 11px;
+    line-height: 1.3;
+  }
   .oder-einzeln {
     display: flex;
     flex-direction: column;
@@ -3306,10 +3319,20 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     gap: 4px;
     font-weight: 500;
   }
-`,Sn=(e={},t,i=null)=>{const n=e||{};if("hidden"===t||"hidden"===String(n.type||""))return{...n,type:t};const r=ct(n),s=i?{...i}:{};delete s.label_text,delete s.title;const a={...s,type:t};return n.id?a.id=n.id:delete a.id,r?a.label=r:delete a.label,!0===n.mini_hidden?a.mini_hidden=!0:delete a.mini_hidden,a},An=["switch","input_boolean","light"],Bn=["sensor","input_number"],En=["sensor","input_number","number"],Mn=["climate","number","input_number"],Tn=["climate","sensor","input_number","number"],Cn=["sensor","select","input_select","climate"],Pn=["switch","input_boolean","binary_sensor"],On=["sensor","binary_sensor","switch","light","input_boolean","input_number","number","climate","input_select","select","cover","script","fan"],Wn=(e,t=!0,i="Aus = ein Tippen auf den Powerbutton schaltet sofort ab, ohne Warnung.")=>j`
-  ${e.toggle("Vor dem Ausschalten nachfragen","confirm_off",t)}
-  <small>${i}</small>
-`,Kn=(e,t,i)=>j`
+`,Sn=(e={},t,i=null)=>{const n=e||{};if("hidden"===t||"hidden"===String(n.type||""))return{...n,type:t};const r=ct(n),s=i?{...i}:{};delete s.label_text,delete s.title;const a={...s,type:t};return n.id?a.id=n.id:delete a.id,r?a.label=r:delete a.label,!0===n.mini_hidden?a.mini_hidden=!0:delete a.mini_hidden,a},An=["switch","input_boolean","light"],Bn=["sensor","input_number"],En=["sensor","input_number","number"],Mn=["climate","number","input_number"],Tn=["climate","sensor","input_number","number"],Cn=["sensor","select","input_select","climate"],Pn=["switch","input_boolean","binary_sensor"],On=["sensor","binary_sensor","switch","light","input_boolean","input_number","number","climate","input_select","select","cover","script","fan"],Wn=(e,t=!0,i="Aus = ein Tippen auf den Powerbutton schaltet sofort ab, ohne Warnung.")=>{const n=e.config?.confirm_off??t;return j`
+    <div class="nachfrage" data-nachfrage>
+      <label class="haken">
+        <input
+          type="checkbox"
+          data-key="confirm_off"
+          .checked="${!!n}"
+          @change="${t=>e.update({confirm_off:t.target.checked})}"
+        />
+        <span>${"Vor dem Ausschalten nachfragen"}</span>
+      </label>
+      <small>${i}</small>
+    </div>
+  `},Kn=(e,t,i)=>j`
   <label class="label-feld"
     >${t}
     <input
@@ -3609,9 +3632,9 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   ${e.select("Art","kind",[["entity","Entity mit Wert"],["button","Button (schaltet)"],["text","Freitext"]],"entity")}
   ${"text"===e.config?.kind?e.text("Text","text","","z.B. Sommerbetrieb"):j`
         ${e.entity("Entity","entity","",...On)}
+        ${"button"===e.config?.kind?Wn(e,!1,"An = vor dem Ausschalten kommt eine Rückfrage."):G}
         ${e.text("Beschriftung","label","","leer = Name der Entity")}
         ${e.icon("Icon","icon","Leer = Icon der Entity (Liste/Kacheln); klassisch nur bei Buttons.")}
-        ${"button"===e.config?.kind?Wn(e,!1,"An = vor dem Ausschalten kommt eine Rückfrage."):G}
       `}
 `)(new vn({hass:this.hass,config:t||{},update:t=>this._updateEntry(e,r,t),idPrefix:`slot${e}e${r}`}))}
             </div>

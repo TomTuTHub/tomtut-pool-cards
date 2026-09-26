@@ -5974,6 +5974,47 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
   );
 }
 
+/* ================================================================== */
+/* Iteration 27 — Nachfrage direkt unter dem Schalter, kompakt          */
+/* ================================================================== */
+{
+  const ed = new Editor();
+  ed.setConfig({
+    hero: { enabled: false },
+    slots: [
+      { type: "heatpump", switch_entity: "switch.waermepumpe" },
+      { type: "pump", main_entity: "input_boolean.poolpumpe_schalter" },
+      { type: "uv", switch_entity: "switch.uv_lampe" },
+      { type: "solar", switch_entity: "switch.solarventil" },
+      { type: "custom", entries: [{ kind: "button", entity: "switch.poolbeleuchtung" }, { kind: "entity", entity: "sensor.pool_ph" }] },
+    ],
+  });
+  ed.hass = makeHass();
+  document.body.appendChild(ed);
+  await ed.updateComplete;
+  const $ = (s) => ed.shadowRoot.querySelector(s);
+  check("It27 Freifeld-Button: Art → Entity → Nachfrage → Beschriftung → Icon", () => {
+    const keys = [...$('[data-eintrag="0"] .eintrag-body').querySelectorAll("[data-key]")].map((x) => x.dataset.key);
+    assert.deepEqual(keys, ["kind", "entity", "confirm_off", "label", "icon"]);
+  });
+  check("It27 Freifeld 'Entity mit Wert': keine Nachfrage", () =>
+    assert.equal($('[data-eintrag="1"] [data-key="confirm_off"]'), null)
+  );
+  check("It27: Nachfrage ist EINE Zeile (Haken + Hilfe klein daneben), in jedem Kasten direkt unter dem Schalter", () => {
+    for (const [i, key] of [[0, "switch_entity"], [1, "main_entity"], [2, "switch_entity"], [3, "switch_entity"]]) {
+      const sw = $(`[data-kasten="${i}"] [data-key="${key}"]`);
+      /* ohne HA-Picker steckt das Feld in einem <label> */
+      const feld = sw.closest("label") || sw;
+      const nach = feld.nextElementSibling;
+      assert.ok(nach && nach.matches("[data-nachfrage]"), `Kasten ${i + 1}: ${nach?.outerHTML?.slice(0, 60)}`);
+      assert.ok(nach.querySelector('[data-key="confirm_off"]') && nach.querySelector("small"));
+    }
+    const css = cssOf("tomtut-pool-dashboard-editor").replace(/\s+/g, " ");
+    assert.match(css, /\.nachfrage \{[^}]*display: flex/);
+  });
+  ed.remove();
+}
+
 /* ------------------------------------------------------------------ */
 
 console.log(results.join("\n"));

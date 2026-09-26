@@ -66,14 +66,29 @@ const FREIFELD = [
  * Powerbutton (Iteration 9). Ab Werk an, wie bisher.
  */
 const NACHFRAGEN = "Vor dem Ausschalten nachfragen";
+/* Iteration 27: eine kompakte Zeile, Hilfetext klein daneben — und immer
+   direkt unter dem Schalter, den sie betrifft */
 const nachfragen = (
   f,
   def = true,
   hinweis = "Aus = ein Tippen auf den Powerbutton schaltet sofort ab, ohne Warnung."
-) => html`
-  ${f.toggle(NACHFRAGEN, "confirm_off", def)}
-  <small>${hinweis}</small>
-`;
+) => {
+  const v = f.config?.confirm_off ?? def;
+  return html`
+    <div class="nachfrage" data-nachfrage>
+      <label class="haken">
+        <input
+          type="checkbox"
+          data-key="confirm_off"
+          .checked="${!!v}"
+          @change="${(e) => f.update({ confirm_off: e.target.checked })}"
+        />
+        <span>${NACHFRAGEN}</span>
+      </label>
+      <small>${hinweis}</small>
+    </div>
+  `;
+};
 
 /* ---------------- Überschrift: einheitlich `label`, ganz oben ---------------- */
 
@@ -1049,11 +1064,9 @@ export const customEntryFields = (f) => html`
     ? f.text("Text", "text", "", "z.B. Sommerbetrieb")
     : html`
         ${f.entity("Entity", "entity", "", ...FREIFELD)}
+        ${f.config?.kind === "button" ? nachfragen(f, false, "An = vor dem Ausschalten kommt eine Rückfrage.") : nothing}
         ${f.text("Beschriftung", "label", "", "leer = Name der Entity")}
         ${f.icon("Icon", "icon", "Leer = Icon der Entity (Liste/Kacheln); klassisch nur bei Buttons.")}
-        ${f.config?.kind === "button"
-          ? nachfragen(f, false, "An = vor dem Ausschalten kommt eine Rückfrage.")
-          : nothing}
       `}
 `;
 
