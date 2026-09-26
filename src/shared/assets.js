@@ -141,9 +141,9 @@ export const DEVICE_IMAGES = {
  * hat (Aufstellbecken meist nicht).
  */
 export const HERO_SPRITES = {
-  skimmer: { file: "skimmer_transparent.png", anker: "skimmer", groesse: 10, standard: true },
-  einlauf: { file: "einlaufduese_transparent.png", anker: "inlet", groesse: 6.5, standard: true },
-  drain: { file: "bodenablauf_transparent.png", anker: "drain", groesse: 9, standard: false },
+  skimmer: { file: "skimmer_transparent.png", anker: "skimmer", groesse: 10, standard: true, ratio: 640 / 465 },
+  einlauf: { file: "einlaufduese_transparent.png", anker: "inlet", groesse: 6.5, standard: true, ratio: 503 / 342 },
+  drain: { file: "bodenablauf_transparent.png", anker: "drain", groesse: 9, standard: false, ratio: 640 / 529 },
 };
 
 /*

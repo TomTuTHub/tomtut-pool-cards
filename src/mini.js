@@ -1,5 +1,5 @@
 import { html, css, nothing, unsafeCSS } from "lit";
-import { TomtutPoolHero } from "./hero.js";
+import { TomtutPoolHero, teilLage } from "./hero.js";
 import { TomtutPoolSlotPump, pumpHasEntity, fanDuration } from "./slots/pump.js";
 import { TomtutPoolSlotHeatpump, MODE_FARBEN, heatpumpHasEntity } from "./slots/heatpump.js";
 import { solarAktiv } from "./slots/solar.js";
@@ -445,16 +445,7 @@ export const miniBecken = (hero = {}, hass) => {
     chips.push({ key: "Zulauf", text: wert(hass, hero.inlet_temp_entity), entity: hero.inlet_temp_entity });
   const sprites = Object.values(HERO_SPRITES)
     .filter((sp) => h._spriteAn(sp.anker))
-    .map((sp) => {
-      const g = Number(h._v(`${sp.anker}_size`));
-      return {
-        anker: sp.anker,
-        src: imagePath(sp.file),
-        top: h._anchor(sp.anker, "top"),
-        left: h._anchor(sp.anker, "left"),
-        breite: g > 0 ? g : sp.groesse,
-      };
-    });
+    .map((sp) => ({ anker: sp.anker, src: imagePath(sp.file), ...teilLage(hero || {}, sp, "mini") }));
   return {
     bild: imagePath(form.file),
     ratio: shapeRatio(hero?.shape),

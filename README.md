@@ -307,6 +307,7 @@ slots:
 | `inlet_temp_entity` | – | Temperatur des einströmenden Wassers → Kästchen neben der Düse (nur mit `show_inlet`) |
 | `inlet_temp_top` / `inlet_temp_left` | Düsen-Anker + 8 / + 11 | Position des Kästchens; ohne Angabe wandert es mit der Düse |
 | `drain_top` / `drain_left` / `drain_size` | aus der Formen-Tabelle / `9` | Lage und Breite des Bodenablaufs |
+| `mini_skimmer_*` / `mini_inlet_*` / `mini_drain_*` | wie Voll | Eigene Lage (`_top`/`_left`) und Breite (`_size`) der drei Teile **nur für die Mini-Ansicht** (Iteration 20) — das Becken ist dort anders proportioniert. Fehlt ein Wert, gilt der der vollen Ansicht. Im Editor über „Positionen der Becken-Teile für: Voll / Mini“. Jedes Teil wird in beiden Ansichten so geklemmt, dass es ganz im Beckenbild bleibt; Breite 2–40 % |
 
 Die Anker der Formen-Tabelle sind an den Bildern vermessen (siehe [Beckenformen](#beckenformen));
 alle lassen sich pro Card überschreiben. Die drei `*_size`-Werte sind die **Breite in Prozent

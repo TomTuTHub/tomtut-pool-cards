@@ -38,7 +38,7 @@ export {
   GROESSE_MAX,
 } from "./shared/bild.js";
 export { SOLAR_DEFAULTS, solarAktiv } from "./slots/solar.js";
-export { HERO_DEFAULTS, heroDefaultsFor, INLET_TEMP_VERSATZ } from "./hero.js";
+export { HERO_DEFAULTS, heroDefaultsFor, INLET_TEMP_VERSATZ, teilLage, TEIL_GROESSE_MIN, TEIL_GROESSE_MAX } from "./hero.js";
 export {
   SHAPES,
   BECKEN_RATIOS,

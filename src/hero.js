@@ -1,7 +1,7 @@
 import { html, css, nothing } from "lit";
 import { SlotBase } from "./shared/slot-base.js";
 import { frameStyles, overlayStyles } from "./shared/styles.js";
-import { shapeOf, imagePath, HERO_SPRITES } from "./shared/assets.js";
+import { shapeOf, shapeRatio, imagePath, HERO_SPRITES } from "./shared/assets.js";
 import { numText } from "./shared/util.js";
 
 /*
@@ -34,6 +34,39 @@ import { numText } from "./shared/util.js";
  * das Kästchen mit — es sei denn, es hat eigene Werte in der Config.
  */
 export const INLET_TEMP_VERSATZ = { top: 8, left: 11 };
+
+/*
+ * Lage der Becken-Teile (Iteration 20) — EINE Rechnung für volle Ansicht
+ * und Mini. Schlüssel aus dem Bestand:
+ *   voll  <anker>_top / <anker>_left / <anker>_size       (anker = skimmer|inlet|drain)
+ *   mini  mini_<anker>_top / mini_<anker>_left / mini_<anker>_size
+ * Fehlt ein Mini-Wert, gilt der Voll-Wert (= Verhalten vor Iteration 20),
+ * fehlt der, der Anker der Beckenform. `size` = Breite in % der Beckenbreite.
+ * Geklemmt wird so, dass das Teil vollständig in der Beckenbild-Fläche
+ * bleibt (Höhe über das Seitenverhältnis von Becken und Teil).
+ */
+export const TEIL_GROESSE_MIN = 2;
+export const TEIL_GROESSE_MAX = 40;
+const zahl = (v) => (v === undefined || v === null || v === "" || !isFinite(Number(v)) ? null : Number(v));
+const klemm = (v, min, max) => Math.min(max, Math.max(min, v));
+
+export const teilLage = (config = {}, sprite, modus = "voll") => {
+  const c = config || {};
+  const a = sprite.anker;
+  const form = shapeOf(c.shape);
+  const voll = (achse) => zahl(c[`${a}_${achse}`]) ?? form[a]?.[achse] ?? 50;
+  const wert = (achse) => (modus === "mini" ? zahl(c[`mini_${a}_${achse}`]) ?? voll(achse) : voll(achse));
+  const g = modus === "mini" ? zahl(c[`mini_${a}_size`]) ?? zahl(c[`${a}_size`]) : zahl(c[`${a}_size`]);
+  const breite = klemm(g !== null && g > 0 ? g : sprite.groesse, TEIL_GROESSE_MIN, TEIL_GROESSE_MAX);
+  /* Höhe des Teils in % der Beckenhöhe */
+  const hoehe = (breite * shapeRatio(c.shape)) / (sprite.ratio || 1);
+  const r = (x) => Math.round(x * 100) / 100;
+  return {
+    left: r(klemm(wert("left"), breite / 2, 100 - breite / 2)),
+    top: r(klemm(wert("top"), Math.min(50, hoehe / 2), Math.max(50, 100 - hoehe / 2))),
+    breite: r(breite),
+  };
+};
 
 export const HERO_DEFAULTS = {
   thermo_scale: 133,
@@ -176,16 +209,12 @@ export class TomtutPoolHero extends SlotBase {
   _sprites() {
     return Object.values(HERO_SPRITES).map((sprite) => {
       if (!this._spriteAn(sprite.anker)) return nothing;
-      const groesse = Number(this._v(`${sprite.anker}_size`));
-      const breite = groesse > 0 ? groesse : sprite.groesse;
+      const l = teilLage(this.config, sprite, "voll");
       return html`<img
         class="hero-sprite sprite-${sprite.anker}"
         src="${imagePath(sprite.file)}"
         alt=""
-        style="top:${this._anchor(sprite.anker, "top")}%; left:${this._anchor(
-          sprite.anker,
-          "left"
-        )}%; width:${breite}%;"
+        style="top:${l.top}%; left:${l.left}%; width:${l.breite}%;"
       />`;
     });
   }

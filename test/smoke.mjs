@@ -4730,6 +4730,133 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
 }
 
 /* ------------------------------------------------------------------ */
+/* Iteration 20: Becken-Teile frei platzierbar, Voll und Mini getrennt */
+/* ------------------------------------------------------------------ */
+{
+  const SP = pkg.HERO_SPRITES;
+  check("It20 Kompatibilität: ohne eigene Werte liegt jedes Teil in jeder Form genau am Anker (voll = mini = vorher)", () => {
+    for (const form of Object.keys(pkg.SHAPES)) {
+      for (const sp of Object.values(SP)) {
+        const anker = pkg.SHAPES[form][sp.anker];
+        const v = pkg.teilLage({ shape: form }, sp, "voll");
+        const m = pkg.teilLage({ shape: form }, sp, "mini");
+        assert.deepEqual(v, { top: anker.top, left: anker.left, breite: sp.groesse }, `${form}/${sp.anker}`);
+        assert.deepEqual(m, v, `${form}/${sp.anker} mini`);
+      }
+    }
+  });
+  check("It20 Kompatibilität: alte Voll-Werte (skimmer_top/left/size) gelten weiter — und auch für Mini, solange es keine Mini-Werte gibt", () => {
+    const c = { shape: "oval", skimmer_top: 30, skimmer_left: 40, skimmer_size: 14 };
+    assert.deepEqual(pkg.teilLage(c, SP.skimmer, "voll"), { top: 30, left: 40, breite: 14 });
+    assert.deepEqual(pkg.teilLage(c, SP.skimmer, "mini"), { top: 30, left: 40, breite: 14 });
+  });
+  check("It20 Trennung: Mini-Werte ändern nur Mini, Voll bleibt", () => {
+    const c = { shape: "oval", skimmer_top: 30, mini_skimmer_top: 45, mini_skimmer_left: 70, mini_skimmer_size: 20 };
+    assert.deepEqual(pkg.teilLage(c, SP.skimmer, "voll"), { top: 30, left: 22.3, breite: 10 });
+    assert.deepEqual(pkg.teilLage(c, SP.skimmer, "mini"), { top: 45, left: 70, breite: 20 });
+    /* nur ein Mini-Wert gesetzt: der Rest kommt von Voll */
+    assert.deepEqual(pkg.teilLage({ shape: "oval", drain_left: 60, mini_drain_top: 50 }, SP.drain, "mini"), { top: 50, left: 60, breite: 9 });
+  });
+  check("It20 Klemmen: nie aus dem Beckenbild heraus, Größe 2–40 %", () => {
+    for (const form of Object.keys(pkg.SHAPES)) {
+      for (const sp of Object.values(SP)) {
+        for (const modus of ["voll", "mini"]) {
+          const p = modus === "mini" ? "mini_" : "";
+          for (const [t, l, g] of [[-50, -50, 999], [150, 150, 999], [0, 100, 1], [100, 0, 40], [50, 50, -5]]) {
+            const c = { shape: form, [`${p}${sp.anker}_top`]: t, [`${p}${sp.anker}_left`]: l, [`${p}${sp.anker}_size`]: g };
+            const x = pkg.teilLage(c, sp, modus);
+            const hoehe = (x.breite * pkg.shapeRatio(form)) / sp.ratio;
+            assert.ok(x.breite >= pkg.TEIL_GROESSE_MIN && x.breite <= pkg.TEIL_GROESSE_MAX, `${form} ${sp.anker} Größe ${x.breite}`);
+            assert.ok(x.left - x.breite / 2 >= -0.01 && x.left + x.breite / 2 <= 100.01, `${form} ${sp.anker} links ${x.left}`);
+            if (hoehe <= 100) assert.ok(x.top - hoehe / 2 >= -0.01 && x.top + hoehe / 2 <= 100.01, `${form} ${sp.anker} oben ${x.top} (h ${hoehe})`);
+          }
+        }
+      }
+    }
+    assert.equal(pkg.teilLage({ shape: "oval", skimmer_size: -5 }, SP.skimmer).breite, SP.skimmer.groesse, "unsinnige Größe = Vorgabe");
+  });
+  /* im DOM: Voll-Hero und Mini-Kopf nutzen jeweils ihre Werte */
+  const heroCfg = { shape: "rund", temp_entity: "sensor.pool_wassertemperatur", show_drain: true, skimmer_left: 30, mini_skimmer_left: 60, mini_inlet_size: 12, show_inlet: true };
+  const voll = await mount(Dashboard, { hero: heroCfg, slots: [] }, makeHass());
+  const heroEl = voll.shadowRoot.querySelector("tomtut-pool-hero");
+  await heroEl.updateComplete;
+  const mini = await mount(Dashboard, { view: "mini", hero: heroCfg, slots: [] }, makeHass());
+  const stil = (root, a) => root.querySelector(`img.${a}`)?.getAttribute("style") || "";
+  check("It20 DOM: Voll zeigt skimmer_left 30, Mini zeigt mini_skimmer_left 60", () => {
+    assert.match(stil(heroEl.shadowRoot, "sprite-skimmer"), /left:30%/);
+    assert.match(stil(mini.shadowRoot, "m-sprite.sprite-skimmer"), /left:\s*60%/);
+    assert.match(stil(mini.shadowRoot, "m-sprite.sprite-inlet"), /width:\s*12%/);
+    assert.doesNotMatch(stil(heroEl.shadowRoot, "sprite-inlet"), /width:12%/);
+  });
+  mini.setConfig({ view: "mini", hero: { ...heroCfg, show_skimmer: false }, slots: [] });
+  await mini.updateComplete;
+  check("It20 DOM: show_skimmer false blendet ihn auch im Mini aus", () => {
+    assert.equal(mini.shadowRoot.querySelector("img.sprite-skimmer"), null);
+    assert.ok(mini.shadowRoot.querySelector("img.sprite-drain"));
+  });
+  voll.remove();
+  mini.remove();
+
+  /* ---- Editor ---- */
+  const ed = new Editor();
+  ed.setConfig({ hero: { enabled: true, shape: "oval", skimmer_left: 30 }, slots: [] });
+  ed.hass = makeHass();
+  document.body.appendChild(ed);
+  await ed.updateComplete;
+  let fired = null;
+  ed.addEventListener("config-changed", (e) => {
+    fired = e.detail.config;
+    ed.setConfig(fired);
+  });
+  const block = (a) => ed.shadowRoot.querySelector(`[data-teil="${a}"]`);
+  const posKnopf = (w) => ed.shadowRoot.querySelector(`[data-teile-pos="${w}"]`);
+  check("It20 Editor: Umschalter 'Positionen für: Voll / Mini', ohne view: mini auf Voll", () => {
+    assert.ok(posKnopf("voll") && posKnopf("mini"));
+    assert.ok(posKnopf("voll").classList.contains("aktiv"));
+    assert.equal(block("skimmer").dataset.teilPos, "voll");
+    assert.ok(block("skimmer").querySelector('input[data-key="skimmer_left"]'));
+    assert.equal(block("skimmer").querySelector('input[data-key="skimmer_left"]').value, "30");
+    assert.equal(block("drain"), null, "Bodenablauf ab Werk aus -> keine Regler");
+  });
+  posKnopf("mini").click();
+  await ed.updateComplete;
+  check("It20 Editor: auf Mini — Regler bearbeiten mini_*, starten auf der Voll-Lage", () => {
+    assert.equal(block("skimmer").dataset.teilPos, "mini");
+    const l = block("skimmer").querySelector('input[data-key="mini_skimmer_left"]');
+    assert.ok(l);
+    assert.equal(l.value, "30");
+    assert.equal(block("skimmer").querySelector('input[data-key="skimmer_left"]'), null);
+    assert.equal(block("skimmer").querySelector("[data-teil-reset]"), null, "Reset ohne Mini-Werte");
+  });
+  {
+    const l = block("skimmer").querySelector('input[data-key="mini_skimmer_left"]');
+    l.value = "72";
+    l.dispatchEvent(new dom.window.Event("input"));
+    await ed.updateComplete;
+  }
+  check("It20 Editor: Mini-Regler schreibt nur mini_skimmer_left, Voll bleibt 30", () => {
+    assert.equal(fired.hero.mini_skimmer_left, 72);
+    assert.equal(fired.hero.skimmer_left, 30);
+  });
+  block("skimmer").querySelector("[data-teil-reset]").click();
+  await ed.updateComplete;
+  check("It20 Editor: 'Mini-Werte zurücksetzen' entfernt die mini_*-Schlüssel", () => {
+    assert.equal("mini_skimmer_left" in fired.hero, false);
+    assert.equal(fired.hero.skimmer_left, 30);
+  });
+  ed.remove();
+  const ed2 = new Editor();
+  ed2.setConfig({ view: "mini", hero: { enabled: true }, slots: [] });
+  ed2.hass = makeHass();
+  document.body.appendChild(ed2);
+  await ed2.updateComplete;
+  check("It20 Editor: bei view: mini startet der Umschalter auf Mini", () =>
+    assert.ok(ed2.shadowRoot.querySelector('[data-teile-pos="mini"]').classList.contains("aktiv"))
+  );
+  ed2.remove();
+}
+
+/* ------------------------------------------------------------------ */
 
 console.log(results.join("\n"));
 console.log(

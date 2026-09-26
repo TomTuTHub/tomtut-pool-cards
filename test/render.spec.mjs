@@ -1760,6 +1760,104 @@ for (const breite of [536, 380]) {
   });
 }
 
+/* ------------------------------------------------------------------ */
+/* Iteration 20: Becken-Teile bleiben im Bild (Voll + Mini, alle Formen) */
+/* ------------------------------------------------------------------ */
+{
+  const FORMEN = ["oval", "rechteck", "achtform", "rund", "niere", "freiform"];
+  const extrem = (p) => ({
+    show_drain: true,
+    [`${p}skimmer_left`]: -40, [`${p}skimmer_top`]: -40, [`${p}skimmer_size`]: 60,
+    [`${p}inlet_left`]: 140, [`${p}inlet_top`]: -10, [`${p}inlet_size`]: 25,
+    [`${p}drain_left`]: 110, [`${p}drain_top`]: 130, [`${p}drain_size`]: 18,
+  });
+  await checkAsync("It20 alle Formen, Voll + Mini, extreme Werte: jedes Teil liegt ganz im Beckenbild", async () => {
+    const befunde = await page.evaluate(async ({ FORMEN, cfgs }) => {
+      document.body.innerHTML = `<div id="buehne" style="width:760px"></div>`;
+      const aus = [];
+      for (const form of FORMEN) {
+        for (const [modus, extra] of Object.entries(cfgs)) {
+          const b = document.getElementById("buehne");
+          b.innerHTML = "";
+          const card = document.createElement("tomtut-pool-dashboard");
+          card.setConfig({ view: modus === "mini" ? "mini" : "voll", hero: { shape: form, ...extra }, slots: [] });
+          card.hass = window.demo.DEMO_HASS;
+          b.appendChild(card);
+          await card.updateComplete;
+          let root = card.shadowRoot, bildSel = ".m-becken";
+          if (modus === "voll") {
+            const h = card.shadowRoot.querySelector("tomtut-pool-hero");
+            await h.updateComplete;
+            root = h.shadowRoot;
+            bildSel = ".img-wrap";
+          }
+          const imgs = [...root.querySelectorAll("img")];
+          await Promise.all(imgs.map((i) => (i.complete && i.naturalWidth ? null : new Promise((f) => (i.onload = i.onerror = f)))));
+          const bild = root.querySelector(bildSel).getBoundingClientRect();
+          const sprites = [...root.querySelectorAll("img.hero-sprite, img.m-sprite")];
+          if (sprites.length !== 3) aus.push(`${form}/${modus}: ${sprites.length} Teile`);
+          for (const s of sprites) {
+            const r = s.getBoundingClientRect();
+            if (r.left < bild.left - 1 || r.right > bild.right + 1 || r.top < bild.top - 1 || r.bottom > bild.bottom + 1)
+              aus.push(`${form}/${modus}/${s.className}: ${[r.left - bild.left, r.top - bild.top, bild.right - r.right, bild.bottom - r.bottom].map(Math.round)}`);
+          }
+        }
+      }
+      return aus;
+    }, { FORMEN, cfgs: { voll: extrem(""), mini: extrem("mini_") } });
+    assert.deepEqual(befunde, []);
+  });
+  /* Beleg: Voll und Mini nebeneinander, Teile verschoben/skaliert —
+     Mini bewusst anders als Voll */
+  await checkAsync("It20 Beleg: Becken-Teile Voll + Mini", async () => {
+    await page.evaluate(async (theme) => {
+      document.body.innerHTML = "";
+      document.body.style.cssText = `margin:0;padding:16px;background:${theme.seite};font-family:Roboto,sans-serif`;
+      await document.fonts.load("700 12px Roboto");
+      for (const [k, v] of Object.entries(theme.vars)) document.body.style.setProperty(k, v);
+      const reihe = document.createElement("div");
+      reihe.id = "beleg20";
+      reihe.style.cssText = "display:flex;gap:20px;align-items:flex-start;width:max-content";
+      document.body.appendChild(reihe);
+      const hero = {
+        shape: "oval", temp_entity: "sensor.pool_wassertemperatur", ph_entity: "sensor.pool_ph", rx_entity: "sensor.pool_redox", show_drain: true,
+        /* Voll: Skimmer groß links vorne, Düse rechts, Bodenablauf mittig */
+        skimmer_left: 14, skimmer_top: 26, skimmer_size: 15, inlet_left: 84, inlet_top: 20, inlet_size: 9, drain_left: 52, drain_top: 34, drain_size: 11,
+        /* Mini: anders — Skimmer rechts, Düse links, Bodenablauf klein */
+        mini_skimmer_left: 80, mini_skimmer_top: 22, mini_skimmer_size: 13, mini_inlet_left: 18, mini_inlet_top: 16, mini_inlet_size: 10, mini_drain_size: 6,
+      };
+      const spalte = (titel, breite) => {
+        const d = document.createElement("div");
+        d.innerHTML = `<div style="color:#e1e1e1;font:600 13px system-ui;margin:0 0 6px">${titel}</div>`;
+        const b = document.createElement("div");
+        b.style.width = breite + "px";
+        d.appendChild(b);
+        reihe.appendChild(d);
+        return b;
+      };
+      const cards = [];
+      for (const [titel, view, breite] of [["Voll: skimmer_* / inlet_* / drain_*", "voll", 640], ["Mini: mini_skimmer_* / mini_inlet_* / mini_drain_*", "mini", 500]]) {
+        const card = document.createElement("tomtut-pool-dashboard");
+        card.setConfig({ view, hero, frame: { enabled: true, fill: "transparent" }, slots: [] });
+        card.hass = window.demo.DEMO_HASS;
+        spalte(titel, breite).appendChild(card);
+        cards.push(card);
+      }
+      await Promise.all(cards.map((c) => c.updateComplete));
+      const h = cards[0].shadowRoot.querySelector("tomtut-pool-hero");
+      await h.updateComplete;
+      const imgs = [...cards[1].shadowRoot.querySelectorAll("img"), ...h.shadowRoot.querySelectorAll("img")];
+      await Promise.all(imgs.map((i) => (i.complete ? null : new Promise((f) => (i.onload = i.onerror = f)))));
+    }, I17_THEMES["Liquid Glass"]);
+    await page.locator("#beleg20").screenshot({ path: join(ausgabe, "it20-becken-teile.png"), animations: "disabled" });
+    try {
+      await page.locator("#beleg20").screenshot({ path: process.env.IT20_BELEG || "/mnt/nas/proxmox-container/studio/vorgaenge/ka-973/pool-cards-it20-becken-teile.png", animations: "disabled" });
+    } catch (err) {
+      results.push(`       ohne Beleg auf dem NAS (${err?.message || err})`);
+    }
+  });
+}
+
 check("It17 Mini: Pooltemperatur mit Wert", () => assert.equal(i17Masse["500-hell"]?.temp, "24,6 °C"));
 /* ab hier: 500 px in Liquid Glass (Studio-Tablet) */
 await i17Bauen(page, 500, I17_THEMES["Liquid Glass"]);

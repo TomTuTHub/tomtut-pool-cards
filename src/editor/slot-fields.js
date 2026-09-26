@@ -1,6 +1,7 @@
 import { html, nothing } from "lit";
 import { section, elementsGroup } from "../shared/fields.js";
 import { SHAPES } from "../shared/assets.js";
+import { TEIL_GROESSE_MIN, TEIL_GROESSE_MAX } from "../hero.js";
 import { FAN_SPEED_MIN, FAN_SPEED_MAX } from "../slots/pump.js";
 import { HP_MODES, modeFromState, optionZuordnung, modeZustaende } from "../slots/heatpump.js";
 import { FAN_DESIGNS } from "../shared/slot-base.js";
@@ -51,17 +52,63 @@ const nachfragen = (
  * Alle drei haben dieselben drei Regler — deshalb eine Funktion statt
  * dreimal derselbe Block. `anker` ist der Name in der Formen-Tabelle.
  */
-const spriteFelder = (f, titel, anker, schalter, standard) =>
-  f.shown(schalter, standard)
-    ? section(
-        `${titel} — Größe und Lage`,
-        html`
-          ${f.slider("Größe", `${anker}_size`, 2, 30, "%", 0.5)}
-          ${f.slider("Von oben", `${anker}_top`, 0, 100, "%", 0.5)}
-          ${f.slider("Von links", `${anker}_left`, 0, 100, "%", 0.5)}
-          <small>Die Größe ist die Breite in Prozent der Beckenbreite.</small>
-        `
-      )
+/*
+ * Iteration 20: dieselben drei Regler bearbeiten wahlweise die Werte der
+ * vollen Ansicht (<anker>_*) oder der Mini-Ansicht (mini_<anker>_*) — je
+ * nach Umschalter "Positionen für" (f.teilePos). Die Card klemmt jedes Teil
+ * in die Beckenbild-Fläche (hero.js: teilLage).
+ */
+const spriteFelder = (f, titel, anker, schalter, standard) => {
+  if (!f.shown(schalter, standard)) return nothing;
+  const mini = f.teilePos === "mini";
+  const k = (achse) => `${mini ? "mini_" : ""}${anker}_${achse}`;
+  const eigeneMini = ["top", "left", "size"].some((a) => f.raw(`mini_${anker}_${a}`) !== "");
+  return section(
+    `${titel} — Größe und Lage (${mini ? "Mini" : "Voll"})`,
+    html`
+      <div data-teil="${anker}" data-teil-pos="${mini ? "mini" : "voll"}">
+        ${f.slider("Größe", k("size"), TEIL_GROESSE_MIN, TEIL_GROESSE_MAX, "%", 0.5)}
+        ${f.slider("Links ↔ rechts", k("left"), 0, 100, "%", 0.5)}
+        ${f.slider("Oben ↕ unten", k("top"), 0, 100, "%", 0.5)}
+        ${mini && eigeneMini
+          ? html`<button
+              type="button"
+              class="teil-reset"
+              data-teil-reset="${anker}"
+              @click="${() =>
+                f.update({ [`mini_${anker}_top`]: undefined, [`mini_${anker}_left`]: undefined, [`mini_${anker}_size`]: undefined })}"
+            >
+              Mini-Werte zurücksetzen (wie Voll)
+            </button>`
+          : nothing}
+        <small>
+          Größe = Breite in % der Beckenbreite. Das Teil bleibt immer ganz im Beckenbild.
+          ${mini ? "Ohne eigene Mini-Werte gilt die Lage der vollen Ansicht." : ""}
+        </small>
+      </div>
+    `
+  );
+};
+
+/* Umschalter "Positionen für: Voll / Mini" (Zustand lebt im Editor) */
+const teilePosWahl = (f) =>
+  f.setTeilePos
+    ? html`<div class="teile-pos" role="group" aria-label="Positionen für">
+        <span class="row-label">Positionen der Becken-Teile für</span>
+        <div class="ansicht-wahl">
+          ${["voll", "mini"].map(
+            (w) => html`<button
+              type="button"
+              class="ansicht-knopf ${f.teilePos === w ? "aktiv" : ""}"
+              data-teile-pos="${w}"
+              aria-pressed="${f.teilePos === w ? "true" : "false"}"
+              @click="${() => f.setTeilePos(w)}"
+            >
+              ${w === "voll" ? "Voll" : "Mini"}
+            </button>`
+          )}
+        </div>
+      </div>`
     : nothing;
 
 export const heroFields = (f) => html`
@@ -128,6 +175,7 @@ export const heroFields = (f) => html`
         )}
       `
     : nothing}
+  ${teilePosWahl(f)}
   ${spriteFelder(f, "Skimmer", "skimmer", "show_skimmer", true)}
   ${spriteFelder(f, "Einlaufdüse", "inlet", "show_inlet", true)}
   ${f.shown("show_inlet", true)

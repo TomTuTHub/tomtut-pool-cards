@@ -371,6 +371,24 @@ export const editorStyles = css`
     background: var(--primary-color, #03a9f4);
     color: var(--text-primary-color, #fff);
   }
+  /* Positionen der Becken-Teile für Voll / Mini (Iteration 20) */
+  .teile-pos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    padding: 6px 0;
+  }
+  .teil-reset {
+    align-self: flex-start;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--divider-color, #ccc);
+    background: transparent;
+    color: var(--primary-text-color, #111);
+    font: inherit;
+    cursor: pointer;
+  }
   /* "In Mini anzeigen" je Kasten (Iteration 17) */
   .mini-wahl {
     text-align: left;

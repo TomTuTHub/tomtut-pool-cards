@@ -6,7 +6,8 @@ import { HEATPUMP_DEFAULTS } from "../slots/heatpump.js";
 import { PUMP_DEFAULTS } from "../slots/pump.js";
 import { UV_DEFAULTS } from "../slots/uv.js";
 import { SOLAR_DEFAULTS } from "../slots/solar.js";
-import { heroDefaultsFor } from "../hero.js";
+import { heroDefaultsFor, teilLage } from "../hero.js";
+import { HERO_SPRITES } from "../shared/assets.js";
 import { kioskSchluessel, kioskGilt, KIOSK_BECKEN } from "../shared/kiosk.js";
 import { ansichtVon, miniWahl, MINI_TYPEN, MINI_KACHEL_FILLS, miniKachelFill } from "../mini.js";
 import {
@@ -50,6 +51,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
   static properties = {
     hass: { attribute: false },
     _config: { state: true },
+    _teilePos: { state: true },
   };
 
   constructor() {
@@ -367,11 +369,29 @@ export class TomtutPoolDashboardEditor extends LitElement {
       config: hero,
       /* Die Anker der gewählten Beckenform sind die Defaults — sonst stehen
          die Regler links, obwohl das Overlay richtig sitzt. */
-      defaults: heroDefaultsFor(hero.shape),
+      defaults: {
+        ...heroDefaultsFor(hero.shape),
+        /* Mini-Regler starten auf der Lage der vollen Ansicht (Iteration 20) */
+        ...Object.fromEntries(
+          Object.values(HERO_SPRITES).flatMap((sp) => {
+            const l = teilLage(hero, sp, "voll");
+            return [
+              [`mini_${sp.anker}_top`, l.top],
+              [`mini_${sp.anker}_left`, l.left],
+              [`mini_${sp.anker}_size`, l.breite],
+            ];
+          })
+        ),
+      },
       update: (patch) => this._updateHero(patch),
       idPrefix: "hero",
       stash: this._stash,
     });
+    heroF.teilePos = this._teilePos || ansichtVon(this._config);
+    heroF.setTeilePos = (w) => {
+      this._teilePos = w;
+      this.requestUpdate();
+    };
     const frameF = new Fields({
       hass: this.hass,
       config: frame,
