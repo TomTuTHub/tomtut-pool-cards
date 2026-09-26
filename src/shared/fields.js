@@ -549,7 +549,7 @@ export const editorStyles = css`
     margin-top: -2px;
   }
   .nachfrage small {
-    flex: 1 1 180px;
+    flex: 1 1 110px;
     font-size: 11px;
     line-height: 1.3;
   }
