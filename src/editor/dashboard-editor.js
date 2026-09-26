@@ -9,7 +9,7 @@ import { SOLAR_DEFAULTS } from "../slots/solar.js";
 import { heroDefaultsFor, teilLage } from "../hero.js";
 import { HERO_SPRITES } from "../shared/assets.js";
 import { kioskSchluessel, kioskGilt, KIOSK_BECKEN } from "../shared/kiosk.js";
-import { ansichtVon, miniWahl, MINI_TYPEN, MINI_KACHEL_FILLS, miniKachelFill } from "../mini.js";
+import { ansichtVon, miniWahl, MINI_TYPEN, MINI_KACHEL_FILLS, miniKachelFill, MINI_CARD_FILLS, miniCardFill } from "../mini.js";
 import {
   heroFields,
   heatpumpFields,
@@ -134,6 +134,22 @@ export class TomtutPoolDashboardEditor extends LitElement {
               >
                 ${MINI_KACHEL_FILLS.map(
                   ([v, t]) => html`<option value="${v}" ?selected="${miniKachelFill(this._config) === v}">${t}</option>`
+                )}
+              </select>
+            </div>
+            <div class="row">
+              <span class="row-label">Außen-Hintergrund</span>
+              <select
+                data-key="mini_card_fill"
+                @change="${(e) =>
+                  this._emit(
+                    applyPatch(this._config, {
+                      mini_card_fill: e.target.value === "theme" ? undefined : e.target.value,
+                    })
+                  )}"
+              >
+                ${MINI_CARD_FILLS.map(
+                  ([v, t]) => html`<option value="${v}" ?selected="${miniCardFill(this._config) === v}">${t}</option>`
                 )}
               </select>
             </div>`

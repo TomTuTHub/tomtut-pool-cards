@@ -73,6 +73,22 @@ export const MINI_KACHEL_FILLS = [
 export const miniKachelFill = (c = {}) =>
   MINI_KACHEL_FILLS.some(([k]) => k === c?.mini_tile_fill) ? c.mini_tile_fill : "schwarz";
 
+/*
+ * Hintergrund der äußeren Mini-Card (Iteration 21, `mini_card_fill`).
+ * theme = HA-Card-Hintergrund des Themes (so war es immer; ohne Angabe gilt
+ * weiter das alte Verhalten inkl. frame.fill weiss/schwarz). schwarz/weiss
+ * setzen Fläche UND Schriftfarbe der Card; transparent = ohne Fläche,
+ * Rahmen und Schatten — die Kacheln stehen direkt auf dem Dashboard.
+ */
+export const MINI_CARD_FILLS = [
+  ["theme", "Theme (HA-Card)"],
+  ["schwarz", "Schwarz"],
+  ["weiss", "Weiß"],
+  ["transparent", "Transparent"],
+];
+export const miniCardFill = (c = {}) =>
+  MINI_CARD_FILLS.some(([k]) => k === c?.mini_card_fill) ? c.mini_card_fill : "theme";
+
 /* Spalten ab 440 px: alle in eine Zeile bis 5 Geräte, darüber zwei Zeilen */
 export const MINI_MAX_SPALTEN = 5;
 export const miniSpalten = (anzahl) => {
@@ -652,7 +668,9 @@ export const renderMini = (card) => {
   const heroOn = c.hero?.enabled !== false && c.hero?.mini_hidden !== true;
   const kacheln = card._slotsMitNummer.filter(({ slot }) => miniSichtbar(slot));
   return html`
-    <ha-card class="mini-karte slot fill-${fillVon(c)} ${c.frame?.enabled === false ? "" : "framed"}">
+    <ha-card
+      class="mini-karte slot fill-${fillVon(c)} ${c.frame?.enabled === false ? "" : "framed"} aussen-${miniCardFill(c)}"
+    >
       <div class="mini kacheln-${miniKachelFill(c)}" style="--m-spalten:${miniSpalten(kacheln.length)};">
         ${heroOn ? renderKopf(card, miniBecken(c.hero, hass)) : nothing}
         ${kacheln.length
@@ -685,6 +703,27 @@ export const miniStyles = css`
   ha-card.mini-karte.fill-weiss,
   ha-card.mini-karte.fill-schwarz {
     background: var(--tt-bg);
+  }
+  /* mini_card_fill (Iteration 21) — nur wenn gesetzt; "theme" = oben */
+  ha-card.mini-karte.aussen-schwarz {
+    --tt-bg: #1e1e1e;
+    --tt-fg: #ffffff;
+    --tt-line: rgba(255, 255, 255, 0.3);
+    background: #1e1e1e;
+    color: #ffffff;
+  }
+  ha-card.mini-karte.aussen-weiss {
+    --tt-bg: #ffffff;
+    --tt-fg: #111111;
+    --tt-line: rgba(0, 0, 0, 0.28);
+    background: #ffffff;
+    color: #111111;
+  }
+  ha-card.mini-karte.aussen-transparent {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
   }
   /* Innenabstand wächst mit dem Eckradius des Themes (Liquid Glass: 34 px),
      damit keine Kachel-Ecke in der Rundung der Card hängt */
@@ -760,9 +799,10 @@ export const miniStyles = css`
     white-space: nowrap;
     padding: 0.1em 0.3em;
     border-radius: 0.4em;
-    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
-    color: var(--tt-box-fg);
-    border: 1px solid var(--tt-line);
+    /* folgt mini_tile_fill wie die Kacheln (Iteration 21) */
+    background: var(--k-bg);
+    color: var(--k-fg);
+    border: 1px solid var(--k-line);
     font-variant-numeric: tabular-nums;
   }
   /* kein Wert: dezent, ohne großen leeren Kasten */
@@ -797,9 +837,9 @@ export const miniStyles = css`
     min-width: 0;
     padding: 2px 9px;
     border-radius: 7px;
-    border: 1px solid var(--tt-line);
-    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
-    color: var(--tt-box-fg);
+    border: 1px solid var(--k-line);
+    background: var(--k-bg);
+    color: var(--k-fg);
     line-height: 1.15;
     white-space: nowrap;
   }
@@ -840,20 +880,22 @@ export const miniStyles = css`
   }
   /* Kachel-Hintergrund (mini_tile_fill): Farben je Füllung, lesbar in
      hellem und dunklem Theme; transparent = nur Rand, Karte scheint durch */
-  .mini.kacheln-schwarz .kachel {
+  .mini.kacheln-schwarz {
     --k-bg: #1e1e1e;
     --k-fg: #ffffff;
     --k-line: rgba(255, 255, 255, 0.22);
   }
-  .mini.kacheln-weiss .kachel {
+  .mini.kacheln-weiss {
     --k-bg: #ffffff;
     --k-fg: #111111;
     --k-line: rgba(0, 0, 0, 0.22);
   }
-  .mini.kacheln-transparent .kachel {
+  .mini.kacheln-transparent {
     --k-bg: transparent;
     --k-fg: var(--tt-fg);
     --k-line: var(--tt-line);
+  }
+  .mini.kacheln-transparent .kachel {
     border-color: var(--k-line);
   }
   .mini-karte.framed .kachel {

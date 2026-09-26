@@ -1931,6 +1931,34 @@ for (const breite of [536, 380]) {
   }
 }
 
+/* Iteration 21: Kachel transparent × Außen schwarz/weiß — Schrift lesbar */
+for (const aussen of ["schwarz", "weiss", "theme", "transparent"]) {
+  await checkAsync(`It21 Kachel transparent × Außen ${aussen} (Liquid Glass): lesbar, nichts ragt heraus`, async () => {
+    const m = await i17Bauen(page, 500, I17_THEMES["Liquid Glass"], { mini_tile_fill: "transparent", ...(aussen === "theme" ? {} : { mini_card_fill: aussen }) });
+    assert.deepEqual(m.befunde, []);
+    const r = await page.evaluate(() => {
+      const sr = document.querySelector("tomtut-pool-dashboard").shadowRoot;
+      const karte = getComputedStyle(sr.querySelector("ha-card"));
+      const rgb = (t) => (t.match(/[\d.]+/g) || []).map(Number);
+      const lum = ([r, g, b]) => {
+        const f = (c) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+      };
+      const k = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+      const bg = rgb(karte.backgroundColor);
+      const texte = [...sr.querySelectorAll(".k-zeile .k-text, .m-chip-wert, .m-temp-wert")].map((e) => rgb(getComputedStyle(e).color));
+      return { bg: karte.backgroundColor, rand: karte.borderTopStyle, schatten: karte.boxShadow, min: bg.length >= 3 && (bg[3] ?? 1) === 1 ? Math.min(...texte.map((t) => k(t, bg))) : null };
+    });
+    if (aussen === "schwarz" || aussen === "weiss") assert.ok(r.min >= 4.5, `Kontrast ${r.min}`);
+    if (aussen === "transparent") {
+      assert.match(r.bg, /rgba\(0, 0, 0, 0\)|transparent/);
+      assert.equal(r.rand, "none");
+      assert.equal(r.schatten, "none");
+    }
+    results.push(`       It21 ${aussen}: Card ${m.hoehe} px${r.min ? `, Kontrast min ${Math.round(r.min * 10) / 10}:1` : ""}`);
+  });
+}
+
 check("It17 Mini: Pooltemperatur mit Wert", () => assert.equal(i17Masse["500-hell"]?.temp, "24,6 °C"));
 /* ab hier: 500 px in Liquid Glass (Studio-Tablet) */
 await i17Bauen(page, 500, I17_THEMES["Liquid Glass"]);

@@ -244,7 +244,8 @@ slots:
 | `frame` | – | Rahmen und Füllung für **alle** Slots. |
 | `slots` | `[]` | Liste der Kästen in ihrer Reihenfolge. |
 | `view` | `voll` | `voll` = Becken + Kästen wie gewohnt · `mini` = alles kompakt in einer Card (siehe unten) |
-| `mini_tile_fill` | `schwarz` | Hintergrund der Mini-Kacheln: `schwarz`, `weiss` oder `transparent` (nur dünner Rand, die Karte scheint durch) |
+| `mini_tile_fill` | `schwarz` | Hintergrund der Mini-Kacheln **und** der Werte-Kästchen neben dem Becken: `schwarz`, `weiss` oder `transparent` (nur dünner Rand, Theme-Schrift) |
+| `mini_card_fill` | `theme` | Hintergrund der äußeren Mini-Card: `theme` (HA-Card-Hintergrund), `schwarz`, `weiss` (jeweils mit passender Schrift) oder `transparent` (ohne Fläche, Rahmen und Schatten) |
 
 #### Mini-Ansicht (`view: mini`)
 

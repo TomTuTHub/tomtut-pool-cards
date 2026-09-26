@@ -4513,9 +4513,9 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
   }
   check("It19 mini_tile_fill: Farben je Füllung im CSS (schwarz/weiß fest, transparent nur Rand)", () => {
     const css = cssOf("tomtut-pool-dashboard");
-    assert.match(css, /\.mini\.kacheln-schwarz \.kachel\s*\{[^}]*--k-bg:\s*#1e1e1e[^}]*--k-fg:\s*#ffffff/);
-    assert.match(css, /\.mini\.kacheln-weiss \.kachel\s*\{[^}]*--k-bg:\s*#ffffff[^}]*--k-fg:\s*#111111/);
-    assert.match(css, /\.mini\.kacheln-transparent \.kachel\s*\{[^}]*--k-bg:\s*transparent[^}]*border-color:\s*var\(--k-line\)/);
+    assert.match(css, /\.mini\.kacheln-schwarz\s*\{[^}]*--k-bg:\s*#1e1e1e[^}]*--k-fg:\s*#ffffff/);
+    assert.match(css, /\.mini\.kacheln-weiss\s*\{[^}]*--k-bg:\s*#ffffff[^}]*--k-fg:\s*#111111/);
+    assert.match(css, /\.mini\.kacheln-transparent \.kachel\s*\{[^}]*border-color:\s*var\(--k-line\)/);
   });
 
   /* ---- Raster ---- */
@@ -4936,6 +4936,59 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
   check("It19c WP-Standby-Hinweis unverändert 'Strom an / WP aus'", () =>
     assert.match(wp.shadowRoot.querySelector(".power-hinweis").textContent, /Strom an\s*WP aus/)
   );
+}
+
+/* ---- It21: Kopf-Kästchen folgen mini_tile_fill, mini_card_fill ---- */
+{
+  check("It21 mini_card_fill: ohne Angabe 'theme' (alte Configs), nur 4 Werte gültig", () => {
+    assert.equal(pkg.miniCardFill({}), "theme");
+    assert.equal(pkg.miniCardFill({ mini_card_fill: "transparent" }), "transparent");
+    assert.equal(pkg.miniCardFill({ mini_card_fill: "lila" }), "theme");
+    assert.deepEqual(pkg.MINI_CARD_FILLS.map(([k]) => k), ["theme", "schwarz", "weiss", "transparent"]);
+  });
+  for (const f of ["theme", "schwarz", "weiss", "transparent"]) {
+    const c = await mount(Dashboard, { view: "mini", hero: { temp_entity: "sensor.pool_wassertemperatur" }, slots: [PUMP_CONFIG], ...(f === "theme" ? {} : { mini_card_fill: f }) }, makeHass());
+    check(`It21 mini_card_fill ${f} -> ha-card.aussen-${f}`, () => assert.ok(c.shadowRoot.querySelector(`ha-card.mini-karte.aussen-${f}`)));
+    c.remove();
+  }
+  const css = cssOf("tomtut-pool-dashboard");
+  check("It21 CSS: Außen schwarz/weiß setzen Fläche + Schrift, transparent ohne Fläche/Rand/Schatten, theme = HA-Card", () => {
+    assert.match(css, /ha-card\.mini-karte\.aussen-schwarz\s*\{[^}]*--tt-fg:\s*#ffffff[^}]*background:\s*#1e1e1e/);
+    assert.match(css, /ha-card\.mini-karte\.aussen-weiss\s*\{[^}]*--tt-fg:\s*#111111[^}]*background:\s*#ffffff/);
+    assert.match(css, /ha-card\.mini-karte\.aussen-transparent\s*\{[^}]*background:\s*transparent[^}]*border:\s*none[^}]*box-shadow:\s*none/);
+    assert.match(css, /ha-card\.mini-karte\s*\{[^}]*background:\s*var\(--ha-card-background/);
+  });
+  check("It21 CSS: Kopf-Kästchen (Temperatur, pH/RX/Zulauf) folgen mini_tile_fill wie die Kacheln", () => {
+    assert.match(css, /\.m-chip\s*\{[^}]*border:\s*1px solid var\(--k-line\)[^}]*background:\s*var\(--k-bg\)[^}]*color:\s*var\(--k-fg\)/);
+    assert.match(css, /\.m-temp-wert\s*\{[^}]*background:\s*var\(--k-bg\)[^}]*color:\s*var\(--k-fg\)/);
+    assert.match(css, /\.mini\.kacheln-transparent\s*\{[^}]*--k-bg:\s*transparent[^}]*--k-fg:\s*var\(--tt-fg\)/);
+  });
+  const ed = new Editor();
+  ed.setConfig({ view: "mini", hero: { enabled: false }, slots: [PUMP_CONFIG] });
+  ed.hass = makeHass();
+  document.body.appendChild(ed);
+  await ed.updateComplete;
+  let fired = null;
+  ed.addEventListener("config-changed", (e) => {
+    fired = e.detail.config;
+    ed.setConfig(fired);
+  });
+  const sel = () => ed.shadowRoot.querySelector('.ansicht-block select[data-key="mini_card_fill"]');
+  check("It21 Editor: 'Außen-Hintergrund' neben 'Kachel-Hintergrund', Standard Theme", () => {
+    assert.ok(sel());
+    assert.equal(sel().value, "theme");
+    const reihen = [...ed.shadowRoot.querySelectorAll(".ansicht-block .row-label")].map((x) => x.textContent);
+    assert.deepEqual(reihen, ["Kachel-Hintergrund", "Außen-Hintergrund"]);
+  });
+  sel().value = "transparent";
+  sel().dispatchEvent(new dom.window.Event("change"));
+  await ed.updateComplete;
+  check("It21 Editor: Transparent -> mini_card_fill: transparent", () => assert.equal(fired.mini_card_fill, "transparent"));
+  sel().value = "theme";
+  sel().dispatchEvent(new dom.window.Event("change"));
+  await ed.updateComplete;
+  check("It21 Editor: zurück auf Theme -> Schlüssel fällt weg", () => assert.equal("mini_card_fill" in fired, false));
+  ed.remove();
 }
 
 /* ------------------------------------------------------------------ */

@@ -78,6 +78,8 @@ export {
   miniDichte,
   MINI_KACHEL_FILLS,
   miniKachelFill,
+  MINI_CARD_FILLS,
+  miniCardFill,
   MINI_WERT_NAMEN,
 } from "./mini.js";
 export {
