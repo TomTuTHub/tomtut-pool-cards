@@ -171,6 +171,16 @@ export class SlotBase extends LitElement {
     }
     this._klemmen();
     this._klemmBeobachter();
+    /* Icons (ha-icon) und Schriften kommen in HA oft erst nach dem ersten
+       Zeichnen — dann noch zweimal nachmessen (Iteration 24) */
+    if (!this._nachgemessen && typeof setTimeout === "function") {
+      this._nachgemessen = true;
+      for (const ms of [300, 1500]) {
+        const t = setTimeout(() => this.isConnected && this._klemmen(), ms);
+        if (typeof t?.unref === "function") t.unref();
+      }
+      document?.fonts?.ready?.then?.(() => this.isConnected && this._klemmen());
+    }
   }
 
   disconnectedCallback() {
