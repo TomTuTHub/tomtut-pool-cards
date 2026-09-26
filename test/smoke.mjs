@@ -4526,7 +4526,7 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
     assert.ok(k[1].querySelector(".k-zeile.badge"));
     const css = cssOf("tomtut-pool-dashboard");
     /* paarweise: je Wert eine halbe Zeile, zu Breites bekommt die ganze */
-    assert.match(css, /\.kachel\.dichte-raster \.k-zeile\.neben\s*\{[^}]*flex:\s*1 1 calc\(50% - 2px\)[^}]*min-width:\s*max-content/);
+    assert.match(css, /\.kachel\.dichte-raster \.k-zeile\.neben\s*\{[^}]*flex:\s*1 1 calc\(50% - 2px\)[^}]*min-width:\s*min-content/);
     assert.match(css, /\.kachel\.dichte-raster \.k-zeile\.badge\s*\{[^}]*flex-basis:\s*100%/);
   });
   c6.remove();

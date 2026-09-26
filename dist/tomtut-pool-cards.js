@@ -1950,10 +1950,13 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     gap: 2px 4px;
     width: 100%;
   }
+  /* min-content: ein benannter Wert ("Ist 27,4 °C") stellt seinen Namen
+     notfalls über den Wert, statt die ganze Zeile zu belegen; Wert und
+     Name selbst brechen nie um */
   .kachel.dichte-raster .k-zeile,
   .kachel.dichte-raster .k-zeile.neben {
     flex: 1 1 calc(50% - 2px);
-    min-width: max-content;
+    min-width: min-content;
     font-size: 12px;
     font-weight: 700;
     justify-content: center;
@@ -1963,6 +1966,13 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   .kachel.dichte-raster .k-zeile.badge {
     flex-basis: 100%;
     min-width: 0;
+  }
+  .kachel.dichte-raster .k-text,
+  .kachel.dichte-raster .k-name {
+    white-space: nowrap;
+  }
+  .kachel.dichte-raster .k-zeile.badge .k-text {
+    white-space: normal;
   }
   .k-text {
     min-width: 0;
