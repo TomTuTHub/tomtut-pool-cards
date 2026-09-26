@@ -8,7 +8,7 @@ import { UV_DEFAULTS } from "../slots/uv.js";
 import { SOLAR_DEFAULTS } from "../slots/solar.js";
 import { heroDefaultsFor } from "../hero.js";
 import { kioskSchluessel, kioskGilt, KIOSK_BECKEN } from "../shared/kiosk.js";
-import { ansichtVon, miniWahl, MINI_TYPEN, MINI_WERTE_EMPFOHLEN } from "../mini.js";
+import { ansichtVon, miniWahl, MINI_TYPEN, MINI_KACHEL_FILLS, miniKachelFill } from "../mini.js";
 import {
   heroFields,
   heatpumpFields,
@@ -118,6 +118,24 @@ export class TomtutPoolDashboardEditor extends LitElement {
         <div class="ansicht-wahl" role="group" aria-label="Ansicht">
           ${knopf("voll", "Voll")} ${knopf("mini", "Mini")}
         </div>
+        ${mini
+          ? html`<div class="row">
+              <span class="row-label">Kachel-Hintergrund</span>
+              <select
+                data-key="mini_tile_fill"
+                @change="${(e) =>
+                  this._emit(
+                    applyPatch(this._config, {
+                      mini_tile_fill: e.target.value === "schwarz" ? undefined : e.target.value,
+                    })
+                  )}"
+              >
+                ${MINI_KACHEL_FILLS.map(
+                  ([v, t]) => html`<option value="${v}" ?selected="${miniKachelFill(this._config) === v}">${t}</option>`
+                )}
+              </select>
+            </div>`
+          : nothing}
         <small>
           Mini: die ganze Anlage kompakt in einer Card (z.B. kleines Tablet) — Becken oben, Geräte als
           Kacheln. Tipp auf eine Kachel öffnet den vollen Kasten. Dieselbe Einrichtung wie Voll.
@@ -176,12 +194,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
               ${w.verfuegbar.length === 0
                 ? html`<small>Noch keine Werte — erst oben die Entities wählen.</small>`
                 : nothing}
-              ${typ !== "hero" && w.gewaehlt.length > MINI_WERTE_EMPFOHLEN
-                ? html`<div class="mini-wahl-warnung">
-                    ${w.gewaehlt.length} Werte gewählt — mehr als ${MINI_WERTE_EMPFOHLEN} machen die Kachel
-                    eng: die Schrift wird kleiner, abgeschnitten wird nichts.
-                  </div>`
-                : nothing}
+
             `}
       </div>
     `;

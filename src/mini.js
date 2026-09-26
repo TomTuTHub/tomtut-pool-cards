@@ -1,10 +1,10 @@
 import { html, css, nothing, unsafeCSS } from "lit";
 import { TomtutPoolHero } from "./hero.js";
-import { TomtutPoolSlotPump, pumpHasEntity } from "./slots/pump.js";
-import { TomtutPoolSlotHeatpump, MODE_FARBEN } from "./slots/heatpump.js";
+import { TomtutPoolSlotPump, pumpHasEntity, fanDuration } from "./slots/pump.js";
+import { TomtutPoolSlotHeatpump, MODE_FARBEN, heatpumpHasEntity } from "./slots/heatpump.js";
 import { solarAktiv } from "./slots/solar.js";
 import { customEintraege, DOMAIN_ICONS, TOGGLE_DOMAINS } from "./slots/custom.js";
-import { thermoGrafik } from "./shared/slot-base.js";
+import { thermoGrafik, fanDesignSvg, FAN_SVG } from "./shared/slot-base.js";
 import { kioskGilt, KIOSK_BECKEN } from "./shared/kiosk.js";
 import {
   SLOT_TYPES,
@@ -60,6 +60,18 @@ export const MINI_TYPEN = ["heatpump", "pump", "uv", "solar", "custom"];
 
 /* "Kein Wert" in der Mini-Ansicht (unknown, unavailable, fehlt) */
 export const MINI_LEER = "–";
+
+/*
+ * Hintergrund der Kacheln (Iteration 19, `mini_tile_fill`). Ohne Angabe
+ * schwarz — so sahen die Kacheln auf dem dunklen Studio-Tablet schon aus.
+ */
+export const MINI_KACHEL_FILLS = [
+  ["schwarz", "Schwarz"],
+  ["weiss", "Weiß"],
+  ["transparent", "Transparent (nur Rand)"],
+];
+export const miniKachelFill = (c = {}) =>
+  MINI_KACHEL_FILLS.some(([k]) => k === c?.mini_tile_fill) ? c.mini_tile_fill : "schwarz";
 
 /* Spalten ab 440 px: alle in eine Zeile bis 5 Geräte, darüber zwei Zeilen */
 export const MINI_MAX_SPALTEN = 5;
@@ -271,6 +283,21 @@ export const miniKachel = (slotRoh = {}, hass) => {
         stufe = "Stopp";
         k.zustand = "aus";
       }
+      if (slot.show_fan !== false) {
+        const laeuft = k.zustand === "an";
+        const speed = ["fan_speed_1", "fan_speed_2", "fan_speed_3"][st.active ?? 0] || "fan_speed_1";
+        k.rad = {
+          top: Number(p._v("fan_top")),
+          left: Number(p._v("fan_left")),
+          /* im Mini deutlich größer als im vollen Kasten, sonst ein Punkt */
+          size: Math.max(Number(p._v("fan_size")) * 1.9, 34),
+          ratio: 1,
+          rund: true,
+          dreht: laeuft,
+          dur: fanDuration(p._v(speed)),
+          svg: FAN_SVG,
+        };
+      }
       werte = {
         stufe: () => z(stufe),
         watt: () => z(watt(hass, slot.power_entity)),
@@ -297,6 +324,20 @@ export const miniKachel = (slotRoh = {}, hass) => {
         : sw || slot.power_entity || slot.fan_entity || klima
         ? "aus"
         : "neutral";
+      if (slot.show_fan !== false) {
+        k.rad = {
+          top: Number(w._v("fan_top")),
+          left: Number(w._v("fan_left")),
+          size: Number(w._v("fan_size")),
+          ratio: Number(w._v("fan_ratio")) || 1,
+          rund: false,
+          /* dieselbe Regel wie im vollen Kasten (Freigabe, climate, Schalter) */
+          dreht: w._fanActive && !!heatpumpHasEntity(slot),
+          dur: w._fanDur,
+          farbe: w._fanFarbe,
+          svg: fanDesignSvg(w._v("fan_design")),
+        };
+      }
       werte = {
         modus: () => {
           if ((da(sw) && !an(sw)) || klimaAus) return z("Aus");
@@ -481,7 +522,22 @@ const renderKopf = (card, b) => html`
 `;
 
 /* Schrift-Stufe nach Anzahl der Werte: bis 2 normal, 3 kleiner, ab 4 eng */
-export const miniDichte = (n) => (n <= 2 ? "normal" : n <= MINI_WERTE_EMPFOHLEN ? "dicht" : "eng");
+/* bis 2 Werte untereinander, ab 3 im 2-Spalten-Raster unter dem Bild (It19) */
+export const miniDichte = (n) => (n <= 2 ? "normal" : "raster");
+
+const renderRad = (r) =>
+  r
+    ? html`<div
+        class="k-rad ${r.dreht && r.dur > 0 ? "dreht" : "steht"} ${r.rund ? "rund" : ""}"
+        style="top:${r.top}%; left:${r.left}%; width:${r.size}%; --k-rad-ratio:${r.ratio}; --k-rad-dur:${r.dur}s;${r.farbe
+          ? ` --k-rad-farbe:${r.farbe};`
+          : ""}"
+      >
+        <svg viewBox="0 0 40 40" preserveAspectRatio="${r.rund ? "xMidYMid meet" : "none"}">
+          <g .innerHTML="${r.svg}"></g>
+        </svg>
+      </div>`
+    : nothing;
 
 const renderZeile = (x, i) => html`<span
   class="k-zeile ${i ? "neben" : "haupt"} ${x.punkt ? `badge ${x.punkt}` : ""} ${x.warn ? "warn" : ""}"
@@ -511,7 +567,9 @@ const renderKachel = (card, k, nr) => html`
     <div class="k-innen">
       <div class="k-bild">
         ${k.bild
-          ? html`<img src="${k.bild.src}" alt="${k.name}" />`
+          ? html`<div class="k-bildbox" style="--r:${Math.round(k.bild.ratio * 1000) / 1000};">
+              <img src="${k.bild.src}" alt="${k.name}" />${renderRad(k.rad)}
+            </div>`
           : html`<ha-icon icon="${k.icon || "mdi:circle-medium"}"></ha-icon>`}
         ${k.gesperrt ? html`<span class="k-sperre">Gesperrt</span>` : nothing}
       </div>
@@ -572,7 +630,7 @@ export const renderMini = (card) => {
   const kacheln = card._slotsMitNummer.filter(({ slot }) => miniSichtbar(slot));
   return html`
     <ha-card class="mini-karte slot fill-${fillVon(c)} ${c.frame?.enabled === false ? "" : "framed"}">
-      <div class="mini" style="--m-spalten:${miniSpalten(kacheln.length)};">
+      <div class="mini kacheln-${miniKachelFill(c)}" style="--m-spalten:${miniSpalten(kacheln.length)};">
         ${heroOn ? renderKopf(card, miniBecken(c.hero, hass)) : nothing}
         ${kacheln.length
           ? html`<div class="m-kacheln">
@@ -751,14 +809,32 @@ export const miniStyles = css`
     box-sizing: border-box;
     border-radius: 12px;
     border: 1.5px solid transparent;
-    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
-    color: var(--tt-box-fg);
+    background: var(--k-bg);
+    color: var(--k-fg);
     cursor: pointer;
     transition: filter 0.15s, transform 0.1s;
     -webkit-tap-highlight-color: transparent;
   }
+  /* Kachel-Hintergrund (mini_tile_fill): Farben je Füllung, lesbar in
+     hellem und dunklem Theme; transparent = nur Rand, Karte scheint durch */
+  .mini.kacheln-schwarz .kachel {
+    --k-bg: #1e1e1e;
+    --k-fg: #ffffff;
+    --k-line: rgba(255, 255, 255, 0.22);
+  }
+  .mini.kacheln-weiss .kachel {
+    --k-bg: #ffffff;
+    --k-fg: #111111;
+    --k-line: rgba(0, 0, 0, 0.22);
+  }
+  .mini.kacheln-transparent .kachel {
+    --k-bg: transparent;
+    --k-fg: var(--tt-fg);
+    --k-line: var(--tt-line);
+    border-color: var(--k-line);
+  }
   .mini-karte.framed .kachel {
-    border-color: var(--tt-line);
+    border-color: var(--k-line);
   }
   .kachel:hover {
     filter: brightness(1.05);
@@ -779,9 +855,10 @@ export const miniStyles = css`
     padding: 6px 6px 7px;
   }
   .k-bild {
+    --kb-h: 60px;
     position: relative;
     width: 100%;
-    height: 60px;
+    height: var(--kb-h);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -793,10 +870,69 @@ export const miniStyles = css`
     object-fit: contain;
     display: block;
   }
-  .kachel.aus .k-bild > img,
-  .kachel.gesperrt .k-bild > img {
+  /* Bildbox im echten Seitenverhältnis: das Rad sitzt prozentgenau wie
+     im vollen Kasten */
+  .k-bildbox {
+    position: relative;
+    width: min(100%, calc(var(--kb-h) * var(--r)));
+    aspect-ratio: var(--r);
+  }
+  .k-bildbox > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .kachel.aus .k-bild img,
+  .kachel.gesperrt .k-bild img {
     filter: grayscale(0.85);
     opacity: 0.6;
+  }
+  /* Laufrad / Lüfter (Iteration 19): dreht mit dem Tempo aus dem vollen
+     Kasten, steht bei Stillstand */
+  .k-rad {
+    position: absolute;
+    aspect-ratio: 1 / var(--k-rad-ratio, 1);
+    transform: translate(-50%, -50%);
+    color: var(--k-rad-farbe, #263238);
+    pointer-events: none;
+  }
+  .k-rad.rund {
+    color: var(--k-rad-farbe, #1565c0);
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+    padding: 1px;
+    box-sizing: border-box;
+  }
+  .k-rad svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+  }
+  .k-rad svg g {
+    transform-box: view-box;
+    transform-origin: 50% 50%;
+  }
+  .k-rad.dreht svg g {
+    animation: kRad var(--k-rad-dur, 1s) linear infinite;
+  }
+  .k-rad.steht {
+    opacity: 0.55;
+    filter: grayscale(1);
+  }
+  @keyframes kRad {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .k-rad.dreht svg g {
+      animation: none;
+    }
   }
   .k-werte {
     display: flex;
@@ -836,28 +972,38 @@ export const miniStyles = css`
     background: #c62828;
     color: #ffffff;
   }
-  /* 3 Werte: etwas kleiner; ab 4 eng — lieber kleiner als abgeschnitten */
-  .kachel.dichte-dicht .k-bild {
-    height: 54px;
+  /* ab 3 Werten: 2 Spalten × n Zeilen unter dem Bild (Iteration 19) —
+     Modus-Pille über die volle Breite, Name ("Ist") darf über den Wert
+     umbrechen, abgeschnitten wird nie */
+  .kachel.dichte-raster .k-bild {
+    --kb-h: 50px;
   }
-  .kachel.dichte-dicht .k-zeile {
-    font-size: 13px;
+  .kachel.dichte-raster .k-innen {
+    padding: 6px 5px 7px;
   }
-  .kachel.dichte-dicht .k-zeile.neben {
+  /* paarweise nebeneinander; ist ein Wert breiter als die halbe Kachel,
+     nimmt er die ganze Zeile — lieber eine Zeile mehr als abgeschnitten */
+  .kachel.dichte-raster .k-werte {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px 4px;
+    width: 100%;
+  }
+  .kachel.dichte-raster .k-zeile,
+  .kachel.dichte-raster .k-zeile.neben {
+    flex: 1 1 calc(50% - 2px);
+    min-width: max-content;
     font-size: 12px;
-  }
-  .kachel.dichte-eng .k-bild {
-    height: 42px;
-  }
-  .kachel.dichte-eng .k-zeile {
-    font-size: 12px;
+    font-weight: 700;
+    justify-content: center;
+    column-gap: 3px;
     line-height: 1.15;
   }
-  .kachel.dichte-eng .k-zeile.neben {
-    font-size: 11px;
-  }
-  .kachel.dichte-eng .k-werte {
-    gap: 1px;
+  .kachel.dichte-raster .k-zeile.badge {
+    flex-basis: 100%;
+    min-width: 0;
   }
   .k-text {
     min-width: 0;
@@ -917,7 +1063,7 @@ export const miniStyles = css`
     background: #c62828;
   }
   .kachel.neutral .k-status {
-    background: var(--tt-line);
+    background: #9e9e9e;
   }
   .k-sperre {
     position: absolute;
@@ -942,12 +1088,20 @@ export const miniStyles = css`
       padding: 6px 8px;
     }
     .k-bild {
+      --kb-h: 54px;
       flex: 0 0 42%;
       width: 42%;
-      height: 54px;
     }
-    .kachel.dichte-eng .k-bild {
-      height: 48px;
+    /* Raster bleibt auch in breiten Kacheln unter dem Bild */
+    .kachel.dichte-raster .k-innen {
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px 8px 7px;
+    }
+    .kachel.dichte-raster .k-bild {
+      --kb-h: 50px;
+      flex: none;
+      width: 100%;
     }
     .k-werte {
       flex: 1 1 auto;

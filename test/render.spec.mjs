@@ -88,6 +88,7 @@ const MIME = {
   ".mjs": "text/javascript; charset=utf-8",
   ".png": "image/png",
   ".json": "application/json",
+  ".woff2": "font/woff2",
 };
 
 const SEITE = `<!doctype html>
@@ -96,6 +97,11 @@ const SEITE = `<!doctype html>
   body { margin: 0; background: #eceff1; font-family: system-ui, sans-serif; }
   .buehne { margin: 0 auto; }
   .kopf { font: 600 13px/1.6 system-ui; color: #37474f; padding: 10px 0 4px; }
+  /* Roboto wie in Home Assistant (test/fixtures/fonts, Apache 2.0) — für
+     die Mini-Messungen ab Iteration 19 */
+  @font-face { font-family: "Roboto"; font-weight: 400; src: url("/test/fixtures/fonts/Roboto-Regular.woff2") format("woff2"); }
+  @font-face { font-family: "Roboto"; font-weight: 500 600; src: url("/test/fixtures/fonts/Roboto-Medium.woff2") format("woff2"); }
+  @font-face { font-family: "Roboto"; font-weight: 700 900; src: url("/test/fixtures/fonts/Roboto-Bold.woff2") format("woff2"); }
 </style>
 <script>
   /* Platzhalter fuer die beiden HA-Elemente, die die Card benutzt. Sie
@@ -1365,7 +1371,9 @@ const i17Bauen = (pg, breite, theme, extra = {}, zustaende = {}) =>
   pg.evaluate(
     async ({ breite, theme, extra, zustaende }) => {
       document.body.innerHTML = "";
-      document.body.style.cssText = `margin:0;padding:20px;background:${theme.seite};min-height:100vh`;
+      document.body.style.cssText = `margin:0;padding:20px;background:${theme.seite};min-height:100vh;font-family:Roboto,sans-serif`;
+      await document.fonts.load("700 12px Roboto");
+      await document.fonts.load("400 12px Roboto");
       const buehne = document.createElement("div");
       buehne.id = "buehne";
       buehne.style.cssText = `width:${breite}px`;
@@ -1427,7 +1435,8 @@ const i17Bauen = (pg, breite, theme, extra = {}, zustaende = {}) =>
           if (t.scrollWidth > t.clientWidth + 0.5) befunde.push(`Kachel ${i + 1}: "${t.textContent}" abgeschnitten`);
         }
         const cs = getComputedStyle(k);
-        const deck = farbe(cs.backgroundImage);
+        /* seit It19 ist die Kachel eine volle Farbe (mini_tile_fill) */
+        const deck = farbe(cs.backgroundColor);
         deckAlpha.push(deck ? deck.a : null);
         const grund = deck && deck.a === 1 ? deck : farbe(cs.backgroundColor);
         for (const z of k.querySelectorAll(".k-zeile")) {
@@ -1633,6 +1642,115 @@ for (const breite of [536, 380]) {
       results.push(`       Knopf ${fall}: Icon-Farbe rgb(${info.farbe}), ${anteil} % der Knopffläche`);
     });
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Iteration 19: Kachel-Hintergrund, Werte paarweise, Räder            */
+/* ------------------------------------------------------------------ */
+{
+  const basis = miniConfig().slots;
+  const mit = (wp, pumpe) =>
+    basis.map((sl, i) => (i === 0 ? { ...sl, mini_show: wp } : i === 1 ? { ...sl, mini_show: pumpe } : sl));
+  const TYPISCH = mit(["modus", "watt", "ist", "soll"], ["stufe", "watt", "temp", "status"]);
+  const VOLL6 = mit(["modus", "watt", "ist", "soll", "freigabe", "status"], ["stufe", "watt", "temp", "status"]);
+  for (const fill of ["schwarz", "weiss", "transparent"]) {
+    for (const [themeName, theme] of Object.entries(I17_THEMES)) {
+      await checkAsync(`It19 Kacheln ${fill}, ${themeName}, Pumpe 4 + WP 4 Werte: <= ${I17_MAX_500} px, nichts abgeschnitten`, async () => {
+        const m = await i17Bauen(page, 500, theme, { mini_tile_fill: fill, slots: TYPISCH });
+        assert.deepEqual(m.befunde, []);
+        assert.ok(m.hoehe <= I17_MAX_500, `${m.hoehe} px`);
+        if (fill !== "transparent") {
+          assert.ok(m.deckAlpha.every((a) => a === 1), "Kachel nicht deckend");
+          assert.ok(m.minKontrast >= 4.5, `Kontrast ${m.minKontrast}`);
+        }
+        results.push(`       It19 ${fill}/${themeName}: Card ${m.breite}x${m.hoehe} px, Kacheln ${m.kachelMasse[0]}${fill !== "transparent" ? `, Kontrast min ${m.minKontrast}:1` : ""}`);
+      });
+    }
+  }
+  /* transparent: Schrift = Theme-Schrift (auf der Karte lesbar), dünner Rand */
+  for (const [themeName, theme] of Object.entries(I17_THEMES)) {
+    await checkAsync(`It19 transparent, ${themeName}: Rand sichtbar, Schrift folgt dem Theme`, async () => {
+      await i17Bauen(page, 500, theme, { mini_tile_fill: "transparent", slots: TYPISCH });
+      const r = await page.evaluate(() => {
+        const card = document.querySelector("tomtut-pool-dashboard");
+        const k = card.shadowRoot.querySelector(".kachel");
+        const cs = getComputedStyle(k);
+        return { bg: cs.backgroundColor, rand: cs.borderTopColor, breite: cs.borderTopWidth, farbe: getComputedStyle(k.querySelector(".k-zeile")).color, theme: getComputedStyle(document.body).getPropertyValue("--primary-text-color").trim() };
+      });
+      assert.match(r.bg, /rgba\(0, 0, 0, 0\)|transparent/);
+      assert.notEqual(r.rand, "rgba(0, 0, 0, 0)");
+      assert.ok(parseFloat(r.breite) >= 1, `Rand ${r.breite}`);
+      results.push(`       transparent ${themeName}: Schrift ${r.farbe}, Rand ${r.rand}`);
+    });
+  }
+  for (const breite of [500, 380]) {
+    await checkAsync(`It19 Grenzfall WP 6 + Pumpe 4 Werte bei ${breite} px: gemessen, nichts abgeschnitten`, async () => {
+      const m = await i17Bauen(page, breite, I17_THEMES["Liquid Glass"], { slots: VOLL6 });
+      assert.deepEqual(m.befunde, []);
+      results.push(`       Grenzfall 6+4 bei ${breite} px: Card ${m.breite}x${m.hoehe} px, Kacheln ${m.kachelMasse.join(" ")}`);
+    });
+  }
+  /* Rad dreht wirklich: zwei Zeitpunkte, verschiedene Drehung */
+  await checkAsync("It19 Räder: Pumpe und WP drehen bei Betrieb (Animation läuft), stehen bei Stillstand", async () => {
+    await i17Bauen(page, 500, I17_THEMES["Liquid Glass"], { slots: TYPISCH });
+    const winkel = () =>
+      page.evaluate(() => {
+        const card = document.querySelector("tomtut-pool-dashboard");
+        return [...card.shadowRoot.querySelectorAll(".k-rad")].map((r) => ({
+          typ: r.closest(".kachel").className.match(/typ-(\w+)/)[1],
+          dreht: r.classList.contains("dreht"),
+          t: getComputedStyle(r.querySelector("svg g")).transform,
+          b: Math.round(r.getBoundingClientRect().width),
+        }));
+      });
+    const a = await winkel();
+    await new Promise((f) => setTimeout(f, 180));
+    const b = await winkel();
+    assert.deepEqual(a.map((x) => x.typ), ["heatpump", "pump"]);
+    for (let i = 0; i < a.length; i++) {
+      assert.ok(a[i].dreht, `${a[i].typ} dreht nicht`);
+      assert.notEqual(a[i].t, b[i].t, `${a[i].typ}: Animation steht`);
+      assert.ok(a[i].b >= 22, `${a[i].typ}: Rad nur ${a[i].b} px`);
+    }
+    results.push(`       Räder: ${a.map((x) => `${x.typ} ${x.b} px`).join(", ")}`);
+    await i17Bauen(page, 500, I17_THEMES["Liquid Glass"], { slots: TYPISCH }, {
+      "input_boolean.poolpumpe_schalter": { state: "off", attributes: {} },
+      "climate.waermepumpe": { state: "off", attributes: {} },
+    });
+    const c = await winkel();
+    assert.ok(c.every((x) => !x.dreht), "dreht trotz Stillstand");
+  });
+  /* Beleg: 3 Füllungen nebeneinander, dunkel, Pumpe 4 + WP 6 */
+  await checkAsync("It19 Beleg: drei Kachel-Hintergründe nebeneinander (Liquid Glass)", async () => {
+    await page.evaluate(async ({ theme, slots }) => {
+      document.body.innerHTML = "";
+      document.body.style.cssText = `margin:0;padding:20px;background:${theme.seite};font-family:Roboto,sans-serif`;
+      await document.fonts.load("700 12px Roboto");
+      for (const [k, v] of Object.entries(theme.vars)) document.body.style.setProperty(k, v);
+      const reihe = document.createElement("div");
+      reihe.id = "beleg19";
+      reihe.style.cssText = "display:flex;gap:20px;width:max-content";
+      document.body.appendChild(reihe);
+      const cards = [];
+      for (const fill of ["schwarz", "weiss", "transparent"]) {
+        const sp = document.createElement("div");
+        sp.innerHTML = `<div style="color:#e1e1e1;font:600 13px system-ui;margin:0 0 6px">mini_tile_fill: ${fill}</div>`;
+        const b = document.createElement("div");
+        b.style.width = "500px";
+        sp.appendChild(b);
+        reihe.appendChild(sp);
+        const card = document.createElement("tomtut-pool-dashboard");
+        card.setConfig(window.demo.miniConfig({ mini_tile_fill: fill, slots }));
+        card.hass = window.demo.DEMO_HASS;
+        b.appendChild(card);
+        cards.push(card);
+      }
+      await Promise.all(cards.map((c) => c.updateComplete));
+      const imgs = cards.flatMap((c) => [...c.shadowRoot.querySelectorAll("img")]);
+      await Promise.all(imgs.map((i) => (i.complete ? null : new Promise((f) => (i.onload = i.onerror = f)))));
+    }, { theme: I17_THEMES["Liquid Glass"], slots: VOLL6 });
+    await page.locator("#beleg19").screenshot({ path: join(ausgabe, "it19-fills.png"), animations: "disabled" });
+  });
 }
 
 check("It17 Mini: Pooltemperatur mit Wert", () => assert.equal(i17Masse["500-hell"]?.temp, "24,6 °C"));

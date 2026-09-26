@@ -26,7 +26,7 @@ export { TomtutPoolDashboardCard, TomtutPoolDashboardEditor };
 
 /* Für den Smoke-Test (und alles, was gegen das Bundle prüfen will) */
 export { PUMP_DEFAULTS, fanDuration, stageFromWatt } from "./slots/pump.js";
-export { HEATPUMP_DEFAULTS, HP_MODES, MODE_FARBEN, MODE_WOERTER, modeFromState, modeAuto, modeWort, modeBadge, modusWahl, klimaAus, klimaEntity } from "./slots/heatpump.js";
+export { HEATPUMP_DEFAULTS, HP_MODES, MODE_FARBEN, MODE_WOERTER, modeFromState, modeAuto, modeWort, modeBadge, modusWahl, klimaAus, klimaEntity, optionZuordnung, modusName } from "./slots/heatpump.js";
 export { FAN_DESIGNS, FAN_DESIGN_DEFAULT } from "./shared/slot-base.js";
 export { UV_DEFAULTS, GLOW_PULSE_MAX, glowPulsWerte } from "./slots/uv.js";
 export {
@@ -76,6 +76,8 @@ export {
   miniWahl,
   miniSichtbar,
   miniDichte,
+  MINI_KACHEL_FILLS,
+  miniKachelFill,
 } from "./mini.js";
 export {
   CUSTOM_MAX_ENTRIES,

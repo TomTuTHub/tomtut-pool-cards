@@ -449,6 +449,40 @@ export const editorStyles = css`
     gap: 8px;
     cursor: pointer;
   }
+  /* Modus-Zuordnung je Gerätewert (Iteration 19) */
+  .modus-zeilen {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .modus-zeile {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.3fr);
+    align-items: center;
+    gap: 4px 8px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    border-left: 4px solid var(--success-color, #2e7d32);
+    background: rgba(127, 127, 127, 0.08);
+  }
+  .modus-zeile.nein {
+    border-left-color: var(--error-color, #c62828);
+    background: rgba(198, 40, 40, 0.1);
+  }
+  .modus-zeile.nein .modus-wert {
+    color: var(--error-color, #c62828);
+  }
+  .modus-wert {
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+  .modus-zeile select {
+    min-width: 0;
+    width: 100%;
+  }
+  .modus-name {
+    grid-column: 1 / -1;
+  }
   /* Modus-Erkennung live (Iteration 14) */
   .modus-befund {
     padding: 8px 10px;

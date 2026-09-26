@@ -163,9 +163,36 @@ const eigeneZuordnung = (c, m) => {
  * greift aber nie für einen Modus, dessen Liste der Nutzer selbst gesetzt
  * hat (eigene Zuordnung ist verbindlich).
  */
+/*
+ * Zuordnung je Gerätewert (Iteration 19, Editor-Zeilen "Option → Modus"):
+ *   mode_map: { "<Wert wie ihn die Entity meldet>": "<modus-key>" | "" }
+ * Gewinnt vor Listen und Automatik; "" = bewusst nicht zuordnen.
+ * Rückgabe: Modus, null (nicht zuordnen) oder undefined (kein Eintrag).
+ */
+const istObjekt = (x) => !!x && typeof x === "object" && !Array.isArray(x);
+export const optionZuordnung = (state, c = {}) => {
+  if (!istObjekt(c?.mode_map)) return undefined;
+  const s = normZustand(state);
+  for (const [k, v] of Object.entries(c.mode_map)) {
+    if (normZustand(k) !== s) continue;
+    return v ? HP_MODES.find((m) => m.key === v) || null : null;
+  }
+  return undefined;
+};
+
+/* Eigener Anzeigename eines nicht zugeordneten Werts (mode_names) */
+export const modusName = (state, c = {}) => {
+  if (!istObjekt(c?.mode_names)) return "";
+  const s = normZustand(state);
+  const e = Object.entries(c.mode_names).find(([k, v]) => normZustand(k) === s && String(v || "").trim());
+  return e ? String(e[1]).trim() : "";
+};
+
 export const modeFromState = (state, c = {}) => {
   const s = normZustand(state);
   if (!s) return null;
+  const eigen = optionZuordnung(state, c);
+  if (eigen !== undefined) return eigen;
   const liste = HP_MODES.find((m) => modeZustaende(c, m).some((z) => normZustand(z) === s));
   if (liste) return liste;
   const auto = modeAuto(state);
@@ -259,7 +286,7 @@ export const modeBadge = (e, c = {}) => {
     const kombi = modeFromState(`${basis} ${preset}`, c);
     if (kombi) return { text: kombi.label, art: kombi.art };
   }
-  const teile = [basis, preset].filter((x) => !totWert(x)).map(modeWort);
+  const teile = [basis, preset].filter((x) => !totWert(x)).map((x) => modusName(x, c) || modeWort(x));
   return { text: teile.join(" · "), art };
 };
 
@@ -298,7 +325,7 @@ export const modeBadge = (e, c = {}) => {
  * Attribut oder bei sensor.* ist nichts wählbar (nur Anzeige).
  * Anzeigenamen über dasselbe Mapping wie das Badge.
  */
-const optionText = (wert, c) => modeFromState(wert, c)?.label || modeWort(wert);
+const optionText = (wert, c) => modeFromState(wert, c)?.label || modusName(wert, c) || modeWort(wert);
 
 export const modusWahl = (e, c = {}) => {
   const id = c.mode_entity;

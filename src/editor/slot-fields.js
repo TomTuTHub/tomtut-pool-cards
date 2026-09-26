@@ -2,7 +2,7 @@ import { html, nothing } from "lit";
 import { section, elementsGroup } from "../shared/fields.js";
 import { SHAPES } from "../shared/assets.js";
 import { FAN_SPEED_MIN, FAN_SPEED_MAX } from "../slots/pump.js";
-import { HP_MODES, modeFromState } from "../slots/heatpump.js";
+import { HP_MODES, modeFromState, optionZuordnung, modeZustaende } from "../slots/heatpump.js";
 import { FAN_DESIGNS } from "../shared/slot-base.js";
 import { GROESSE_MIN, GROESSE_MAX } from "../shared/bild.js";
 import {
@@ -195,43 +195,113 @@ export const modusBefund = (hass, c = {}) => {
   };
 };
 
+/*
+ * Modus-Zuordnung (Iteration 19). Kennt die Entity ihre Werte (select
+ * options / climate presets), steht pro Wert EINE Zeile "Wert → [Modus]",
+ * vorbelegt mit dem, was die Card daraus macht. Ändern schreibt
+ * mode_map: { Wert: modus } — nur Abweichungen von der Automatik; "" =
+ * bewusst nicht zuordnen (dann optional ein eigener Anzeigename in
+ * mode_names). Ohne Werteliste: die acht Freitextfelder wie bisher, aber mit
+ * dem tatsächlichen Default als echtem Inhalt. Alte mode_map_*-Listen
+ * gelten weiter (sie fließen in die "automatische" Vorbelegung ein).
+ */
+const ohneMap = (c) => {
+  const k = { ...(c || {}) };
+  delete k.mode_map;
+  return k;
+};
+const ohneSchluessel = (obj, wert) => {
+  const n = String(wert).toLowerCase();
+  return Object.fromEntries(Object.entries(obj || {}).filter(([k]) => k.toLowerCase() !== n));
+};
+
+export const modusZeilen = (hass, c = {}) => {
+  const b = modusBefund(hass, c);
+  if (!b || !b.optionen.length) return [];
+  return b.optionen.map(({ wert }) => {
+    const auto = modeFromState(wert, ohneMap(c));
+    const eigen = optionZuordnung(wert, c);
+    const aktuell = eigen !== undefined ? eigen?.key || "" : auto?.key || "";
+    return { wert, auto: auto?.key || "", aktuell, name: String(c.mode_names?.[wert] ?? "") };
+  });
+};
+
 const modusZuordnungFelder = (f) => {
-  const b = modusBefund(f.hass, f.config);
+  const c = f.config || {};
+  const b = modusBefund(f.hass, c);
   const zeile = !b
-    ? html`<div class="modus-befund">Wähle oben die Modus-Entity — dann steht hier, was sie meldet.</div>`
+    ? html`<div class="modus-befund">Erst oben die Modus-Entity wählen.</div>`
     : html`<div class="modus-befund ${b.modus ? "ok" : "nein"}">
-        Deine Pumpe meldet gerade: <b>${String(b.roh) || "—"}</b> →
-        ${b.modus
-          ? html`erkannt als <b>${b.modus.label}</b> ✓`
-          : html`nicht erkannt ✗ – bitte unten zuordnen`}
+        Meldet gerade <b>${String(b.roh) || "—"}</b> →
+        ${b.modus ? html`<b>${b.modus.label}</b> ✓` : html`nicht zugeordnet ✗`}
       </div>`;
-  const liste =
-    b && b.optionen.length
-      ? html`<div class="modus-optionen">
-          <small>Die Entity kennt diese Werte (automatisch zugeordnet):</small>
-          <ul>
-            ${b.optionen.map(
-              (o) =>
-                html`<li class="${o.modus ? "ok" : "nein"}">
-                  ${o.wert} → ${o.modus ? html`${o.modus.label} ✓` : html`nicht erkannt ✗`}
-                </li>`
-            )}
-          </ul>
-        </div>`
-      : nothing;
+  const zeilen = modusZeilen(f.hass, c);
+  const setzeModus = (wert, auto, v) => {
+    const map = ohneSchluessel(c.mode_map, wert);
+    if (v !== auto) map[wert] = v;
+    const patch = { mode_map: Object.keys(map).length ? map : undefined };
+    if (v) {
+      const namen = ohneSchluessel(c.mode_names, wert);
+      patch.mode_names = Object.keys(namen).length ? namen : undefined;
+    }
+    f.update(patch);
+  };
+  const setzeName = (wert, text) => {
+    const namen = ohneSchluessel(c.mode_names, wert);
+    if (String(text).trim()) namen[wert] = String(text).trim();
+    f.update({ mode_names: Object.keys(namen).length ? namen : undefined });
+  };
+  const auswahl = zeilen.length
+    ? html`<div class="modus-zeilen">
+        ${zeilen.map(
+          (z) => html`<div class="modus-zeile ${z.aktuell ? "ok" : "nein"}" data-modus-wert="${z.wert}">
+            <span class="modus-wert">${z.wert}</span>
+            <span class="modus-pfeil">→</span>
+            <select
+              data-modus-select="${z.wert}"
+              @change="${(e) => setzeModus(z.wert, z.auto, e.target.value)}"
+            >
+              <option value="" ?selected="${!z.aktuell}">— nicht zuordnen —</option>
+              ${HP_MODES.map(
+                (m) => html`<option value="${m.key}" ?selected="${z.aktuell === m.key}">${m.label}</option>`
+              )}
+            </select>
+            ${z.aktuell
+              ? nothing
+              : html`<input
+                  type="text"
+                  class="modus-name"
+                  data-modus-name="${z.wert}"
+                  .value="${z.name}"
+                  placeholder="Anzeigename (sonst „${z.wert}“)"
+                  @change="${(e) => setzeName(z.wert, e.target.value)}"
+                />`}
+          </div>`
+        )}
+      </div>`
+    : html`${HP_MODES.map((m) => {
+        const key = `mode_map_${m.key}`;
+        const standard = m.zustaende.join(", ");
+        const eigen = c[key];
+        const wert = Array.isArray(eigen) ? eigen.join(", ") : String(eigen ?? "").trim() ? String(eigen) : standard;
+        return html`<label
+          >${m.label}
+          <input
+            type="text"
+            data-key="${key}"
+            .value="${wert}"
+            @change="${(e) => {
+              const v = e.target.value.trim();
+              f.update({ [key]: !v || v === standard ? undefined : v });
+            }}"
+          />
+        </label>`;
+      })}
+      <small>Kommaliste der Gerätezustände je Modus. Leeren = Vorgabe.</small>`;
   return section(
-    "Erweitert: Modus-Namen anpassen",
-    html`
-      ${zeile} ${liste}
-      ${HP_MODES.map((m) => f.text(m.label, `mode_map_${m.key}`, "", m.zustaende.join(", ")))}
-      <small>
-        Normalerweise nicht nötig: Werte mit Heizen/Kühlen und einer Stufe (Silent, Smart/Eco,
-        Auto, Boost/Power/Turbo) erkennt die Card selbst, auch ohne Umlaute geschrieben. Nur
-        wenn oben etwas „nicht erkannt" ist: hier die Zustände als Kommaliste eintragen. Eine
-        eigene Liste ersetzt für diesen Modus Vorgabe und Automatik. Leer = Vorgabe (grau).
-      </small>
-    `,
-    /* zu — außer die aktuelle Meldung wird nicht erkannt: dann braucht man ihn */
+    "Modus-Zuordnung",
+    html`${zeile} ${auswahl}`,
+    /* zu — außer die aktuelle Meldung ist nicht zugeordnet */
     !!b && !b.modus && String(b.roh) !== "" && !["unknown", "unavailable"].includes(String(b.roh))
   );
 };
@@ -300,6 +370,8 @@ export const heatpumpFields = (f) => html`
         "mode_left",
         "mode_scale",
         ...HP_MODES.flatMap((m) => [`mode_speed_${m.key}`, `mode_map_${m.key}`]),
+        "mode_map",
+        "mode_names",
       ],
       false
     )}
@@ -584,6 +656,17 @@ export const pumpFields = (f) => html`
     ])}
   `)}
   ${f.text("Überschrift (optional)", "label", "", "z.B. Poolpumpe")}
+  ${f.shown("show_power_button")
+    ? html`
+        ${f.entity(
+          "Hauptschalter",
+          "main_entity",
+          "Steckdose/Relais der Pumpe — Powerbutton.",
+          ...SCHALTER
+        )}
+        ${nachfragen(f)}
+      `
+    : nothing}
   ${f.shown("show_stages")
     ? html`
         ${f.select(
@@ -608,13 +691,6 @@ export const pumpFields = (f) => html`
     : nothing}
   ${f.shown("show_power_button")
     ? html`
-        ${f.entity(
-          "Hauptschalter",
-          "main_entity",
-          "Steckdose/Relais der Pumpe — Powerbutton.",
-          ...SCHALTER
-        )}
-        ${nachfragen(f)}
         ${section(
           "Powerbutton — Position",
           html`
@@ -891,6 +967,17 @@ export const solarFields = (f) => html`
     drei Absorbern; der blaue Pfeil links unten ist der Zulauf, der rote rechts oben der Rücklauf.
   </small>
   ${f.text("Überschrift (optional)", "label", "", "z.B. Solarheizung")}
+  ${f.shown("show_power_button")
+    ? html`
+        ${f.entity(
+          "Powerbutton — Ventil oder Pumpe",
+          "switch_entity",
+          "Solarventil oder Solarpumpe.",
+          ...SCHALTER
+        )}
+        ${nachfragen(f)}
+      `
+    : nothing}
   ${f.entity(
     "Läuft gerade? (optional)",
     "active_entity",
@@ -902,13 +989,6 @@ export const solarFields = (f) => html`
   )}
   ${f.shown("show_power_button")
     ? html`
-        ${f.entity(
-          "Powerbutton — Ventil oder Pumpe",
-          "switch_entity",
-          "Solarventil oder Solarpumpe.",
-          ...SCHALTER
-        )}
-        ${nachfragen(f)}
         ${section(
           "Powerbutton — Position",
           html`

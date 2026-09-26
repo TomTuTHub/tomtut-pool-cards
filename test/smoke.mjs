@@ -3369,7 +3369,7 @@ await ed14.updateComplete;
 const karten14 = () => [...ed14.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")];
 const erweitert14 = (i) =>
   [...karten14()[i].querySelectorAll("details.section")].find((d) =>
-    /Erweitert: Modus-Namen anpassen/.test(d.querySelector("summary").textContent)
+    /^\s*Modus-Zuordnung/.test(d.querySelector("summary").textContent)
   );
 
 check("Editor: Freigabe hat den Schalter 'Zeit seit dem letzten Wechsel', ab Werk aus", () => {
@@ -3377,25 +3377,33 @@ check("Editor: Freigabe hat den Schalter 'Zeit seit dem letzten Wechsel', ab Wer
   assert.ok(t);
   assert.equal(t.checked, false);
 });
-check("Editor: Abschnitt heisst 'Erweitert: Modus-Namen anpassen' und ist zu, wenn erkannt", () => {
+check("Editor: Abschnitt heisst 'Modus-Zuordnung' (It19) und ist zu, wenn erkannt", () => {
   const d = erweitert14(0);
   assert.ok(d, "Abschnitt fehlt");
   assert.equal(d.open, false);
   assert.ok(!/Zuordnung Gerätezustand/.test(ed14.shadowRoot.textContent), "alter Titel noch da");
 });
-check("Editor: Live-Befund 'meldet gerade … erkannt als … ✓' plus Optionsliste", () => {
+check("Editor: kurzer Live-Befund + je Option eine Zeile mit vorbelegtem Dropdown (It19)", () => {
   const d = erweitert14(0);
   const zeile = d.querySelector(".modus-befund").textContent.replace(/\s+/g, " ");
-  assert.match(zeile, /Deine Pumpe meldet gerade: Heizen Smart → erkannt als Heizen Smart ✓/);
-  const li = [...d.querySelectorAll(".modus-optionen li")].map((x) => x.textContent.replace(/\s+/g, " ").trim());
-  assert.equal(li.length, 7);
-  assert.ok(li.includes("Kuehlen Power → Kühlen Boost ✓"), li.join(" | "));
-  assert.ok(li.includes("Auto → nicht erkannt ✗"));
+  assert.match(zeile, /Meldet gerade Heizen Smart → Heizen Smart ✓/);
+  assert.equal(d.querySelectorAll(".modus-optionen li").length, 0, "alte Liste noch da");
+  const zeilen = [...d.querySelectorAll(".modus-zeile")];
+  assert.equal(zeilen.length, 7);
+  const wert = (w) => d.querySelector(`select[data-modus-select="${w}"]`).value;
+  assert.equal(wert("Kuehlen Power"), "kuehl_boost");
+  assert.equal(wert("Heizen Smart"), "heiz_smart");
+  assert.equal(wert("Auto"), "");
+  const auto = d.querySelector('.modus-zeile[data-modus-wert="Auto"]');
+  assert.ok(auto.classList.contains("nein"), "Auto nicht rot");
+  assert.ok(auto.querySelector("[data-modus-name]"), "kein Anzeigename-Feld");
+  assert.equal(d.querySelectorAll("[data-modus-name]").length, 1);
+  assert.equal(d.querySelectorAll('input[data-key^="mode_map_"]').length, 0, "Freitextfelder trotz Optionen");
 });
 check("Editor: nicht erkannt -> Hinweis, und der Abschnitt klappt von selbst auf", () => {
   const d = erweitert14(1);
   assert.equal(d.open, true);
-  assert.match(d.querySelector(".modus-befund").textContent, /nicht erkannt ✗ – bitte unten zuordnen/);
+  assert.match(d.querySelector(".modus-befund").textContent, /nicht zugeordnet ✗/);
 });
 check("Editor: Badge-Schalter und drei Regler beim Betriebsmodus", () => {
   for (const k of ["show_mode_badge", "mode_top", "mode_left", "mode_scale"]) {
@@ -4240,8 +4248,8 @@ check("It17 mini_show WP: alle sechs Werte, Ist/Soll mit Vorsatz, Freigabe als W
   assert.deepEqual(zeilen(k), ["Heizen Smart", "820 W", "26,4 °C", "28 °C", "Gesperrt", "Gesperrt"]);
   assert.deepEqual(k.zeilen.map((z) => z.name || ""), ["", "", "Ist", "Soll", "", ""]);
   assert.equal(k.zeilen[4].warn, true);
-  assert.equal(pkg.miniDichte(k.zeilen.length), "eng");
-  assert.deepEqual([1, 2, 3, 4].map(pkg.miniDichte), ["normal", "normal", "dicht", "eng"]);
+  assert.equal(pkg.miniDichte(k.zeilen.length), "raster");
+  assert.deepEqual([1, 2, 3, 4].map(pkg.miniDichte), ["normal", "normal", "raster", "raster"]);
 });
 check("It17 mini_show Solar: watt + status statt Temperaturen", () => {
   const k = pkg.miniKachel({ ...SOLAR_MINI, power_entity: "sensor.poolpumpe_power", mini_show: ["watt", "status"] }, solarMiniHass("20"));
@@ -4294,8 +4302,8 @@ check("It17 mini_show Becken: nur temp + rx", () => {
     assert.deepEqual(k.map((x) => x.dataset.mini), ["2", "3"]);
     assert.equal(card.shadowRoot.querySelector(".mini").style.getPropertyValue("--m-spalten").trim(), "2");
   });
-  check("It17 mini_show im DOM: 4 Werte -> dichte-eng, Namen als k-name", () => {
-    assert.ok(k[0].classList.contains("dichte-eng"));
+  check("It17 mini_show im DOM: 4 Werte -> Raster (It19), Namen als k-name", () => {
+    assert.ok(k[0].classList.contains("dichte-raster"));
     assert.equal(k[0].querySelectorAll(".k-zeile").length, 4);
     assert.deepEqual([...k[0].querySelectorAll(".k-name")].map((x) => x.textContent), ["Ist", "Soll"]);
     assert.ok(k[1].classList.contains("dichte-normal"));
@@ -4347,13 +4355,10 @@ check("It17 mini_show Becken: nur temp + rx", () => {
   check("It17 Editor: Haken bei Temperatur -> mini_show [stufe, watt, temp]", () =>
     assert.deepEqual(fired.slots[0].mini_show, ["stufe", "watt", "temp"])
   );
-  check("It17 Editor: 3 Werte noch ohne Warnung", () => assert.equal(wahl("pump").querySelector(".mini-wahl-warnung"), null));
   await klickBox("pump", "status");
-  check("It17 Editor: 4 Werte -> Warnung (Schrift wird kleiner, nichts abgeschnitten)", () => {
-    const w = wahl("pump").querySelector(".mini-wahl-warnung");
-    assert.ok(w);
-    assert.match(w.textContent, /4 Werte/);
-    assert.match(w.textContent, /abgeschnitten wird nichts/);
+  check("It19 Editor: auch bei 4 Werten KEIN Hinweistext mehr", () => {
+    assert.equal(wahl("pump").querySelector(".mini-wahl-warnung"), null);
+    assert.doesNotMatch(wahl("pump").textContent, /Werte gewählt/);
   });
   await klickBox("pump", "temp");
   await klickBox("pump", "status");
@@ -4462,7 +4467,7 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
     const p = c.shadowRoot.querySelector(".kachel.neutral .k-status");
     assert.ok(p);
     assert.equal(p.title, "unbekannt");
-    assert.match(cssOf("tomtut-pool-dashboard"), /\.kachel\.neutral \.k-status\s*\{[^}]*background:\s*var\(--tt-line\)/);
+    assert.match(cssOf("tomtut-pool-dashboard"), /\.kachel\.neutral \.k-status\s*\{[^}]*background:\s*#9e9e9e/);
   });
   c.remove();
 }
@@ -4479,6 +4484,249 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
     assert.match(t.textContent.replace(/\s+/g, " "), /Wasser\s*–/);
   });
   c.remove();
+}
+
+/* ------------------------------------------------------------------ */
+/* Iteration 19: Raster, Räder, Kachel-Hintergrund, Modus-Zuordnung    */
+/* ------------------------------------------------------------------ */
+{
+  const kartenMini = async (extra = {}, hass = makeHass()) =>
+    mount(Dashboard, { view: "mini", hero: { enabled: false }, slots: [PUMP_CONFIG], ...extra }, hass);
+
+  /* ---- mini_tile_fill ---- */
+  check("It19 mini_tile_fill: ohne Angabe schwarz (alte Configs unverändert), nur 3 Werte gültig", () => {
+    assert.equal(pkg.miniKachelFill({}), "schwarz");
+    assert.equal(pkg.miniKachelFill({ mini_tile_fill: "weiss" }), "weiss");
+    assert.equal(pkg.miniKachelFill({ mini_tile_fill: "transparent" }), "transparent");
+    assert.equal(pkg.miniKachelFill({ mini_tile_fill: "lila" }), "schwarz");
+    assert.deepEqual(pkg.MINI_KACHEL_FILLS.map(([k]) => k), ["schwarz", "weiss", "transparent"]);
+  });
+  for (const [fill, klasse] of [[undefined, "kacheln-schwarz"], ["weiss", "kacheln-weiss"], ["transparent", "kacheln-transparent"]]) {
+    const c = await kartenMini(fill ? { mini_tile_fill: fill } : {});
+    check(`It19 mini_tile_fill ${fill || "(fehlt)"} -> .mini.${klasse}`, () =>
+      assert.ok(c.shadowRoot.querySelector(`.mini.${klasse}`))
+    );
+    c.remove();
+  }
+  check("It19 mini_tile_fill: Farben je Füllung im CSS (schwarz/weiß fest, transparent nur Rand)", () => {
+    const css = cssOf("tomtut-pool-dashboard");
+    assert.match(css, /\.mini\.kacheln-schwarz \.kachel\s*\{[^}]*--k-bg:\s*#1e1e1e[^}]*--k-fg:\s*#ffffff/);
+    assert.match(css, /\.mini\.kacheln-weiss \.kachel\s*\{[^}]*--k-bg:\s*#ffffff[^}]*--k-fg:\s*#111111/);
+    assert.match(css, /\.mini\.kacheln-transparent \.kachel\s*\{[^}]*--k-bg:\s*transparent[^}]*border-color:\s*var\(--k-line\)/);
+  });
+
+  /* ---- Raster ---- */
+  const wp6 = { ...MODUS_SEL, release_entity: FREI_ENT, mini_show: ["modus", "watt", "ist", "soll", "freigabe", "status"] };
+  const c6 = await kartenMini({ slots: [{ ...PUMP_CONFIG, mini_show: ["stufe", "watt", "temp", "status"] }, wp6] }, selHass("Heizen Smart", { [FREI_ENT]: { state: "on", attributes: {}, last_changed: iso(60) } }));
+  check("It19 Raster: ab 3 Werten 2 Spalten, Modus-Pille über die volle Breite", () => {
+    const k = [...c6.shadowRoot.querySelectorAll(".kachel")];
+    assert.ok(k.every((x) => x.classList.contains("dichte-raster")));
+    assert.equal(k[0].querySelectorAll(".k-zeile").length, 4);
+    assert.equal(k[1].querySelectorAll(".k-zeile").length, 6);
+    assert.ok(k[1].querySelector(".k-zeile.badge"));
+    const css = cssOf("tomtut-pool-dashboard");
+    /* paarweise: je Wert eine halbe Zeile, zu Breites bekommt die ganze */
+    assert.match(css, /\.kachel\.dichte-raster \.k-zeile\.neben\s*\{[^}]*flex:\s*1 1 calc\(50% - 2px\)[^}]*min-width:\s*max-content/);
+    assert.match(css, /\.kachel\.dichte-raster \.k-zeile\.badge\s*\{[^}]*flex-basis:\s*100%/);
+  });
+  c6.remove();
+
+  /* ---- Räder ---- */
+  const radVon = async (slot, hass) => {
+    const c = await kartenMini({ slots: [slot] }, hass);
+    const r = c.shadowRoot.querySelector(".k-rad");
+    const erg = r ? { dreht: r.classList.contains("dreht"), dur: r.style.getPropertyValue("--k-rad-dur").trim(), rund: r.classList.contains("rund"), size: parseFloat(r.style.width) } : null;
+    c.remove();
+    return erg;
+  };
+  const pAn = await radVon({ ...PUMP_CONFIG, stage_from_power: true }, makeHass());
+  check("It19 Pumpe Mini: Laufrad sichtbar (rund, größer als im Voll-Kasten), dreht mit Tempo der Stufe (737 W = N3)", () => {
+    assert.ok(pAn);
+    assert.equal(pAn.dreht, true);
+    assert.equal(pAn.rund, true);
+    assert.ok(pAn.size >= 28, `Größe ${pAn.size}`);
+    assert.equal(pAn.dur, `${pkg.fanDuration(pkg.PUMP_DEFAULTS.fan_speed_3)}s`);
+  });
+  const pN1 = await radVon({ ...PUMP_CONFIG, stage_from_power: true }, makeHass({ "sensor.poolpumpe_power": { state: "47", attributes: { unit_of_measurement: "W" }, last_changed: iso(5) } }));
+  check("It19 Pumpe Mini: N1 dreht langsamer als N3", () => {
+    assert.equal(pN1.dur, `${pkg.fanDuration(pkg.PUMP_DEFAULTS.fan_speed_1)}s`);
+    assert.ok(parseFloat(pN1.dur) > parseFloat(pAn.dur));
+  });
+  const pAus = await radVon(PUMP_CONFIG, makeHass({ "input_boolean.poolpumpe_schalter": { state: "off", attributes: {}, last_changed: iso(5) } }));
+  check("It19 Pumpe Mini: Stillstand -> Rad steht", () => assert.equal(pAus.dreht, false));
+  const pOhne = await radVon({ ...PUMP_CONFIG, show_fan: false }, makeHass());
+  check("It19 Pumpe Mini: show_fan false -> kein Rad (wirklich)", () => assert.equal(pOhne, null));
+  const wAn = await radVon(MODUS_SEL, selHass("Heizen Smart"));
+  {
+    const voll = await mountSlotTyp(MODUS_SEL, selHass("Heizen Smart"));
+    check("It19 WP Mini: Rad dreht bei Betrieb, Tempo = voller Kasten", () => {
+      assert.equal(wAn.dreht, true);
+      assert.equal(wAn.dur, `${voll._fanDur}s`);
+      assert.ok(voll.shadowRoot.querySelector(".fan-overlay").classList.contains("spinning"));
+    });
+  }
+  const wKlima = await radVon(MODUS_SEL, selHass("Heizen Smart", { "climate.waermepumpe": { state: "off", attributes: {}, last_changed: iso(5) } }));
+  const wSw = await radVon(MODUS_SEL, selHass("Heizen Smart", { "switch.waermepumpe": { state: "off", attributes: {}, last_changed: iso(5) } }));
+  check("It19 WP Mini: Rad steht bei climate off und bei Schalter aus", () => {
+    assert.equal(wKlima.dreht, false);
+    assert.equal(wSw.dreht, false);
+  });
+
+  /* ---- Modus-Zuordnung: Logik ---- */
+  const T = (s) => ({ state: s, attributes: { options: TUYA_OPTIONEN } });
+  check("It19 mode_map: Zuordnung je Wert gewinnt vor Automatik", () => {
+    const c = { mode_entity: WP_SEL, mode_map: { "Heizen Power": "heiz_smart" } };
+    assert.equal(pkg.modeFromState("Heizen Power", c).key, "heiz_smart");
+    assert.equal(pkg.modeFromState("heizen power", c).key, "heiz_smart");
+    assert.equal(pkg.modeFromState("Heizen Power", { mode_entity: WP_SEL }).key, "heiz_boost");
+  });
+  check("It19 mode_map '' = bewusst nicht zuordnen; mode_names als Anzeigename", () => {
+    const c = { mode_entity: WP_SEL, mode_map: { "Heizen Smart": "" }, mode_names: { Auto: "Automatik", "Heizen Smart": "Eco" } };
+    assert.equal(pkg.modeFromState("Heizen Smart", c), null);
+    assert.equal(pkg.modeBadge(T("Heizen Smart"), c).text, "Eco");
+    assert.equal(pkg.modeBadge(T("Auto"), c).text, "Automatik");
+    const opt = pkg.modusWahl(T("Auto"), c)[0].optionen;
+    assert.equal(opt.find((o) => o.wert === "Auto").text, "Automatik");
+  });
+  check("It19 Kompatibilität: alte mode_map_*-Listen gelten weiter", () => {
+    const c = { mode_entity: WP_SEL, mode_map_heiz_auto: "Auto, Automatik" };
+    assert.equal(pkg.modeFromState("Auto", c).key, "heiz_auto");
+    assert.equal(pkg.modeBadge(T("Auto"), c).text, "Heizen Auto");
+  });
+
+  /* ---- Modus-Zuordnung: Editor ---- */
+  const edM = new Editor();
+  edM.setConfig({ hero: { enabled: false }, slots: [{ ...MODUS_SEL, show_mode: true }] });
+  edM.hass = selHass("Heizen Power");
+  document.body.appendChild(edM);
+  await edM.updateComplete;
+  let firedM = null;
+  edM.addEventListener("config-changed", (e) => {
+    firedM = e.detail.config;
+    edM.setConfig(firedM);
+  });
+  const sel = (w) => edM.shadowRoot.querySelector(`select[data-modus-select="${w}"]`);
+  const waehle = async (w, v) => {
+    const s = sel(w);
+    s.value = v;
+    s.dispatchEvent(new dom.window.Event("change"));
+    await edM.updateComplete;
+  };
+  check("It19 Editor Modus: Dropdowns vorbelegt mit der Automatik (Heizen Power -> Heizen Boost)", () => {
+    assert.equal(sel("Heizen Power").value, "heiz_boost");
+    assert.equal(sel("Auto").value, "");
+    assert.equal(sel("Auto").options[0].textContent.trim(), "— nicht zuordnen —");
+  });
+  await waehle("Heizen Power", "heiz_smart");
+  check("It19 Editor Modus: Ändern schreibt mode_map nur mit der Abweichung", () =>
+    assert.deepEqual(firedM.slots[0].mode_map, { "Heizen Power": "heiz_smart" })
+  );
+  await waehle("Heizen Power", "heiz_boost");
+  check("It19 Editor Modus: zurück auf Automatik -> mode_map fällt weg", () => assert.equal("mode_map" in firedM.slots[0], false));
+  {
+    const n = edM.shadowRoot.querySelector('[data-modus-name="Auto"]');
+    n.value = "Automatik";
+    n.dispatchEvent(new dom.window.Event("change"));
+    await edM.updateComplete;
+  }
+  check("It19 Editor Modus: Anzeigename für nicht zugeordnetes 'Auto' -> mode_names", () =>
+    assert.deepEqual(firedM.slots[0].mode_names, { Auto: "Automatik" })
+  );
+  await waehle("Auto", "heiz_auto");
+  check("It19 Editor Modus: Auto zugeordnet -> Zeile grün, Anzeigename entfällt", () => {
+    assert.deepEqual(firedM.slots[0].mode_map, { Auto: "heiz_auto" });
+    assert.equal("mode_names" in firedM.slots[0], false);
+    assert.ok(!edM.shadowRoot.querySelector('.modus-zeile[data-modus-wert="Auto"]').classList.contains("nein"));
+  });
+  edM.remove();
+
+  /* ohne options: Freitextfelder mit echtem Default als Wert */
+  const edF = new Editor();
+  edF.setConfig({ hero: { enabled: false }, slots: [{ ...HP_CONFIG, show_mode: true, mode_entity: "sensor.wp_modus", mode_map_heiz_auto: "Automatik" }] });
+  edF.hass = makeHass({ "sensor.wp_modus": { state: "Heizen Silent", attributes: {}, last_changed: iso(5) } });
+  document.body.appendChild(edF);
+  await edF.updateComplete;
+  let firedF = null;
+  edF.addEventListener("config-changed", (e) => (firedF = e.detail.config));
+  check("It19 Editor Modus ohne Optionen: Freitext mit Default als echtem Wert, eigene Liste bleibt", () => {
+    const f = (k) => edF.shadowRoot.querySelector(`input[data-key="mode_map_${k}"]`);
+    assert.equal(f("heiz_silent").value, "Heizen Silent, heat_silent, heating_silent, silent_heat");
+    assert.equal(f("heiz_silent").getAttribute("placeholder"), null);
+    assert.equal(f("heiz_auto").value, "Automatik");
+    assert.equal(edF.shadowRoot.querySelectorAll("select[data-modus-select]").length, 0);
+  });
+  {
+    const f = edF.shadowRoot.querySelector('input[data-key="mode_map_heiz_auto"]');
+    f.value = "Heizen Auto, heat_auto, heating_auto, auto_heat";
+    f.dispatchEvent(new dom.window.Event("change"));
+    await edF.updateComplete;
+  }
+  check("It19 Editor Modus ohne Optionen: Default eingetragen -> Schlüssel fällt weg", () =>
+    assert.equal("mode_map_heiz_auto" in firedF.slots[0], false)
+  );
+  edF.remove();
+
+  /* ---- confirm_off weit oben ---- */
+  const edO = new Editor();
+  edO.setConfig({
+    hero: { enabled: false },
+    slots: [PUMP_CONFIG, { ...HP_CONFIG }, { type: "uv", switch_entity: "switch.uv_lampe" }, { type: "solar", switch_entity: "switch.solarventil" }],
+  });
+  edO.hass = makeHass();
+  document.body.appendChild(edO);
+  await edO.updateComplete;
+  const karten = [...edO.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")];
+  const pos = (karte, text) => karte.textContent.indexOf(text);
+  check("It19 confirm_off: Pumpe — direkt beim Hauptschalter, vor den Stufen", () => {
+    const k = karten[0];
+    assert.ok(pos(k, "Hauptschalter") < pos(k, "Vor dem Ausschalten nachfragen"));
+    assert.ok(pos(k, "Vor dem Ausschalten nachfragen") < pos(k, "Schaltmodell"));
+    assert.ok(pos(k, "Vor dem Ausschalten nachfragen") < pos(k, "Stufe 1 (N1)"));
+  });
+  check("It19 confirm_off: WP / UV / Solar — direkt nach der Schalter-Entity, vor allen anderen Feldern", () => {
+    for (const [i, schalter, danach] of [
+      [1, "Powerbutton — Schalter", "Stromverbrauch"],
+      [2, "Powerbutton — Schalter", "Stromverbrauch"],
+      [3, "Powerbutton — Ventil oder Pumpe", "Läuft gerade?"],
+    ]) {
+      const k = karten[i];
+      assert.ok(pos(k, schalter) >= 0 && pos(k, schalter) < pos(k, "Vor dem Ausschalten nachfragen"), `${i}`);
+      assert.ok(pos(k, "Vor dem Ausschalten nachfragen") < k.textContent.lastIndexOf(danach), `${i}: ${danach}`);
+    }
+  });
+  edO.remove();
+
+  /* ---- Editor: Kachel-Hintergrund nur bei Mini ---- */
+  const edK = new Editor();
+  edK.setConfig({ hero: { enabled: false }, slots: [PUMP_CONFIG] });
+  edK.hass = makeHass();
+  document.body.appendChild(edK);
+  await edK.updateComplete;
+  let firedK = null;
+  edK.addEventListener("config-changed", (e) => {
+    firedK = e.detail.config;
+    edK.setConfig(firedK);
+  });
+  check("It19 Editor: Kachel-Hintergrund fehlt in der vollen Ansicht", () =>
+    assert.equal(edK.shadowRoot.querySelector('select[data-key="mini_tile_fill"]'), null)
+  );
+  edK.shadowRoot.querySelector('[data-ansicht="mini"]').click();
+  await edK.updateComplete;
+  const tf = () => edK.shadowRoot.querySelector('.ansicht-block select[data-key="mini_tile_fill"]');
+  check("It19 Editor: bei Mini im Ansicht-Kasten, Standard Schwarz", () => {
+    assert.ok(tf());
+    assert.equal(tf().value, "schwarz");
+    assert.deepEqual([...tf().options].map((o) => o.value), ["schwarz", "weiss", "transparent"]);
+  });
+  tf().value = "transparent";
+  tf().dispatchEvent(new dom.window.Event("change"));
+  await edK.updateComplete;
+  check("It19 Editor: Transparent -> mini_tile_fill: transparent", () => assert.equal(firedK.mini_tile_fill, "transparent"));
+  tf().value = "schwarz";
+  tf().dispatchEvent(new dom.window.Event("change"));
+  await edK.updateComplete;
+  check("It19 Editor: zurück auf Schwarz -> Schlüssel fällt weg", () => assert.equal("mini_tile_fill" in firedK, false));
+  edK.remove();
 }
 
 /* ------------------------------------------------------------------ */

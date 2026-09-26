@@ -244,6 +244,7 @@ slots:
 | `frame` | – | Rahmen und Füllung für **alle** Slots. |
 | `slots` | `[]` | Liste der Kästen in ihrer Reihenfolge. |
 | `view` | `voll` | `voll` = Becken + Kästen wie gewohnt · `mini` = alles kompakt in einer Card (siehe unten) |
+| `mini_tile_fill` | `schwarz` | Hintergrund der Mini-Kacheln: `schwarz`, `weiss` oder `transparent` (nur dünner Rand, die Karte scheint durch) |
 
 #### Mini-Ansicht (`view: mini`)
 
@@ -259,6 +260,10 @@ im 2er-Raster. Leere Rahmen und ausgeblendete Slots entfallen. Pro Kachel:
 | `uv` | An/Aus + Watt (ohne Leistungssensor: nur An/Aus) |
 | `custom` | erster Eintrag: Wert + Name |
 
+Ab drei gewählten Werten (`mini_show`) stehen sie paarweise in zwei Spalten unter dem Bild;
+passt ein Wert nicht in eine halbe Kachel, bekommt er die ganze Zeile — abgeschnitten wird nie.
+Pumpe und Wärmepumpe zeigen ihr Rad auch in der Kachel: es dreht im Tempo des vollen Kastens
+(Pumpe je Stufe, WP je Modus) und steht bei Stillstand.
 Der Punkt oben rechts: grün = läuft, rot = aus, grau = unbekannt bzw. kein Schalter. Die
 Wärmepumpe gilt als aus, sobald ihre `climate`-Entity `off` ist — auch wenn die Steckdose Strom
 gibt (dieselbe Regel im vollen Kasten: Modus-Badge „Aus", Rad steht, Powerbutton bernstein mit
@@ -367,7 +372,9 @@ sind davon unberührt — die Reihenfolge ist reine Anzeige.
 | `mode_entity` | – | Modus-Quelle: `sensor`, `select`, `input_select` oder `climate` |
 | `mode_attribute` | – | Statt des Zustands ein Attribut lesen, z.B. `preset_mode` bei `climate.*` |
 | `mode_speed_<modus>` | Silent `3` · Smart `5` · Auto `6` · Boost `9` | Tempo je Modus auf der Skala 1–10 (wie die Poolpumpe). `<modus>` = `heiz_silent`, `heiz_smart`, `heiz_auto`, `heiz_boost`, `kuehl_silent`, `kuehl_smart`, `kuehl_auto`, `kuehl_boost` |
-| `mode_map_<modus>` | z.B. `Heizen Silent, heat_silent, …` | Welche Gerätezustände dieser Modus heißt — Kommaliste, Groß-/Kleinschreibung, Leerzeichen, `_` und `-` egal. Leer = Vorgabe. Meist unnötig: seit Iteration 14 erkennt die Card Zustände mit Heizen/Kühlen **und** Stufe (Silent, Smart/Eco, Auto, Boost/Power/Turbo) selbst, Umlaute auch als ae/oe/ue. Eine eigene Liste ersetzt für diesen Modus Vorgabe und Automatik. Im Editor unter „Erweitert: Modus-Namen anpassen“, mit Live-Anzeige, was die Entity gerade meldet |
+| `mode_map_<modus>` | z.B. `Heizen Silent, heat_silent, …` | Welche Gerätezustände dieser Modus heißt — Kommaliste, Groß-/Kleinschreibung, Leerzeichen, `_` und `-` egal. Leer = Vorgabe. Meist unnötig: seit Iteration 14 erkennt die Card Zustände mit Heizen/Kühlen **und** Stufe (Silent, Smart/Eco, Auto, Boost/Power/Turbo) selbst, Umlaute auch als ae/oe/ue. Eine eigene Liste ersetzt für diesen Modus Vorgabe und Automatik. Gilt weiter; im Editor nur noch, wenn die Entity keine Werteliste hat |
+| `mode_map` | – | **Zuordnung je Gerätewert** (Iteration 19): `{ "Heizen Power": heiz_smart, "Auto": "" }` — gewinnt vor Listen und Automatik, `""` = bewusst nicht zuordnen. Im Editor unter „Modus-Zuordnung“: pro Wert der Entity eine Zeile mit Dropdown, vorbelegt mit der automatischen Zuordnung; nicht zugeordnete Werte sind rot |
+| `mode_names` | – | Eigener Anzeigename für nicht zugeordnete Werte, z.B. `{ Auto: Automatik }` (Badge und Auswahl) |
 | `show_mode_badge` | `true` | **Betriebsmodus-Badge** (Iteration 14): Klartext wie „Heizen Boost“, „Kühlen“, „Auto“, „Aus“, bei `climate.*` mit Preset („Heizen · Komfort“); Unbekanntes erscheint als Rohwert. Farbe wie das Rad (Heizen rot, Kühlen blau). Braucht `mode_entity`; `false` blendet nur das Badge aus, Tempo/Farbe bleiben |
 | `mode_top` / `mode_left` / `mode_scale` | `86` / `64` / `100` | Lage und Größe des Modus-Badges in % des Bildes |
 | (Modus wählen) | – | Seit Iteration 15 ist das Badge ein Knopf: Tippen öffnet die Auswahl aller Modi der Entity (deutsche Namen, aktueller mit ✓). Gesetzt wird per `select.select_option` / `input_select.select_option`, bei `climate.*` per `set_hvac_mode` bzw. `set_preset_mode` (Optionen aus `options` / `hvac_modes` / `preset_modes`). `sensor.*` bleibt reine Anzeige. Ein Fehler beim Umschalten steht sichtbar im Dialog |
