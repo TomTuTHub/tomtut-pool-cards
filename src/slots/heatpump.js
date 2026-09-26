@@ -1,5 +1,5 @@
 import { html, css, nothing } from "lit";
-import { SlotBase } from "../shared/slot-base.js";
+import { SlotBase, slotLabel } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { fmt, isOn, numOf, seitMinuten, domainOf } from "../shared/util.js";
 import { fanDuration } from "./pump.js";
@@ -266,8 +266,13 @@ export const modeWort = (s) => {
  *   3. Sonst übersetzt, und was keiner kennt, als Rohwert.
  * Ohne brauchbaren Wert (unknown/unavailable): "—".
  */
+/* Domains, aus denen ein Betriebsmodus kommen kann (Iteration 22, Bug A15:
+   ein input_number zeigte sonst "0.0" als Modus) */
+export const MODUS_DOMAINS = ["sensor", "select", "input_select", "climate"];
+
 export const modeBadge = (e, c = {}) => {
   if (!e) return null;
+  if (!MODUS_DOMAINS.includes(domainOf(c.mode_entity))) return { text: "—", art: null };
   const attr = String(c.mode_attribute || "").trim();
   const roh = attr ? e.attributes?.[attr] : e.state;
   const m = modeFromState(roh, c);
@@ -391,6 +396,9 @@ export const heatpumpHasEntity = (c = {}) =>
     c.release_entity
   );
 
+/* Domains, die als Freigabekontakt taugen (an/aus) */
+export const FREIGABE_DOMAINS = ["switch", "input_boolean", "binary_sensor", "light"];
+
 export class TomtutPoolSlotHeatpump extends SlotBase {
   static properties = {
     ...SlotBase.properties,
@@ -462,6 +470,8 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
   get _freigabe() {
     const c = this.config || {};
     if (c.show_release === false || !c.release_entity) return null;
+    /* nur Domains mit an/aus — ein input_number o.ä. ist kein Kontakt (Bug A15) */
+    if (!FREIGABE_DOMAINS.includes(domainOf(c.release_entity))) return null;
     const e = this._ent(c.release_entity);
     if (!e) return null;
     const s = String(e.state).toLowerCase();
@@ -472,13 +482,41 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
   /* binary_sensor ist eine Meldung, kein Schalter — nur Anzeige. */
   get _releaseSchaltbar() {
     const id = this.config?.release_entity;
-    return !!id && !String(id).startsWith("binary_sensor.");
+    return !!id && ["switch", "input_boolean", "light"].includes(domainOf(id));
   }
 
+  /*
+   * Freigabe umschalten (Iteration 22, Bug A11): immer mit Rückfrage — ein
+   * Fehltipp stoppt oder startet sonst den Kompressor, dieselbe Gefahren-
+   * klasse wie der Powerbutton. confirm_off: false schaltet wie vorher direkt.
+   */
   _onReleaseClick(ev) {
     ev?.stopPropagation();
     if (!this.bedienbar || !this._releaseSchaltbar) return;
-    this._call(this.config.release_entity, "toggle");
+    const id = this.config.release_entity;
+    const umschalten = () => this._call(id, "toggle");
+    if (!this.fragtNach) {
+      umschalten();
+      return;
+    }
+    const sperren = this._freigabe !== false;
+    this._fragen(
+      sperren
+        ? {
+            titel: "Wärmepumpe sperren?",
+            text: `Der Freigabekontakt wird geöffnet: die Wärmepumpe darf dann nicht mehr laufen und
+              schaltet ab, egal was an ihrem Bedienteil eingestellt ist.`,
+            knopf: "Sperren",
+            aktion: umschalten,
+          }
+        : {
+            titel: "Wärmepumpe freigeben?",
+            text: `Der Freigabekontakt wird geschlossen: die Wärmepumpe darf wieder laufen und startet
+              nach ihrer eigenen Logik (Kompressor-Anlauf).`,
+            knopf: "Freigeben",
+            aktion: umschalten,
+          }
+    );
   }
 
   /*
@@ -499,8 +537,8 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
           ? "Freigabekontakt offen — die Wärmepumpe ist gesperrt (nur Anzeige)"
           : "Freigabekontakt geschlossen — die Wärmepumpe ist freigegeben (nur Anzeige)"
         : gesperrt
-        ? "Freigabe geben (Kontakt schließen)"
-        : "Freigabe entziehen (Kontakt öffnen)";
+        ? "Freigabe geben (Kontakt schließen, mit Rückfrage)"
+        : "Freigabe entziehen (Kontakt öffnen, mit Rückfrage)";
     return html`
       <div
         class="release-badge ${zustand} ${schaltbar ? "schaltbar" : "nur-anzeige"}"
@@ -535,12 +573,16 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     const id = this.config.target_entity;
     const e = this._ent(id);
     if (!e) return null;
-    const climate = String(id).startsWith("climate.");
+    const domain = domainOf(id);
+    const climate = domain === "climate";
     const value = climate ? numOf(e.attributes?.temperature) : numOf(e.state);
     if (value === null) return null;
     const a = e.attributes || {};
     return {
       climate,
+      domain,
+      /* sensor.* ist nur Messwert: kein +/− (Iteration 22, Bug A2) */
+      schreibbar: ["climate", "number", "input_number"].includes(domain),
       value,
       min: climate ? a.min_temp ?? 5 : a.min ?? 5,
       max: climate ? a.max_temp ?? 40 : a.max ?? 40,
@@ -616,12 +658,23 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
   _onModeClick(ev) {
     ev?.stopPropagation();
     if (!this.bedienbar || !this._modusGruppen.length) return;
+    this._alsOffenMelden();
     this._modusFehler = "";
     this._modusWahlOffen = true;
   }
 
   _modusSchliessen(ev) {
     ev?.stopPropagation();
+    this._modusWahlOffen = false;
+    this._modusFehler = "";
+  }
+
+  get _dialogOffen() {
+    return this._confirmOpen === true || this._modusWahlOffen === true;
+  }
+
+  _dialogeSchliessen() {
+    super._dialogeSchliessen();
     this._modusWahlOffen = false;
     this._modusFehler = "";
   }
@@ -743,7 +796,7 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
 
   _stepTarget(delta) {
     const t = this._target;
-    if (!this.bedienbar || !t || !this.hass) return;
+    if (!this.bedienbar || !t || !t.schreibbar || !this.hass) return;
     let next = Math.round((t.value + delta * t.step) / t.step) * t.step;
     next = Math.min(t.max, Math.max(t.min, next));
     next = Math.round(next * 100) / 100;
@@ -754,7 +807,9 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
         temperature: next,
       });
     } else {
-      this.hass.callService("number", "set_value", {
+      /* input_number braucht seinen eigenen Dienst (Bug A2: number.set_value
+         meldete Erfolg, bewegte aber nichts) */
+      this.hass.callService(t.domain === "input_number" ? "input_number" : "number", "set_value", {
         entity_id: this.config.target_entity,
         value: next,
       });
@@ -782,12 +837,19 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     const showPower = c.show_power !== false && !!c.power_entity;
     const showTarget = c.show_target !== false && !!c.target_entity;
     const showCurrent = c.show_current !== false && !!c.current_entity;
-    const labelText = c.label_text || "";
+    const labelText = slotLabel(c);
     const modusBadge = this._modusBadge;
 
     const fanDur = this._fanDur;
     const target = this._target;
     const current = this._current;
+    /* +/− nur, wo man wirklich stellen kann: nicht im Kiosk (dort sahen sie
+       kaputt aus, Befund D) und nicht bei einem reinen Messwert (sensor.*) */
+    const mitTasten = this.bedienbar && !String(c.target_entity || "").startsWith("sensor.");
+    const labelScale = (Number(this._v("label_scale")) || 100) / 100;
+    const labelLeft = Math.min(100, Math.max(0, Number(this._v("label_left")) || 0));
+    /* nie breiter als der Kasten (Bug A4): Platz zur näheren Seite x 2, durch die Größe */
+    const labelMax = Math.round(((Math.min(labelLeft, 100 - labelLeft) * 2 - 2) / labelScale) * 10) / 10;
 
     return this.renderSlot(html`
       <div class="img-wrap">
@@ -848,14 +910,16 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
                 )}%; transform:translateX(-50%) scale(${(this._v("target_scale") ?? 100) / 100});"
               >
                 <div class="target-row">
-                  <button
-                    class="step"
-                    ?disabled="${target === null}"
-                    @click="${this._targetDown}"
-                    title="Soll-Temperatur senken"
-                  >
-                    −
-                  </button>
+                  ${mitTasten
+                    ? html`<button
+                        class="step"
+                        ?disabled="${target === null}"
+                        @click="${this._targetDown}"
+                        title="Soll-Temperatur senken"
+                      >
+                        −
+                      </button>`
+                    : nothing}
                   <div class="target-val">
                     <span class="val"
                       >${target === null ? "—" : fmt(target.value, 1) + " " + target.unit}</span
@@ -864,14 +928,16 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
                       ? nothing
                       : html`<span class="unit">Soll</span>`}
                   </div>
-                  <button
-                    class="step"
-                    ?disabled="${target === null}"
-                    @click="${this._targetUp}"
-                    title="Soll-Temperatur anheben"
-                  >
-                    +
-                  </button>
+                  ${mitTasten
+                    ? html`<button
+                        class="step"
+                        ?disabled="${target === null}"
+                        @click="${this._targetUp}"
+                        title="Soll-Temperatur anheben"
+                      >
+                        +
+                      </button>`
+                    : nothing}
                 </div>
               </div>
             `
@@ -882,7 +948,11 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
                 class="label-badge ${this._v("label_box") === false ? "no-bg" : ""}"
                 style="top:${this._v("label_top")}%; left:${this._v(
                   "label_left"
-                )}%; transform:translateX(-50%) scale(${(this._v("label_scale") ?? 100) / 100});"
+                )}%; transform:translateX(-50%) scale(${(this._v("label_scale") ?? 100) / 100}); max-width:${Math.max(
+                  10,
+                  labelMax
+                )}%;"
+                title="${labelText}"
               >
                 ${labelText}
               </div>

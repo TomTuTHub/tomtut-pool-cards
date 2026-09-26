@@ -1,5 +1,5 @@
 import { html, css, nothing } from "lit";
-import { SlotBase } from "../shared/slot-base.js";
+import { SlotBase, slotLabel } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { isOn, stateText, nameOf, domainOf } from "../shared/util.js";
 import { hasHaElement } from "../shared/ha-elements.js";
@@ -106,7 +106,7 @@ export class TomtutPoolSlotCustom extends SlotBase {
     if (!this._schaltbar(entry)) return;
     if (entry.confirm_off === true && this._isOn(id)) {
       this._wartet = entry;
-      this._confirmOpen = true;
+      this._fragen(null);
       return;
     }
     this._call(id, "toggle");
@@ -248,7 +248,7 @@ export class TomtutPoolSlotCustom extends SlotBase {
     }
     return this.renderSlot(html`
       <div class="custom layout-${layout} align-${this._align}">
-        ${c.title ? html`<h3 class="slot-title">${c.title}</h3>` : nothing}
+        ${slotLabel(c) ? html`<h3 class="slot-title">${slotLabel(c)}</h3>` : nothing}
         ${inhalt}
         ${mehr
           ? html`<p class="slot-hint mehr">+${mehr} weitere ${mehr === 1 ? "Eintrag" : "Einträge"} ausgeblendet (höchstens ${CUSTOM_MAX_ENTRIES})</p>`

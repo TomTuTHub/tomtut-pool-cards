@@ -1,0 +1,211 @@
+{
+ "tomtutstudio-thomas-20260926.yaml": [
+  {
+   "version": 1,
+   "hero": {
+    "enabled": true,
+    "shape": "oval",
+    "temp_entity": "sensor.poollampe_zigbee_poollampe_zigbee_temperatur_skimmer",
+    "ph_entity": "sensor.tomtut_dosieranlage_vigipool_ph",
+    "rx_entity": "sensor.tomtut_dosieranlage_vigipool_orp_redox",
+    "inlet_temp_entity": "sensor.poollampe_zigbee_poollampe_zigbee_temperatur_einlaufduse",
+    "show_drain": true
+   },
+   "frame": {
+    "enabled": true,
+    "fill": "transparent"
+   },
+   "slots": [
+    {
+     "type": "pump",
+     "label": "Poolpumpe",
+     "stage_mode": "momentary",
+     "stage_entities": [
+      "switch.shelly_pumpe_n1",
+      "switch.shelly_pumpe_n2",
+      "switch.shelly_pumpe_n3"
+     ],
+     "stop_entity": "switch.shelly_pumpe_stopp",
+     "main_entity": "switch.poolpumpe",
+     "power_entity": "sensor.poolpumpe_power",
+     "temp_entity": "sensor.temperaturfuehler_poolpumpe_druckseite_temperature",
+     "stage_from_power": true,
+     "stage_watt_1": 20,
+     "stage_watt_2": 150,
+     "stage_watt_3": 500,
+     "confirm_off": true,
+     "show_fan": false,
+     "mini_show": [
+      "stufe",
+      "watt",
+      "temp",
+      "status"
+     ]
+    },
+    {
+     "type": "heatpump",
+     "label_text": "Wärmepumpe",
+     "switch_entity": "switch.shelly2pm_pool_waermepumpe",
+     "power_entity": "sensor.shelly2pm_pool_waermepumpe_power",
+     "target_entity": "climate.inverpower_green_inverpower_green",
+     "current_entity": "climate.inverpower_green_inverpower_green",
+     "show_mode": true,
+     "mode_entity": "select.inverpower_green_inverpower_green_modus",
+     "fan_color_mode": "modus",
+     "show_release": true,
+     "release_entity": "switch.pooltechnik_pool_wp_freigabekontakt",
+     "confirm_off": true,
+     "mini_show": [
+      "modus",
+      "freigabe"
+     ],
+     "show_release_since": false,
+     "fan_source": "auto",
+     "mode_map_heiz_auto": "",
+     "label_top": 8
+    },
+    {
+     "type": "uv",
+     "label": "UV-C",
+     "switch_entity": "switch.uvc_desinfektion",
+     "power_entity": "sensor.pooltechnik_4pm_switch_2_power",
+     "temp_top": 33
+    },
+    {
+     "type": "solar",
+     "label": "Solarheizung",
+     "switch_entity": "switch.solarsteuerung_switch",
+     "active_entity": "binary_sensor.solarheizung_motorventil_an",
+     "temp_out_entity": "sensor.solarheizung_motorventil_solarheizung_ausgang_temperature",
+     "temp_in_entity": "sensor.solarheizung_motorventil_temperature",
+     "confirm_off": false
+    }
+   ],
+   "type": "custom:tomtut-pool-dashboard",
+   "view": "mini"
+  }
+ ],
+ "kioskflur-nachher2.yaml": [
+  {
+   "version": 1,
+   "hero": {
+    "enabled": false
+   },
+   "frame": {
+    "enabled": false
+   },
+   "slots": [
+    {
+     "type": "custom",
+     "title": "Pool: Heizsteuerung",
+     "layout": "liste",
+     "entries": [
+      {
+       "kind": "button",
+       "entity": "input_boolean.poolwp_pv_logik_aktivieren",
+       "label": "PV Logik aktivieren"
+      },
+      {
+       "kind": "button",
+       "entity": "input_boolean.poolwp_manuell_ein",
+       "label": "Pool WP manuell einschalten"
+      },
+      {
+       "kind": "button",
+       "entity": "switch.solarsteuerung_switch",
+       "label": "Solarsteuerung"
+      },
+      {
+       "kind": "entity",
+       "entity": "sensor.solarheizung_status",
+       "label": "Solarheizung",
+       "icon": "mdi:solar-power"
+      }
+     ]
+    }
+   ],
+   "type": "custom:tomtut-pool-dashboard",
+   "kiosk": true
+  },
+  {
+   "type": "custom:tomtut-pool-dashboard",
+   "hero": {
+    "enabled": false
+   },
+   "frame": {
+    "enabled": false
+   },
+   "slots": [
+    {
+     "type": "custom",
+     "title": "Poolschalter",
+     "layout": "liste",
+     "entries": [
+      {
+       "kind": "button",
+       "entity": "switch.poolroboter_switch_0",
+       "confirm_off": true,
+       "label": "Poolroboter",
+       "icon": "mdi:robot-mower"
+      },
+      {
+       "kind": "button",
+       "entity": "switch.gsa_zigbee",
+       "label": "Gegenstromanlage",
+       "icon": "mdi:waves-arrow-right"
+      },
+      {
+       "kind": "button",
+       "entity": "switch.poollampe_zigbee",
+       "label": "Poollampe",
+       "icon": "mdi:lightbulb-on"
+      },
+      {
+       "kind": "button",
+       "entity": "input_boolean.pool_manuell_reinigen",
+       "confirm_off": true,
+       "label": "Pool manuell reinigen",
+       "icon": "mdi:broom"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "version": 1,
+   "hero": {
+    "enabled": false
+   },
+   "frame": {
+    "enabled": true,
+    "fill": "transparent"
+   },
+   "slots": [
+    {
+     "type": "pump",
+     "stage_mode": "momentary",
+     "stage_entities": [
+      "switch.shelly_pumpe_n1",
+      "switch.shelly_pumpe_n2",
+      "switch.shelly_pumpe_n3"
+     ],
+     "stop_entity": "switch.shelly_pumpe_stopp",
+     "show_power_button": false,
+     "power_entity": "sensor.poolpumpe_power",
+     "stage_from_power": true,
+     "stage_watt_1": 20,
+     "stage_watt_2": 150,
+     "stage_watt_3": 500,
+     "temp_entity": "sensor.temperaturfuehler_poolpumpe_druckseite_temperature",
+     "label": "",
+     "power_bottom": 5,
+     "power_left": 21,
+     "fan_top": 60.5,
+     "fan_left": 57,
+     "fan_size": 29
+    }
+   ],
+   "type": "custom:tomtut-pool-dashboard"
+  }
+ ]
+}

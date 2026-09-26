@@ -83,6 +83,29 @@ export const thermoGrafik = html`<svg viewBox="0 0 24 60" aria-hidden="true">
 </svg>`;
 
 /*
+ * Beschriftung eines Kastens (Iteration 23): einheitlich `label`. Die alten
+ * Schlüssel `label_text` (Wärmepumpe, Becken) und `title` (Freifeld, Rahmen)
+ * gelten weiter — bestehende Configs sehen gleich aus.
+ */
+export const slotLabel = (c = {}) => String(c?.label || c?.label_text || c?.title || "").trim();
+
+/*
+ * Offene Rückfrage (Iteration 22, Bug A12): höchstens EINE im ganzen
+ * Dashboard. Öffnet ein Kasten seine, schließt die des vorigen.
+ */
+let offenerKasten = null;
+
+/*
+ * Overlays, die nie aus dem Kasten ragen dürfen (Iteration 22, Bugs A8/A19).
+ * Liegt eins (samt "seit"-Zeile) über dem Rand, wird es per `translate`
+ * zurückgeschoben — Lage und Größe in der Config bleiben unangetastet.
+ * Grenze ist die Innenkante des Kastens (.slot), nicht das Bild: ein
+ * Thermometer, das heute oben ins Polster ragt, bleibt, wo es ist.
+ */
+const KLEMM_TEILE =
+  ".power-badge, .value-box, .thermo, .label-badge, .chem-box, .release-badge, .mode-badge";
+
+/*
  * Gemeinsame Basis aller Slots.
  *
  * Eigenschaften von außen (die Dashboard-Card setzt sie):
@@ -106,6 +129,103 @@ export class SlotBase extends LitElement {
     this.frame = { enabled: true, fill: "transparent" };
     this.kiosk = false;
     this._confirmOpen = false;
+    /* Inhalt der offenen Rückfrage; null = Standard (Powerbutton ausschalten) */
+    this._frage = null;
+    this._esc = (ev) => {
+      if (ev.key !== "Escape" || !this._dialogOffen) return;
+      /* auch im Mini-Dialog schließt Esc zuerst nur die Rückfrage */
+      ev.preventDefault();
+      ev.stopPropagation();
+      this._dialogeSchliessen();
+    };
+  }
+
+  /* ---------- Rückfragen: Esc, nur eine zugleich (Iteration 22) ---------- */
+
+  /* Ist gerade eine Rückfrage/Auswahl dieses Kastens offen? */
+  get _dialogOffen() {
+    return this._confirmOpen === true;
+  }
+
+  _dialogeSchliessen() {
+    this._confirmOpen = false;
+    this._frage = null;
+  }
+
+  /* Vor dem Öffnen: die Rückfrage eines anderen Kastens schließen */
+  _alsOffenMelden() {
+    if (offenerKasten && offenerKasten !== this) offenerKasten._dialogeSchliessen();
+    offenerKasten = this;
+  }
+
+  updated(changed) {
+    super.updated?.(changed);
+    const offen = this._dialogOffen && this.bedienbar;
+    if (offen && !this._escAn && typeof window !== "undefined") {
+      window.addEventListener("keydown", this._esc, true);
+      this._escAn = true;
+    } else if (!offen && this._escAn) {
+      window.removeEventListener("keydown", this._esc, true);
+      this._escAn = false;
+      if (offenerKasten === this) offenerKasten = null;
+    }
+    this._klemmen();
+    this._klemmBeobachter();
+  }
+
+  disconnectedCallback() {
+    if (this._escAn) window.removeEventListener("keydown", this._esc, true);
+    this._escAn = false;
+    if (offenerKasten === this) offenerKasten = null;
+    this._ro?.disconnect();
+    this._ro = null;
+    super.disconnectedCallback();
+  }
+
+  /* ---------- Overlays im Bild halten (Iteration 22) ---------- */
+
+  _klemmen() {
+    const wrap = this.renderRoot?.querySelector?.(".img-wrap");
+    const kasten = this.renderRoot?.querySelector?.(".slot");
+    if (!wrap?.getBoundingClientRect || !kasten?.getBoundingClientRect) return;
+    const k = kasten.getBoundingClientRect();
+    if (!k.width || !k.height || !wrap.getBoundingClientRect().height) return;
+    const cs = typeof getComputedStyle === "function" ? getComputedStyle(kasten) : null;
+    const rand = (seite) => parseFloat(cs?.[`border${seite}Width`]) || 0;
+    const w = {
+      left: k.left + rand("Left"),
+      right: k.right - rand("Right"),
+      top: k.top + rand("Top"),
+      bottom: k.bottom - rand("Bottom"),
+    };
+    for (const el of wrap.querySelectorAll(KLEMM_TEILE)) {
+      el.style.translate = "";
+      const r = el.getBoundingClientRect();
+      if (!r.width && !r.height) continue;
+      const box = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+      for (const kind of el.querySelectorAll(".release-seit")) {
+        const k = kind.getBoundingClientRect();
+        box.left = Math.min(box.left, k.left);
+        box.right = Math.max(box.right, k.right);
+        box.bottom = Math.max(box.bottom, k.bottom);
+      }
+      const dx = box.left < w.left ? w.left - box.left : box.right > w.right ? w.right - box.right : 0;
+      const dy = box.top < w.top ? w.top - box.top : box.bottom > w.bottom ? w.bottom - box.bottom : 0;
+      if (Math.abs(dx) >= 0.5 || Math.abs(dy) >= 0.5) {
+        el.style.translate = `${Math.round(dx * 10) / 10}px ${Math.round(dy * 10) / 10}px`;
+      }
+    }
+  }
+
+  /* Bild geladen, Spalte breiter/schmaler: neu klemmen */
+  _klemmBeobachter() {
+    const wrap = this.renderRoot?.querySelector?.(".img-wrap");
+    if (!wrap || typeof ResizeObserver === "undefined") return;
+    if (this._roZiel === wrap) return;
+    this._ro?.disconnect();
+    this._ro = new ResizeObserver(() => this._klemmen());
+    this._ro.observe(wrap);
+    this._roZiel = wrap;
   }
 
   /* Defaults des jeweiligen Slots — Unterklassen überschreiben das */
@@ -336,34 +456,47 @@ export class SlotBase extends LitElement {
     const id = this.powerEntityId;
     if (!id) return;
     if (this._isOn(id)) {
-      if (this.fragtNach) this._confirmOpen = true;
+      if (this.fragtNach) this._fragen(null);
       else this._call(id, "turn_off");
     } else {
       this._call(id, "turn_on");
     }
   }
 
+  /*
+   * Rückfrage öffnen. frage = null: die Standardfrage des Powerbuttons;
+   * sonst { titel, text, knopf, aktion } (z.B. Freigabekontakt).
+   */
+  _fragen(frage) {
+    this._alsOffenMelden();
+    this._frage = frage;
+    this._confirmOpen = true;
+  }
+
   _confirmOff(ev) {
     ev?.stopPropagation();
-    this._confirmOpen = false;
-    this._call(this.powerEntityId, "turn_off");
+    const frage = this._frage;
+    this._dialogeSchliessen();
+    if (frage?.aktion) frage.aktion();
+    else this._call(this.powerEntityId, "turn_off");
   }
 
   _cancelOff(ev) {
     ev?.stopPropagation();
-    this._confirmOpen = false;
+    this._dialogeSchliessen();
   }
 
   renderConfirm(title = "Wirklich stromlos schalten?") {
     if (!this._confirmOpen || !this.bedienbar) return nothing;
+    const f = this._frage || {};
     return html`
       <div class="confirm-overlay" @click="${this._cancelOff}">
-        <div class="confirm-panel" @click="${(e) => e.stopPropagation()}">
-          <h3><ha-icon icon="mdi:alert"></ha-icon> ${title}</h3>
-          <p>${this.powerConfirmText}</p>
+        <div class="confirm-panel" role="alertdialog" @click="${(e) => e.stopPropagation()}">
+          <h3><ha-icon icon="mdi:alert"></ha-icon> ${f.titel || title}</h3>
+          <p>${f.text || this.powerConfirmText}</p>
           <div class="confirm-actions">
             <button class="btn cancel" @click="${this._cancelOff}">Abbrechen</button>
-            <button class="btn danger" @click="${this._confirmOff}">Trotzdem ausschalten</button>
+            <button class="btn danger" @click="${this._confirmOff}">${f.knopf || "Trotzdem ausschalten"}</button>
           </div>
         </div>
       </div>

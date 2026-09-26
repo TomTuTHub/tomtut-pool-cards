@@ -7,7 +7,7 @@
   "scripts": {
     "build": "rollup -c rollup.config.js",
     "dev": "rollup -c rollup.config.js --watch",
-    "test": "node test/smoke.mjs && node test/render.spec.mjs",
+    "test": "node test/smoke.mjs && node test/render.spec.mjs && node test/prod-snapshot.mjs",
     "test:jsdom": "node test/smoke.mjs",
     "test:render": "node test/render.spec.mjs",
     "test:browser-setup": "playwright install chromium"

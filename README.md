@@ -289,11 +289,11 @@ slots:
 | Option | Standard | Beschreibung |
 |---|---|---|
 | `enabled` | `true` | Becken anzeigen |
-| `shape` | `oval` | `oval`, `rechteck`, `achtform`, `rund`, `niere`, `freiform`. Unbekannte Werte fallen auf `oval` zurück. |
+| `shape` | `oval` | `oval`, `rechteck`, `achtform`, `rund`, `niere`, `freiform`. Andere Schreibweisen gelten mit (`nierenform`, `kreis`, `acht`, `rechteckig`). Unbekannte Werte fallen auf `oval` zurück — der Editor zeigt dann oben einen Hinweis. |
 | `temp_entity` | – | Wassertemperatur → Thermometer auf der Wasserfläche |
 | `ph_entity` | – | pH-Wert → Kästchen auf der Beckenwand |
 | `rx_entity` | – | Redox/RX → Kästchen auf der Beckenwand |
-| `label_text` | – | Freitext auf dem Becken |
+| `label` | – | Freitext auf dem Becken (seit Iteration 23; `label_text` gilt weiter). Zu lang = mit „…“ gekürzt, nie breiter als das Becken |
 | `label_scale` | `100` | Größe des Freitexts in % |
 | `label_top` / `label_left` | aus der Formen-Tabelle | Position des Freitexts in % (Standard = oben mittig über der Wasserfläche) |
 | `framed` | `false` | Becken mit Rahmen zeichnen |
@@ -306,7 +306,7 @@ slots:
 | `skimmer_top` / `skimmer_left` / `skimmer_size` | aus der Formen-Tabelle / `10` | Lage und Breite des Skimmers |
 | `inlet_top` / `inlet_left` / `inlet_size` | aus der Formen-Tabelle / `6.5` | Lage und Breite der Einlaufdüse |
 | `inlet_temp_entity` | – | Temperatur des einströmenden Wassers → Kästchen neben der Düse (nur mit `show_inlet`) |
-| `inlet_temp_top` / `inlet_temp_left` | Düsen-Anker + 8 / + 11 | Position des Kästchens; ohne Angabe wandert es mit der Düse |
+| `inlet_temp_top` / `inlet_temp_left` | unter der Düse | Mitte des Kästchens in %. Ohne Angabe hängt es knapp **unter** der Düse (Oberkante 2 Punkte unter ihrer Unterkante, 2,5 nach links) und wandert mit ihr — so verdeckt es weder Düse noch Bodenablauf (seit Iteration 22) |
 | `drain_top` / `drain_left` / `drain_size` | aus der Formen-Tabelle / `9` | Lage und Breite des Bodenablaufs |
 | `mini_skimmer_*` / `mini_inlet_*` / `mini_drain_*` | wie Voll | Eigene Lage (`_top`/`_left`) und Breite (`_size`) der drei Teile **nur für die Mini-Ansicht** (Iteration 20) — das Becken ist dort anders proportioniert. Fehlt ein Wert, gilt der der vollen Ansicht. Im Editor über „Positionen der Becken-Teile für: Voll / Mini“. Jedes Teil wird in beiden Ansichten so geklemmt, dass es ganz im Beckenbild bleibt; Breite 2–40 % |
 
@@ -320,6 +320,10 @@ ihn längst nicht jedes Becken hat.
 
 Die Einlauftemperatur hängt an der Düse: ohne `show_inlet` kein Kästchen. Es ist im selben
 Stil gezeichnet wie pH und RX und trägt die Beschriftung „Zulauf".
+
+Thermometer, Kästchen und Badges bleiben immer im Kasten: wer sie per Regler über den Rand
+schiebt (oder sehr groß stellt), bekommt sie am Rand gehalten statt abgeschnitten (seit
+Iteration 22).
 
 ### `frame` — Optik aller Slots
 
@@ -361,7 +365,8 @@ sind davon unberührt — die Reihenfolge ist reine Anzeige.
 | `switch_entity` | – | Schalter für den Powerbutton. **Ist er aus, steht der Lüfter immer** — egal, was die Watt sagen. |
 | `confirm_off` | `true` | Vor dem Ausschalten nachfragen (Editor: „Vor dem Ausschalten nachfragen"). `false` = sofort aus |
 | `power_entity` | – | Leistungssensor in W oder kW |
-| `target_entity` | – | Soll-Temperatur: `climate.*` oder `number.*` |
+| `target_entity` | – | Soll-Temperatur: `climate.*`, `number.*` oder `input_number.*` (gestellt per `climate.set_temperature`, `number.set_value` bzw. `input_number.set_value`). Ein `sensor.*` wird nur angezeigt, ohne +/− |
+| `target_step` | aus der Entity | Schrittweite von +/−. Ohne Angabe: `target_temp_step` (climate) bzw. `step` (number/input_number), sonst 0,5 |
 | `current_entity` | – | Ist-Temperatur: `climate.*` (`current_temperature`) oder `sensor.*` |
 | `fan_entity` / `fan_source` | – / `auto` | Woher der Lüfter seinen Zustand nimmt: `auto`, `entity`, `power` |
 | `fan_power_threshold` | `100` | Ab wie viel Watt der Lüfter als laufend gilt |
@@ -384,7 +389,7 @@ sind davon unberührt — die Reihenfolge ist reine Anzeige.
 | `show_release` | `false` im Editor | Freigabekontakt anzeigen. In YAML reicht `release_entity`; `show_release: false` schaltet ab |
 | `release_top` / `release_left` / `release_scale` | `84` / `24` / `100` | Lage und Größe der Freigabe-Anzeige in % des Bildes |
 | `show_release_since` | `false` | Klein unter der Freigabe-Anzeige, wie lange der letzte Wechsel her ist („seit 4 Min“, „seit 2 Std 10 Min“, „seit 3 Tagen“, aus `last_changed`); läuft minütlich mit |
-| `label_text` | – | Freitext-Badge auf dem Bild |
+| `label` | – | Freitext-Badge auf dem Bild (seit Iteration 23; `label_text` gilt weiter). Zu lang = mit „…“ gekürzt, nie breiter als der Kasten |
 | `show_power_button` / `show_power` / `show_current` / `show_target` / `show_fan` / `show_release` | `true` (`show_release`: nur mit Entity) | Einzelne Elemente abwählen — abgewählt heißt: keine Felder im Editor und keine Schlüssel in der Config |
 | Positionsfelder | – | `power_*`, `current_*`, `target_*`, `label_*`, `power_btn_*`, `release_*`, `mode_*` — im Editor je Element per Schieberegler |
 
@@ -400,15 +405,17 @@ sie arbeitet nach ihrer eigenen Logik weiter. Damit sperrt oder gibt man sie von
 Auf der Card sitzt dafür eine kleine Anzeige mit Kontaktsymbol: **grün + geschlossener Kontakt
 = „Frei“**, **rot + abgehobener Hebel = „Gesperrt“**. Ist der Kontakt offen, steht der Lüfter
 still — auch wenn der Schalter an ist und Watt anliegen; die Card zeigt damit, dass die
-Wärmepumpe gar nicht laufen *kann*. Ein Klick schaltet `switch`/`input_boolean` um, ein
-`binary_sensor` wird nur angezeigt. Ohne `release_entity` ändert sich nichts am bisherigen
-Verhalten.
+Wärmepumpe gar nicht laufen *kann*. Ein Klick auf `switch`/`input_boolean` fragt seit
+Iteration 22 erst nach („Wärmepumpe sperren?“ bzw. „… freigeben?“) — ein Fehltipp stoppt oder
+startet sonst den Kompressor. `confirm_off: false` schaltet wie früher sofort. Ein
+`binary_sensor` wird nur angezeigt; andere Domains (z.B. `input_number`) gelten als „unbekannt“.
+Ohne `release_entity` ändert sich nichts am bisherigen Verhalten.
 
 ### Slot `pump`
 
 | Option | Standard | Beschreibung |
 |---|---|---|
-| `stage_entities` | – | Liste mit 1–3 Stufen, Reihenfolge = N1..N3 |
+| `stage_entities` | – | Liste mit 1–3 Stufen, Reihenfolge = N1..N3. Eine einzelne Entity als Text statt Liste gilt als N1 |
 | `stop_entity` | – | STOP-Kanal (bei Impulstastern ein eigener Shelly-Ausgang) |
 | `stage_mode` | `momentary` | `momentary` (Impulstaster) oder `latching` (Dauerrelais) |
 | `stage_labels` | `[N1, N2, N3]` | Eigene Beschriftung der Taster |
@@ -444,11 +451,18 @@ das geometrisch auf die Umlaufzeit abgebildet, damit sich jeder Schritt gleich s
 die den Badu-Net-Link ersetzen). Die Ausgänge fallen selbst wieder auf `off` zurück, ein
 Zustand ist also nicht ablesbar. Die Card nimmt deshalb die Entity mit dem **jüngsten
 `last_changed`**: was zuletzt ausgelöst wurde, gilt als aktiv. Ist STOP das Jüngste, gilt
-die Pumpe als gestoppt. Ein Klick ruft immer `turn_on` — niemals `toggle`.
+die Pumpe als gestoppt. Ein Klick ruft immer `turn_on` — niemals `toggle`. Nicht erreichbare
+Taster (`unavailable`/`unknown`) und Entities, die keine Taster sind (z.B. ein `sensor`, der sich
+ständig ändert), zählen nicht als „zuletzt gedrückt“ (seit Iteration 22).
 
 **`latching`** — je Stufe ein Dauerrelais. Aktiv ist, was auf `on` steht. Beim Umschalten
 schaltet die Card **erst die anderen Stufen aus und dann die gewählte ein** (Motorschutz);
-STOP schaltet alle Stufen aus.
+STOP schaltet alle Stufen aus. „seit …“ unter STOP ist die Zeit, seit die letzte Stufe aus ging.
+
+Mit Stufen-Erkennung (`stage_from_power`, Standard) gewinnt bei beiden Modellen die **Messung**:
+melden Relais und Watt etwas anderes, leuchtet die Stufe, die die Leistung verrät. Nach einem
+Tipp zeigt die Card die gewünschte Stufe sofort an und prüft nach sechs Sekunden gegen die
+Watt — stimmt es nicht, springt die Anzeige zurück auf das, was wirklich läuft.
 
 Dazu zwei Regeln unter „Wann steht die Pumpe?": ist `main_entity` aus, sind die Taster
 gesperrt und das Laufrad steht. Liegt `power_entity` unter `idle_watt`, steht das Laufrad
@@ -544,12 +558,23 @@ Dieselbe Card einmal bedienbar (z.B. Admin-Dashboard) und einmal als reine Anzei
 | Feld | Default | Bedeutung |
 |---|---|---|
 | `kiosk` | `false` | `true` = die gewählten Kästen sind nur Anzeige: kein Schalten, kein Modus-Wählen, keine Rückfrage, kein Detail-Dialog (more-info). Cursor normal, kein Hover-/Klick-Feedback, Look sonst identisch |
-| `kiosk_slots` | alle | Für welche Kästen: `becken` und die Kasten-Nummern `1`…`n` (wie im Editor „Kasten 3“). Nicht genannte Kästen bleiben bedienbar |
+| `kiosk_slots` | alle | Für welche Kästen: `becken` und die **Kasten-ID** (`id` im Slot). Nicht genannte Kästen bleiben bedienbar |
+
+Seit Iteration 22 schreibt der Editor feste Kasten-IDs statt Positionen: vorher zeigte
+`kiosk_slots: [2]` nach dem Verschieben oder Löschen eines Kastens auf ein anderes Gerät. Alte
+Configs mit Nummern (`1`…`n`, wie im Editor „Kasten 3“) gelten unverändert weiter; beim ersten
+Verschieben, Löschen oder Ändern der Kiosk-Auswahl im Editor werden sie auf IDs umgestellt.
 
 ```yaml
 type: custom:tomtut-pool-dashboard
 kiosk: true
-kiosk_slots: [1, 2, 3]   # Becken bleibt bedienbar
+kiosk_slots: [kx7p2a]    # nur die Pumpe; Becken und WP bleiben bedienbar
+slots:
+  - type: heatpump
+    …
+  - type: pump
+    id: kx7p2a
+    …
 ```
 
 Im Editor steht dafür ganz oben der Kasten „Kiosk-Modus (nur anzeigen)“ mit einer Liste aller Kästen.
@@ -558,7 +583,7 @@ Im Editor steht dafür ganz oben der Kasten „Kiosk-Modus (nur anzeigen)“ mit
 
 | Option | Standard | Beschreibung |
 |---|---|---|
-| `title` | – | Überschrift |
+| `label` | – | Überschrift (seit Iteration 23; `title` gilt weiter) |
 | `layout` | `klassisch` | `klassisch` (mittig gestapelt), `liste` (Zeilen: Icon · Name · Schalter/Wert), `kacheln` (2 Spalten) |
 | `align` | `mitte` (klassisch) / `oben` (liste, kacheln) | `oben`, `mitte`, `unten` |
 | `entries` | `[]` | Bis zu **acht** Einträge. Mehr zeigt der Kasten nicht — er meldet „+N weitere ausgeblendet“, der Editor warnt. |
@@ -609,7 +634,8 @@ Safari 16.4+, Firefox 128+); ältere zeigen den bisherigen Look.
 ### Werte-Anzeige
 
 Overlays zeigen Zahlen einheitlich: Watt ganzzahlig, Temperaturen mit höchstens einer
-Nachkommastelle und deutschem Komma. Was kein reiner Zahlenwert ist (`unavailable`, ein
+Nachkommastelle und deutschem Komma, ab fünf Stellen mit Tausenderpunkt („123.456 W“; „2690 W“
+bleibt ohne). Was kein reiner Zahlenwert ist (`unavailable`, ein
 Zeitstempel, Text), wird als **„—"** dargestellt statt als sinnlose Zahl.
 
 ---

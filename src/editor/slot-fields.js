@@ -980,13 +980,13 @@ export const solarFields = (f) => html`
       "power_btn_left",
       "power_btn_scale",
     ])}
-    ${f.element("🌡 Vorlauf (oben, ins Feld)", "show_temp_in", [
+    ${f.element("🌡 Vorlauf (links unten, ins Feld)", "show_temp_in", [
       "temp_in_entity",
       "temp_in_top",
       "temp_in_left",
       "temp_in_scale",
     ])}
-    ${f.element("🌡 Rücklauf (unten, ins Becken)", "show_temp_out", [
+    ${f.element("🌡 Rücklauf (rechts oben, ins Becken)", "show_temp_out", [
       "temp_out_entity",
       "temp_out_top",
       "temp_out_left",

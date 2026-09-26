@@ -35,6 +35,14 @@ export const fillTokens = css`
     --tt-box-bg: var(--ha-card-background, var(--card-background-color, rgba(255, 255, 255, 0.92)));
     --tt-box-fg: var(--primary-text-color, #111);
     --tt-deck: transparent;
+    /* STOP-Rot (Iteration 22): dunkles Rot auf heller, helles auf dunkler Schrift-
+       umgebung — sonst verschwindet STOP auf dunkler Füllung */
+    --tt-stop: #c62828;
+  }
+  @supports (color: rgb(from red r g b)) {
+    .slot {
+      --tt-stop: rgb(from var(--tt-fg) calc(198 + r * 0.224) calc(40 + g * 0.263) calc(40 + b * 0.263));
+    }
   }
   /*
    * Dunkles Theme, fill transparent (Iteration 16, Kiosk-Flur): viele Themes
@@ -61,6 +69,7 @@ export const fillTokens = css`
     --tt-soft: rgba(0, 0, 0, 0.08);
     --tt-box-bg: rgba(255, 255, 255, 0.92);
     --tt-box-fg: #111111;
+    --tt-stop: #c62828;
   }
   .slot.fill-schwarz {
     --tt-bg: #1e1e1e;
@@ -69,6 +78,7 @@ export const fillTokens = css`
     --tt-soft: rgba(255, 255, 255, 0.12);
     --tt-box-bg: rgba(30, 30, 30, 0.9);
     --tt-box-fg: #ffffff;
+    --tt-stop: #ff6b6b;
   }
 `;
 
@@ -82,12 +92,20 @@ export const frameStyles = css`
    * sperrt sie ein: innen zaehlt die Reihenfolge 1-5, nach aussen ist die
    * ganze Card ein einziges Element auf z-index 0 — unter der Kopfleiste.
    */
+  /*
+   * container-type (Iteration 22, Bug A1): der Kasten selbst ist der
+   * Bezugsrahmen der Overlay-Schrift (.img-wrap, 3.2cqw). Vorher war es die
+   * ganze Card — im 2-/3-Spalten-Raster behielten die Kästchen ihre Größe,
+   * der Kasten wurde schmaler, und Watt/Ist/Soll/Freigabe lagen aufeinander.
+   * In einer Spalte ist Kasten = Card: dort bleibt alles pixelgleich.
+   */
   :host {
     display: block;
     height: 100%;
     position: relative;
     isolation: isolate;
     z-index: 0;
+    container-type: inline-size;
   }
   .slot {
     position: relative;
@@ -152,8 +170,10 @@ export const overlayStyles = css`
     position: relative;
     width: 100%;
     line-height: 0;
-    /* Alle Overlays skalieren mit der Bildbreite — dadurch sieht der Slot in
-       einer schmalen Spalte genauso aus wie in voller Dashboard-Breite. */
+    /* Alle Overlays skalieren mit der Breite des Kastens (cqw bezieht sich
+       auf den nächsten Container darüber = :host, s. frameStyles) — dadurch
+       sieht der Slot in einer schmalen Spalte genauso aus wie in voller
+       Dashboard-Breite, auch im 2-/3-Spalten-Raster. */
     container-type: inline-size;
     font-size: clamp(8px, 3.2cqw, 15px);
   }
@@ -262,8 +282,11 @@ export const overlayStyles = css`
     --mdc-icon-size: 1.75em;
     transition: box-shadow 0.3s, color 0.3s, opacity 0.3s;
     line-height: 0;
-    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-soft);
-    border: 1px solid var(--tt-line);
+    /* deckend wie die Werte-Kästchen (Iteration 22, Kontrast): vorher
+       --tt-soft, auf dem Motor der Pumpe und im Glas-Look kaum zu sehen */
+    background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-box-bg);
+    border: 1.5px solid var(--tt-line);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
     transform-origin: top left;
     z-index: 5;
   }
@@ -272,8 +295,7 @@ export const overlayStyles = css`
     box-shadow: 0 0 10px rgba(76, 175, 80, 0.55);
   }
   .power-badge.off {
-    color: #f44336;
-    opacity: 0.75;
+    color: #e53935;
   }
   .power-badge:hover {
     filter: brightness(1.2);
@@ -368,6 +390,11 @@ export const overlayStyles = css`
     line-height: 1.3;
     pointer-events: none;
     white-space: nowrap;
+    /* lange Texte (Iteration 22, Bug A4): nie breiter als der Kasten —
+       max-width kommt als Inline-Stil (hängt an Lage und Größe) */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
     z-index: 4;
   }
   .label-badge.no-bg {

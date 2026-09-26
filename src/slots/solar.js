@@ -1,8 +1,8 @@
 import { html, css, nothing } from "lit";
-import { SlotBase } from "../shared/slot-base.js";
+import { SlotBase, slotLabel } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { FLOW_MARKERS, imagePath } from "../shared/assets.js";
-import { numText, isOn } from "../shared/util.js";
+import { numText, isOn, istAktivText } from "../shared/util.js";
 
 /*
  * Slot "solar" — Solarabsorber / Solarheizung.
@@ -76,7 +76,9 @@ export const solarAktiv = (c = {}, hass) => {
     const e = hass?.states?.[id];
     const s = String(e?.state ?? "").toLowerCase();
     if (!e || ["", "unknown", "unavailable"].includes(s)) return null;
-    return isOn(s);
+    /* Rückmeldung darf Klartext sein, z.B. input_select "Heizen"/"Bypass"
+       (Iteration 22, Bug A21 — vorher zählte nur "on") */
+    return id === c.active_entity ? istAktivText(s) : isOn(s);
   }
   return null;
 };
@@ -144,7 +146,7 @@ export class TomtutPoolSlotSolar extends SlotBase {
     const ruht = zustand.aktiv === false;
 
     return this.renderSlot(html`
-      ${c.label ? html`<h3 class="slot-title">${c.label}</h3>` : nothing}
+      ${slotLabel(c) ? html`<h3 class="slot-title">${slotLabel(c)}</h3>` : nothing}
       <div class="img-wrap ${ruht ? "ruht" : ""} ${zustand.bypass ? "bypass" : ""}">
         ${this.renderGeraeteBild({ kind: "solar", alt: "Solarheizung" })}
         ${showArrows ? html`${this.renderPfeil("in")}${this.renderPfeil("out")}` : nothing}

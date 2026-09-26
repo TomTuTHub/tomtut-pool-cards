@@ -8,7 +8,8 @@ import { UV_DEFAULTS } from "../slots/uv.js";
 import { SOLAR_DEFAULTS } from "../slots/solar.js";
 import { heroDefaultsFor, teilLage } from "../hero.js";
 import { HERO_SPRITES } from "../shared/assets.js";
-import { kioskSchluessel, kioskGilt, KIOSK_BECKEN } from "../shared/kiosk.js";
+import { kioskSchluessel, kioskGilt, kioskMigrieren, kastenSchluessel, neueKastenId, KIOSK_BECKEN } from "../shared/kiosk.js";
+import { typWechsel } from "./typwechsel.js";
 import { ansichtVon, miniWahl, MINI_TYPEN, MINI_KACHEL_FILLS, miniKachelFill, MINI_CARD_FILLS, miniCardFill } from "../mini.js";
 import {
   heroFields,
@@ -225,17 +226,40 @@ export class TomtutPoolDashboardEditor extends LitElement {
     this._emit(applyPatch(this._config, an ? { kiosk: true } : { kiosk: undefined, kiosk_slots: undefined }));
   }
 
-  _setKioskKasten(schluessel, an) {
-    const alle = kioskSchluessel(this._config);
+  /*
+   * Kiosk je Kasten (Iteration 22, Bug A3): gespeichert wird die feste
+   * Kasten-ID, nicht die Position. `index` = Slot-Index, null = Becken.
+   */
+  _setKioskKasten(index, an) {
+    const cfg = kioskMigrieren(this._config);
+    const slots = this._slotsMitIds(cfg, index);
+    const basis = { ...cfg, slots, kiosk: true };
+    const alle = kioskSchluessel(basis);
+    const ziel = index === null ? KIOSK_BECKEN : kastenSchluessel(slots[index], index + 1);
     const gewaehlt = alle.filter((k) =>
-      String(k) === String(schluessel) ? an : kioskGilt({ ...this._config, kiosk: true }, k)
+      String(k) === String(ziel)
+        ? an
+        : kioskGilt(basis, k, typeof k === "string" ? slots.find((s) => s.id === k) : null)
     );
     /* alle angehakt = Liste weglassen (Default "alle") */
     this._emit(
-      applyPatch(this._config, {
+      applyPatch({ ...cfg, slots }, {
         kiosk_slots: gewaehlt.length === alle.length ? undefined : gewaehlt,
       })
     );
+  }
+
+  /* Jeder sichtbare Kasten (bzw. nur `index`) bekommt eine ID, falls er keine hat */
+  _slotsMitIds(cfg, index = undefined) {
+    const slots = (Array.isArray(cfg.slots) ? cfg.slots : []).map((s) => ({ ...(s || {}) }));
+    const ids = slots.map((s) => s.id).filter(Boolean);
+    slots.forEach((s, i) => {
+      if (s.id || String(s.type || "frame") === "hidden") return;
+      if (index !== undefined && index !== null && i !== index) return;
+      s.id = neueKastenId(ids);
+      ids.push(s.id);
+    });
+    return slots;
   }
 
   _renderKiosk() {
@@ -261,14 +285,15 @@ export class TomtutPoolDashboardEditor extends LitElement {
         ${an
           ? html`<div class="kiosk-liste">
               ${alle.map((k) => {
-                const name =
-                  k === KIOSK_BECKEN ? "Becken" : this._slotKopf(slots[k - 1], k - 1);
+                const index =
+                  k === KIOSK_BECKEN ? null : slots.findIndex((s, i) => kastenSchluessel(s, i + 1) === k);
+                const name = index === null ? "Becken" : this._slotKopf(slots[index], index);
                 return html`<label class="kiosk-kasten">
                   <input
                     type="checkbox"
-                    data-kiosk-slot="${k}"
-                    ?checked="${kioskGilt(this._config, k)}"
-                    @change="${(e) => this._setKioskKasten(k, e.target.checked)}"
+                    data-kiosk-slot="${index === null ? k : index + 1}"
+                    ?checked="${kioskGilt(this._config, index === null ? k : index + 1, index === null ? null : slots[index])}"
+                    @change="${(e) => this._setKioskKasten(index, e.target.checked)}"
                   />
                   <span>${name}</span>
                 </label>`;
@@ -296,16 +321,42 @@ export class TomtutPoolDashboardEditor extends LitElement {
     this._emit({ ...this._config, slots: [...this._slots(), { type: "frame" }] });
   }
 
+  /*
+   * Löschen und Verschieben stellen alte Kiosk-Nummern vorher auf IDs um
+   * (Iteration 22, Bug A3) — sonst zeigte kiosk_slots danach auf den
+   * falschen Kasten.
+   */
   _removeSlot(index) {
-    this._emit({ ...this._config, slots: this._slots().filter((_, i) => i !== index) });
+    const cfg = kioskMigrieren(this._config);
+    const weg = cfg.slots?.[index]?.id;
+    const slots = (cfg.slots || []).filter((_, i) => i !== index);
+    let kiosk_slots = cfg.kiosk_slots;
+    if (Array.isArray(kiosk_slots) && weg) kiosk_slots = kiosk_slots.filter((k) => String(k) !== String(weg));
+    this._emit(applyPatch({ ...cfg, slots }, { kiosk_slots }));
   }
 
   _moveSlot(index, delta) {
-    const slots = [...this._slots()];
+    const cfg = kioskMigrieren(this._config);
+    const slots = [...(cfg.slots || [])];
     const to = index + delta;
     if (to < 0 || to >= slots.length) return;
     const [item] = slots.splice(index, 1);
     slots.splice(to, 0, item);
+    this._emit({ ...cfg, slots });
+  }
+
+  /*
+   * Typ wechseln (Iteration 22, Bug A5): typfremde Schlüssel fliegen raus,
+   * statt als Leichen mitzureisen (die UV-Lampe zeigte sonst Pumpenwatt).
+   * Der alte Kasten wird gemerkt — zurück auf den alten Typ bringt ihn
+   * unverändert wieder.
+   */
+  _setTyp(index, typ) {
+    const alt = this._slots()[index] || {};
+    this._typStash = this._typStash || {};
+    const neu = typWechsel(alt, typ, this._typStash[`${index}:${typ}`]);
+    this._typStash[`${index}:${String(alt.type || "frame")}`] = alt;
+    const slots = this._slots().map((s, i) => (i === index ? neu : s));
     this._emit({ ...this._config, slots });
   }
 
@@ -443,7 +494,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
                     <span class="row-label">Typ</span>
                     <select
                       data-key="type"
-                      @change="${(e) => this._updateSlot(i, { type: e.target.value })}"
+                      @change="${(e) => this._setTyp(i, e.target.value)}"
                     >
                       ${this._altTypOption(slot.type)}
                       ${slotTypeOptions().map((o) =>

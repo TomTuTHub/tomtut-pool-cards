@@ -13,6 +13,14 @@ import { hasHaElement } from "./ha-elements.js";
  */
 export const ENTITY_PLACEHOLDER = "Entity auswählen …";
 
+/* Reglerwert fürs Auge (Iteration 22, Bug A18): Komma, höchstens eine Stelle */
+export const zahlText = (v) => {
+  const n = Number(v);
+  if (!isFinite(n)) return String(v ?? "");
+  const r = Math.round(n * 10) / 10;
+  return String(r).replace(".", ",");
+};
+
 export class Fields {
   constructor({ hass, config, defaults = {}, update, idPrefix = "f", stash = null }) {
     this.hass = hass;
@@ -240,7 +248,7 @@ export class Fields {
           .value="${String(v)}"
           @input="${(e) => this.update({ [key]: parseFloat(e.target.value) })}"
         />
-        <span class="row-val">${v}${unit}</span>
+        <span class="row-val">${zahlText(v)}${unit}</span>
       </div>
     `;
   }

@@ -1,7 +1,7 @@
 import { html, css, nothing } from "lit";
-import { SlotBase } from "../shared/slot-base.js";
+import { SlotBase, slotLabel } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
-import { isOn, seit, numText } from "../shared/util.js";
+import { isOn, seit, numText, istTot, domainOf } from "../shared/util.js";
 
 /*
  * Slot "pump" — Poolpumpe mit 1–3 Stufen (N1..N3) und optionalem STOP.
@@ -97,8 +97,24 @@ export const fanDuration = (speed) => {
   return Math.round(dur * 100) / 100;
 };
 
-export const pumpHasEntity = (c = {}) =>
-  !!((Array.isArray(c.stage_entities) && c.stage_entities.filter(Boolean).length) || c.main_entity);
+/*
+ * Stufen-Entities als Liste. Eine einzelne Entity als Text (statt Liste)
+ * gilt als Stufe 1 (Iteration 22, Bug A17 — vorher still "keine Stufen").
+ */
+export const stufenListe = (c = {}) => {
+  const roh = c?.stage_entities;
+  const liste = Array.isArray(roh) ? roh : typeof roh === "string" && roh.trim() ? [roh.trim()] : [];
+  return liste.filter(Boolean).slice(0, 3);
+};
+
+/*
+ * Domains, deren last_changed ein Tastendruck ist (Impulstaster). Ein
+ * sensor o.ä. ändert sich ständig und würde sonst als "zuletzt gedrückt"
+ * leuchten (Iteration 22, Bug A7).
+ */
+export const TASTER_DOMAINS = ["switch", "input_boolean", "light", "button", "input_button", "script"];
+
+export const pumpHasEntity = (c = {}) => !!(stufenListe(c).length || c.main_entity);
 
 const OPTIMISTIC_MS = 6000;
 
@@ -132,6 +148,7 @@ export class TomtutPoolSlotPump extends SlotBase {
   disconnectedCallback() {
     clearInterval(this._timer);
     this._timer = undefined;
+    clearTimeout(this._optiTimer);
     super.disconnectedCallback();
   }
 
@@ -146,8 +163,7 @@ export class TomtutPoolSlotPump extends SlotBase {
   }
 
   get stages() {
-    const list = this.config?.stage_entities;
-    return (Array.isArray(list) ? list : []).filter(Boolean).slice(0, 3);
+    return stufenListe(this.config);
   }
 
   get stopEntity() {
@@ -185,7 +201,12 @@ export class TomtutPoolSlotPump extends SlotBase {
     return stageFromWatt(w, schwellen, Math.max(1, this.stages.length));
   }
 
-  /* Zustand: Schalter, bei aktiver Erkennung überstimmt von der Leistung */
+  /*
+   * Zustand: Schalter, bei aktiver Erkennung überstimmt von der Leistung.
+   * Widersprechen sich Relais und Watt, gewinnt die Messung (Iteration 22,
+   * Bug A6) — auch bei latching: ein Relais kann "an" melden, während die
+   * Pumpe längst auf einer anderen Stufe läuft.
+   */
   _derive() {
     const schalter = this._deriveSchalter();
     const stufe = this._wattStufe();
@@ -211,8 +232,16 @@ export class TomtutPoolSlotPump extends SlotBase {
         if (!best || t > best.t) best = { i, t, since: e.last_changed };
       });
       if (!best) {
-        const stopEnt = this._ent(this.stopEntity);
-        return { active: null, stopped: true, since: stopEnt?.last_changed || null };
+        /* "seit" = wann die letzte Stufe aus ging, nicht wann STOP zuletzt
+           gedrückt wurde (Iteration 22, Bug A13) */
+        let aus = null;
+        for (const id of this.stages) {
+          const e = this._ent(id);
+          if (!e || istTot(e.state)) continue;
+          const t = Date.parse(e.last_changed || 0) || 0;
+          if (!aus || t > aus.t) aus = { t, since: e.last_changed };
+        }
+        return { active: null, stopped: true, since: aus?.since || null };
       }
       return { active: best.i, stopped: false, since: best.since };
     }
@@ -224,6 +253,8 @@ export class TomtutPoolSlotPump extends SlotBase {
     for (const c of candidates) {
       const e = this._ent(c.id);
       if (!e || !e.last_changed) continue;
+      /* nicht erreichbar oder kein Taster: zählt nicht als gedrückt (Bug A7) */
+      if (istTot(e.state) || !TASTER_DOMAINS.includes(domainOf(c.id))) continue;
       const t = Date.parse(e.last_changed);
       if (isNaN(t)) continue;
       if (!best || t > best.t) best = { ...c, t, since: e.last_changed };
@@ -234,7 +265,19 @@ export class TomtutPoolSlotPump extends SlotBase {
       : { active: best.i, stopped: false, since: best.since };
   }
 
-  /* Nach einem Klick sofort optimistisch anzeigen, bis HA nachzieht */
+  /*
+   * Nach einem Klick sofort optimistisch anzeigen, bis HA nachzieht. Läuft
+   * die Frist ab, wird neu gezeichnet (Bug A6: ohne neuen HA-Zustand blieb
+   * die Wunschstufe sonst bis zum 30-s-Takt stehen, auch gegen die Watt).
+   */
+  _optimistischSetzen(i) {
+    this._optimistic = { i, t: Date.now() };
+    clearTimeout(this._optiTimer);
+    this._optiTimer = setTimeout(() => this.requestUpdate(), OPTIMISTIC_MS + 50);
+    if (typeof this._optiTimer?.unref === "function") this._optiTimer.unref();
+    this.requestUpdate();
+  }
+
   get state() {
     const derived = this._derive();
     const o = this._optimistic;
@@ -261,8 +304,7 @@ export class TomtutPoolSlotPump extends SlotBase {
     if (!this.bedienbar || this.blockedByMain) return;
     const id = this.stages[i];
     if (!id) return;
-    this._optimistic = { i, t: Date.now() };
-    this.requestUpdate();
+    this._optimistischSetzen(i);
     if (this.mode === "latching") {
       this.stages.forEach((other, k) => {
         if (k !== i) this._call(other, "turn_off");
@@ -275,8 +317,7 @@ export class TomtutPoolSlotPump extends SlotBase {
 
   _clickStop() {
     if (!this.bedienbar || this.blockedByMain) return;
-    this._optimistic = { i: -1, t: Date.now() };
-    this.requestUpdate();
+    this._optimistischSetzen(-1);
     if (this.mode === "latching") {
       this.stages.forEach((id) => this._call(id, "turn_off"));
     } else if (this.stopEntity) {
@@ -304,7 +345,7 @@ export class TomtutPoolSlotPump extends SlotBase {
     const showStages = c.show_stages !== false && (this.stages.length > 0 || this._showStop);
 
     return this.renderSlot(html`
-      ${c.label ? html`<h3 class="slot-title">${c.label}</h3>` : nothing}
+      ${slotLabel(c) ? html`<h3 class="slot-title">${slotLabel(c)}</h3>` : nothing}
       <div class="pump">
         <div class="img-wrap">
           ${this.renderGeraeteBild({ kind: "pump", alt: "Poolpumpe" })}
@@ -397,6 +438,12 @@ export class TomtutPoolSlotPump extends SlotBase {
     frameStyles,
     overlayStyles,
     css`
+      /* Laufrad dunkel (Iteration 22, Befund D): das Pumpenbild ist in jeder
+         Füllung hell gezeichnet — ein weißes Rad (Schrift auf Schwarz)
+         verschwand darauf */
+      .fan-overlay.round {
+        color: var(--tt-fan-color, #1f2d38);
+      }
       .pump {
         display: flex;
         align-items: center;
@@ -412,8 +459,12 @@ export class TomtutPoolSlotPump extends SlotBase {
         flex-direction: column;
         gap: 6px;
       }
+      /* Hauptschalter aus: gesperrt, aber lesbar (Iteration 22, Befund D —
+         im Glas-Look waren die Taster vorher dunkelblau auf blau) */
       .stages.disabled .stage-btn {
-        opacity: 0.4;
+        opacity: 0.6;
+        border-style: dashed;
+        filter: grayscale(1);
         pointer-events: none;
       }
       .stage-btn {
@@ -425,7 +476,7 @@ export class TomtutPoolSlotPump extends SlotBase {
         padding: 6px 8px;
         border-radius: 22px;
         border: 1px solid var(--tt-line);
-        background: var(--tt-soft);
+        background: linear-gradient(var(--tt-deck), var(--tt-deck)), var(--tt-soft);
         color: var(--tt-fg);
         font-family: inherit;
         cursor: pointer;
@@ -444,8 +495,9 @@ export class TomtutPoolSlotPump extends SlotBase {
         box-shadow: 0 0 10px rgba(0, 200, 120, 0.45);
       }
       .stage-btn.stop {
-        color: #c62828;
-        border-color: rgba(198, 40, 40, 0.5);
+        color: var(--tt-stop, #c62828);
+        border-color: var(--tt-stop, #c62828);
+        font-weight: 800;
       }
       .stage-btn.stop.active {
         background: linear-gradient(145deg, #ff5a5a, #c62828);

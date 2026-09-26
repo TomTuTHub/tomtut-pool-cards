@@ -638,8 +638,10 @@ const renderDialog = (card) => {
     const e = card._slotsMitNummer.find((x) => x.nr === key);
     if (!e) return nothing;
     titel = kachelName(e.slot);
-    kiosk = kioskGilt(c, e.nr);
-    inhalt = card._renderSlot(e.slot, kiosk);
+    kiosk = kioskGilt(c, e.nr, e.slot);
+    /* Titel steht schon im Dialogkopf — im Kasten nicht noch einmal
+       (Iteration 22, Bug A20) */
+    inhalt = card._renderSlot({ ...e.slot, label: "", label_text: "", title: "" }, kiosk);
   }
   return html`
     <dialog
@@ -677,6 +679,9 @@ export const renderMini = (card) => {
           ? html`<div class="m-kacheln">
               ${kacheln.map(({ slot, nr }) => renderKachel(card, miniKachel(slot, hass), nr))}
             </div>`
+          : nothing}
+        ${!heroOn && !kacheln.length
+          ? html`<p class="m-leer">Noch nichts zu zeigen — im Editor das Becken einschalten oder ein Gerät hinzufügen.</p>`
           : nothing}
       </div>
       ${renderDialog(card)}
@@ -1220,6 +1225,14 @@ export const miniStyles = css`
   }
 
   /* ---- Dialog (Top-Layer, kein z-index) ---- */
+  /* leere Mini-Card (Iteration 22, Bug A16) */
+  .m-leer {
+    margin: 0;
+    padding: 12px;
+    font-size: 13px;
+    opacity: 0.75;
+    text-align: center;
+  }
   dialog.m-dialog {
     padding: 0;
     border: none;

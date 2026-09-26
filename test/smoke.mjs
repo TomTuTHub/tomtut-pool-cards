@@ -1805,10 +1805,14 @@ check("Becken: Einlauftemperatur sitzt als Kaestchen neben der Duese", () => {
   assert.ok(box, "kein Kaestchen");
   assert.match(box.textContent, /Zulauf/);
   assert.match(box.textContent, /26,9 °C/);
+  /* seit It22: Oberkante knapp unter der Unterkante der Düse (A9) */
   const anker = pkg.SHAPES.oval.inlet;
+  const halb = (pkg.HERO_SPRITES.einlauf.groesse * pkg.shapeRatio("oval")) / pkg.HERO_SPRITES.einlauf.ratio / 2;
   const stil = box.getAttribute("style");
-  assert.match(stil, new RegExp(`top:${anker.top + pkg.INLET_TEMP_VERSATZ.top}%`));
+  const top = parseFloat(/top:([\d.]+)%/.exec(stil)[1]);
+  assert.ok(Math.abs(top - (anker.top + halb + pkg.INLET_TEMP_VERSATZ.top)) < 0.05, stil);
   assert.match(stil, new RegExp(`left:${anker.left + pkg.INLET_TEMP_VERSATZ.left}%`));
+  assert.ok(box.classList.contains("unter-duese"));
 });
 check("Becken: Kaestchen oeffnet die Entity (more-info)", () =>
   assert.equal(
@@ -1827,7 +1831,9 @@ check("Becken: das Kaestchen wandert mit der verschobenen Duese", () => {
   const stil = beckenVerschoben.shadowRoot
     .querySelector(".chem-box.inlet-temp")
     .getAttribute("style");
-  assert.match(stil, new RegExp(`top:${30 + pkg.INLET_TEMP_VERSATZ.top}%`));
+  const halb = (pkg.HERO_SPRITES.einlauf.groesse * pkg.shapeRatio("oval")) / pkg.HERO_SPRITES.einlauf.ratio / 2;
+  const top = parseFloat(/top:([\d.]+)%/.exec(stil)[1]);
+  assert.ok(Math.abs(top - (30 + halb + pkg.INLET_TEMP_VERSATZ.top)) < 0.05, stil);
   assert.match(stil, new RegExp(`left:${40 + pkg.INLET_TEMP_VERSATZ.left}%`));
 });
 
@@ -2972,7 +2978,15 @@ check("Freigabe: ohne release_entity bleibt alles wie bisher", () => {
 calls.length = 0;
 hpGesperrt.shadowRoot.querySelector(".release-badge").click();
 await hpGesperrt.updateComplete;
-check("Freigabe: Klick schaltet die Entity um (toggle)", () =>
+check("Freigabe: Klick fragt erst nach (It22, A11), schaltet noch nichts", () => {
+  assert.deepEqual(calls, []);
+  const p = hpGesperrt.shadowRoot.querySelector(".confirm-panel");
+  assert.ok(p, "keine Rückfrage");
+  assert.match(p.textContent, /freigeben\?/);
+});
+hpGesperrt.shadowRoot.querySelector(".confirm-panel .btn.danger").click();
+await hpGesperrt.updateComplete;
+check("Freigabe: nach Bestätigen schaltet die Entity um (toggle)", () =>
   assert.deepEqual(calls, [
     { domain: "input_boolean", service: "toggle", data: { entity_id: FREI_ENT } },
   ])
@@ -3682,7 +3696,11 @@ check("Editor: Kiosk an -> kiosk: true, Liste aller Kaesten (Becken + Slots mit 
   becken.dispatchEvent(new dom.window.Event("change"));
   await ed15.updateComplete;
 }
-check("Editor: Becken abhaken -> kiosk_slots [1, 2]", () => assert.deepEqual(ed15Fired.kiosk_slots, [1, 2]));
+check("Editor: Becken abhaken -> kiosk_slots = die festen IDs beider Kästen (It22, A3)", () => {
+  const ids = ed15Fired.slots.map((s) => s.id);
+  assert.ok(ids.every((id) => /^k[a-z0-9]+$/.test(id)), ids.join());
+  assert.deepEqual(ed15Fired.kiosk_slots, ids);
+});
 {
   const becken = ed15.shadowRoot.querySelector('[data-kiosk-slot="becken"]');
   becken.checked = true;
@@ -4989,6 +5007,392 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
   await ed.updateComplete;
   check("It21 Editor: zurück auf Theme -> Schlüssel fällt weg", () => assert.equal("mini_card_fill" in fired, false));
   ed.remove();
+}
+
+/* ================================================================== */
+/* Iteration 22 — Bugs aus dem Testbericht 26.09.2026 (A1–A21, D)     */
+/* ================================================================== */
+{
+  const st = (state, attrs = {}, vor = 60) => ({ state: String(state), attributes: attrs, last_changed: iso(vor) });
+
+  /* ---- A1: Overlays skalieren mit dem Kasten, nicht mit der Card ---- */
+  check("It22 A1: jeder Kasten ist selbst der Container der Overlay-Schrift", () => {
+    for (const tag of ["tomtut-pool-slot-heatpump", "tomtut-pool-slot-uv", "tomtut-pool-slot-solar", "tomtut-pool-slot-pump", "tomtut-pool-hero"]) {
+      const css = cssOf(tag).replace(/\s+/g, " ");
+      assert.match(css, /:host \{[^}]*container-type: inline-size/, tag);
+      assert.match(css, /\.img-wrap \{[^}]*font-size: clamp\(8px, 3\.2cqw, 15px\)/, tag);
+    }
+  });
+
+  /* ---- A2: input_number-Soll ± ---- */
+  const hpNum = await mountSlotTyp(
+    { type: "heatpump", target_entity: "input_number.wp_soll", current_entity: "sensor.pool_wassertemperatur" },
+    makeHass({ "input_number.wp_soll": st("28.0", { min: 10, max: 35, step: 0.5, unit_of_measurement: "°C" }) })
+  );
+  calls.length = 0;
+  hpNum.shadowRoot.querySelectorAll(".step")[1].click();
+  check("It22 A2: input_number-Soll + ruft input_number.set_value (nicht number.set_value)", () =>
+    assert.deepEqual(calls, [{ domain: "input_number", service: "set_value", data: { entity_id: "input_number.wp_soll", value: 28.5 } }])
+  );
+  const hpNumber = await mountSlotTyp(
+    { type: "heatpump", target_entity: "number.wp_soll" },
+    makeHass({ "number.wp_soll": st("28", { min: 10, max: 35, step: 1 }) })
+  );
+  calls.length = 0;
+  hpNumber.shadowRoot.querySelectorAll(".step")[0].click();
+  check("It22 A2: number-Soll − bleibt number.set_value, Schrittweite aus der Entity (1)", () =>
+    assert.deepEqual(calls, [{ domain: "number", service: "set_value", data: { entity_id: "number.wp_soll", value: 27 } }])
+  );
+  const hpSensor2 = await mountSlotTyp(
+    { type: "heatpump", target_entity: "sensor.pool_wassertemperatur" },
+    makeHass()
+  );
+  check("It22 A2: sensor als Soll = nur Anzeige, keine ±-Knöpfe", () => {
+    assert.ok(hpSensor2.shadowRoot.querySelector(".value-box.target"));
+    assert.equal(hpSensor2.shadowRoot.querySelectorAll(".step").length, 0);
+  });
+
+  /* ---- A3: Kiosk-Auswahl hängt am Kasten, nicht an der Position ---- */
+  const drei = [
+    { type: "heatpump", label_text: "WP", switch_entity: "switch.waermepumpe" },
+    { type: "pump", label: "Pumpe", main_entity: "input_boolean.poolpumpe_schalter" },
+    { type: "uv", label: "UV", switch_entity: "switch.uv_lampe" },
+  ];
+  const mig = pkg.kioskMigrieren({ kiosk: true, kiosk_slots: [2], slots: drei });
+  check("It22 A3: alte Nummer [2] wird zur festen ID der Pumpe", () => {
+    assert.ok(mig.slots[1].id, "Pumpe hat keine ID");
+    assert.deepEqual(mig.kiosk_slots, [mig.slots[1].id]);
+    assert.equal(mig.slots[0].id, undefined, "unbeteiligter Kasten bekommt keine ID");
+  });
+  check("It22 A3: ohne Nummern kommt dieselbe Config zurück (nichts zu schreiben)", () => {
+    const c = { kiosk: true, kiosk_slots: ["becken"], slots: drei };
+    assert.equal(pkg.kioskMigrieren(c), c);
+  });
+  check("It22 A3: nach dem Verschieben gilt Kiosk weiter für die Pumpe, nicht für die UV-Lampe", () => {
+    const umgestellt = { ...mig, slots: [mig.slots[0], mig.slots[2], mig.slots[1]] };
+    assert.equal(pkg.kioskGilt(umgestellt, 2, umgestellt.slots[1]), false, "UV gesperrt");
+    assert.equal(pkg.kioskGilt(umgestellt, 3, umgestellt.slots[2]), true, "Pumpe schaltbar");
+  });
+  check("It22 A3: alte Configs mit Nummern ohne Editor-Eingriff wirken wie bisher", () => {
+    const alt = { kiosk: true, kiosk_slots: [2], slots: drei };
+    assert.equal(pkg.kioskGilt(alt, 2, drei[1]), true);
+    assert.equal(pkg.kioskGilt(alt, 3, drei[2]), false);
+  });
+  {
+    const ed = new Editor();
+    ed.setConfig({ hero: { enabled: false }, kiosk: true, kiosk_slots: [2], slots: drei });
+    ed.hass = makeHass();
+    document.body.appendChild(ed);
+    await ed.updateComplete;
+    let fired = null;
+    ed.addEventListener("config-changed", (e) => {
+      fired = e.detail.config;
+      ed.setConfig(fired);
+    });
+    ed._moveSlot(1, 1);
+    await ed.updateComplete;
+    check("It22 A3 Editor: Pumpe nach unten -> kiosk_slots zeigt weiter auf die Pumpe", () => {
+      assert.equal(fired.slots[2].type, "pump");
+      assert.deepEqual(fired.kiosk_slots, [fired.slots[2].id]);
+      assert.equal(pkg.kioskGilt(fired, 2, fired.slots[1]), false, "UV ist jetzt gesperrt");
+    });
+    ed._removeSlot(2);
+    await ed.updateComplete;
+    check("It22 A3 Editor: Pumpe gelöscht -> ihre ID fliegt aus kiosk_slots, UV bleibt schaltbar", () => {
+      assert.deepEqual(fired.kiosk_slots, []);
+      assert.equal(pkg.kioskGilt(fired, 2, fired.slots[1]), false);
+    });
+    ed.remove();
+  }
+
+  /* ---- A4: langes WP-Label ---- */
+  const lang = "Wärmepumpe im Technikraum hinter der Garage links neben dem Sandfilter";
+  const hpLang = await mountSlotTyp({ ...HP_CONFIG, label_text: lang }, makeHass());
+  check("It22 A4: langes WP-Label bekommt max-width + Ellipse, voller Text im Tooltip", () => {
+    const l = hpLang.shadowRoot.querySelector(".label-badge");
+    assert.match(l.getAttribute("style"), /max-width:\s*[\d.]+%/);
+    assert.equal(l.getAttribute("title"), lang);
+    const css = cssOf("tomtut-pool-slot-heatpump").replace(/\s+/g, " ");
+    assert.match(css, /\.label-badge \{[^}]*text-overflow: ellipsis/);
+  });
+
+  /* ---- A5: Typwechsel räumt auf ---- */
+  const pumpeVoll = { type: "pump", id: "kabc12", label: "Filter", main_entity: "switch.x", stage_mode: "latching", stage_entities: ["switch.a"], stop_entity: "switch.s", power_entity: "sensor.p", temp_entity: "sensor.t", mini_hidden: true };
+  check("It22 A5: Pumpe -> UV nimmt nur id, label, mini_hidden mit", () =>
+    assert.deepEqual(pkg.typWechsel(pumpeVoll, "uv"), { type: "uv", id: "kabc12", label: "Filter", mini_hidden: true })
+  );
+  check("It22 A5: WP label_text / Freifeld title werden beim Wechsel zu label", () => {
+    assert.deepEqual(pkg.typWechsel({ type: "heatpump", label_text: "WP", switch_entity: "switch.x" }, "frame"), { type: "frame", label: "WP" });
+    assert.deepEqual(pkg.typWechsel({ type: "custom", title: "Werte", entries: [{}] }, "uv"), { type: "uv", label: "Werte" });
+  });
+  {
+    const ed = new Editor();
+    ed.setConfig({ hero: { enabled: false }, slots: [pumpeVoll] });
+    ed.hass = makeHass();
+    document.body.appendChild(ed);
+    await ed.updateComplete;
+    let fired = null;
+    ed.addEventListener("config-changed", (e) => {
+      fired = e.detail.config;
+      ed.setConfig(fired);
+    });
+    ed._setTyp(0, "uv");
+    await ed.updateComplete;
+    check("It22 A5 Editor: auf UV umgestellt -> keine Pumpen-Leichen in der Config", () =>
+      assert.deepEqual(Object.keys(fired.slots[0]).sort(), ["id", "label", "mini_hidden", "type"])
+    );
+    ed._setTyp(0, "pump");
+    await ed.updateComplete;
+    check("It22 A5 Editor: zurück auf Poolpumpe bringt alle Felder wieder", () => assert.deepEqual(fired.slots[0], pumpeVoll));
+    ed.remove();
+  }
+
+  /* ---- A6: latching + Watt: die Messung gewinnt ---- */
+  const LATCH = {
+    type: "pump",
+    stage_mode: "latching",
+    stage_entities: ["switch.shelly_pumpe_n1", "switch.shelly_pumpe_n2", "switch.shelly_pumpe_n3"],
+    main_entity: "input_boolean.poolpumpe_schalter",
+    power_entity: "sensor.poolpumpe_power",
+  };
+  const latchHass = () =>
+    makeHass({
+      "switch.shelly_pumpe_n1": st("off", {}, 600),
+      "switch.shelly_pumpe_n2": st("off", {}, 600),
+      "switch.shelly_pumpe_n3": st("off", {}, 600),
+      "sensor.poolpumpe_power": st("775", { unit_of_measurement: "W" }, 20),
+    });
+  const pl = await mountSlotTyp(LATCH, latchHass());
+  check("It22 A6: latching, alle Relais aus, 775 W -> N3 leuchtet (Watt gewinnt)", () => assert.equal(aktiveTaste(pl), 2));
+  pl.shadowRoot.querySelectorAll(".stage-btn")[0].click();
+  await pl.updateComplete;
+  check("It22 A6: Tipp auf N1 zeigt kurz N1 (optimistisch) und stellt einen Ablauf-Timer", () => {
+    assert.equal(aktiveTaste(pl), 0);
+    assert.ok(pl._optiTimer, "kein Timer");
+  });
+  pl._optimistic.t -= 7000;
+  pl.requestUpdate();
+  await pl.updateComplete;
+  check("It22 A6: nach Ablauf wieder N3, weil weiter 775 W anliegen", () => assert.equal(aktiveTaste(pl), 2));
+  pl.shadowRoot.querySelector(".stage-btn.stop").click();
+  await pl.updateComplete;
+  pl._optimistic.t -= 7000;
+  pl.requestUpdate();
+  await pl.updateComplete;
+  check("It22 A6: STOP bei weiter 775 W -> STOP leuchtet nicht, N3 schon", () => {
+    assert.equal(pl.shadowRoot.querySelector(".stage-btn.stop.active"), null);
+    assert.equal(aktiveTaste(pl), 2);
+  });
+  const plRelais = await mountSlotTyp(
+    LATCH,
+    makeHass({
+      "switch.shelly_pumpe_n1": st("on", {}, 600),
+      "switch.shelly_pumpe_n2": st("off", {}, 600),
+      "switch.shelly_pumpe_n3": st("off", {}, 600),
+      "sensor.poolpumpe_power": st("775", { unit_of_measurement: "W" }, 20),
+    })
+  );
+  check("It22 A6: Relais N1 an, Messung sagt N3 -> N3", () => assert.equal(aktiveTaste(plRelais), 2));
+
+  /* ---- A7: momentary — unavailable/fremde Domain zählt nicht ---- */
+  const MOM = {
+    type: "pump",
+    stage_entities: ["switch.shelly_pumpe_n1", "switch.qa_weg", "sensor.qa_falsch"],
+    stop_entity: "switch.shelly_pumpe_stopp",
+    stage_from_power: false,
+  };
+  const pm = await mountSlotTyp(
+    MOM,
+    makeHass({
+      "switch.shelly_pumpe_n1": st("off", {}, 3600),
+      "switch.qa_weg": st("unavailable", {}, 180),
+      "sensor.qa_falsch": st("12.3", {}, 5),
+      "switch.shelly_pumpe_stopp": st("off", {}, 7200),
+    })
+  );
+  check("It22 A7: unavailable-Stufe und sensor-Stufe leuchten nicht, N1 (jüngster echter Taster) schon", () =>
+    assert.equal(aktiveTaste(pm), 0)
+  );
+
+  /* ---- A8/A9: Einlauf-Kästchen neben statt auf der Düse ---- */
+  check("It22 A9: Einlauf-Kästchen sitzt unter der Düse, nicht mehr rechts darauf", () =>
+    assert.deepEqual(pkg.INLET_TEMP_VERSATZ, { top: 2, left: -2.5 })
+  );
+
+  /* ---- A10: Solar-Beschriftung im Editor ---- */
+  {
+    const ed = new Editor();
+    ed.setConfig({ hero: { enabled: false }, slots: [{ type: "solar" }] });
+    ed.hass = makeHass();
+    document.body.appendChild(ed);
+    await ed.updateComplete;
+    check("It22 A10: Vorlauf links unten, Rücklauf rechts oben — wie Card und README", () => {
+      const t = ed.shadowRoot.textContent;
+      assert.match(t, /Vorlauf \(links unten/);
+      assert.match(t, /Rücklauf \(rechts oben/);
+      assert.ok(!/Vorlauf \(oben/.test(t) && !/Rücklauf \(unten/.test(t));
+    });
+    ed.remove();
+  }
+
+  /* ---- A11: Freigabe nur mit Rückfrage ---- */
+  const hpSperr = await mountSlotTyp({ ...HP_FREI }, freigabeHass(true));
+  calls.length = 0;
+  hpSperr.shadowRoot.querySelector(".release-badge").click();
+  await hpSperr.updateComplete;
+  check("It22 A11: Tipp auf 'Frei' fragt 'sperren?', schaltet noch nichts", () => {
+    assert.deepEqual(calls, []);
+    assert.match(hpSperr.shadowRoot.querySelector(".confirm-panel").textContent, /sperren\?/);
+    assert.match(hpSperr.shadowRoot.querySelector(".confirm-panel .btn.danger").textContent, /Sperren/);
+  });
+  hpSperr.shadowRoot.querySelector(".confirm-panel .btn.cancel").click();
+  await hpSperr.updateComplete;
+  check("It22 A11: Abbrechen schaltet nichts", () => {
+    assert.deepEqual(calls, []);
+    assert.equal(hpSperr.shadowRoot.querySelector(".confirm-overlay"), null);
+  });
+  const hpDirekt = await mountSlotTyp({ ...HP_FREI, confirm_off: false }, freigabeHass(true));
+  calls.length = 0;
+  hpDirekt.shadowRoot.querySelector(".release-badge").click();
+  check("It22 A11: confirm_off: false schaltet wie vorher direkt", () =>
+    assert.deepEqual(calls, [{ domain: "input_boolean", service: "toggle", data: { entity_id: FREI_ENT } }])
+  );
+
+  /* ---- A12: Esc schließt, nur eine Rückfrage zugleich ---- */
+  const zwei = await mount(Dashboard, { hero: { enabled: false }, slots: [HP_CONFIG, { type: "uv", switch_entity: "switch.uv_lampe" }] }, makeHass());
+  const [zWp, zUv] = await slotsVon(zwei);
+  zWp.shadowRoot.querySelector(".power-badge").click();
+  await zWp.updateComplete;
+  zUv.shadowRoot.querySelector(".power-badge").click();
+  await zUv.updateComplete;
+  await zWp.updateComplete;
+  check("It22 A12: zweite Rückfrage (UV) schließt die erste (WP)", () => {
+    assert.equal(zWp.shadowRoot.querySelector(".confirm-overlay"), null, "WP-Rückfrage noch offen");
+    assert.ok(zUv.shadowRoot.querySelector(".confirm-overlay"));
+  });
+  const esc = new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+  window.dispatchEvent(esc);
+  await zUv.updateComplete;
+  check("It22 A12: Esc schließt die Rückfrage (und verhindert den Standard)", () => {
+    assert.equal(zUv.shadowRoot.querySelector(".confirm-overlay"), null);
+    assert.equal(esc.defaultPrevented, true);
+  });
+  const zm = await mount(Dashboard, { hero: { enabled: false }, slots: [{ ...MODUS_SEL }] }, selHass("Heizen Smart"));
+  const [zmWp] = await slotsVon(zm);
+  zmWp.shadowRoot.querySelector(".mode-badge").click();
+  await zmWp.updateComplete;
+  window.dispatchEvent(new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+  await zmWp.updateComplete;
+  check("It22 A12: Esc schließt auch die Modus-Auswahl", () =>
+    assert.equal(zmWp.shadowRoot.querySelector(".modus-overlay"), null)
+  );
+
+  /* ---- A13: latching STOP "seit" ---- */
+  const plStop = await mountSlotTyp(
+    { ...LATCH, stop_entity: "switch.shelly_pumpe_stopp", power_entity: undefined },
+    makeHass({
+      "switch.shelly_pumpe_n1": st("off", {}, 30 * 3600),
+      "switch.shelly_pumpe_n2": st("off", {}, 5 * 60),
+      "switch.shelly_pumpe_n3": st("off", {}, 20 * 3600),
+      "switch.shelly_pumpe_stopp": st("off", {}, 26 * 3600),
+    })
+  );
+  check("It22 A13: latching gestoppt -> 'seit' = letzte Stufe aus (5 Min), nicht STOP (1 Tag)", () =>
+    assert.match(plStop.shadowRoot.querySelector(".stage-btn.stop.active").textContent, /seit 5 Min/)
+  );
+
+  /* ---- A15: falsche Domains ---- */
+  const hpNumFrei = await mountSlotTyp(
+    { ...HP_CONFIG, release_entity: "input_number.qa_frei", show_mode: true, mode_entity: "input_number.qa_modus" },
+    makeHass({ "input_number.qa_frei": st("0"), "input_number.qa_modus": st("0.0") })
+  );
+  check("It22 A15: Freigabe auf input_number -> unbekannt (—), nicht 'Gesperrt'", () => {
+    const b = hpNumFrei.shadowRoot.querySelector(".release-badge");
+    assert.ok(b.classList.contains("unbekannt"), b.className);
+    assert.ok(hpNumFrei.shadowRoot.querySelector(".fan-overlay.spinning"), "Rad steht");
+  });
+  check("It22 A15: Modus auf input_number -> Badge '—' statt '0.0'", () =>
+    assert.match(hpNumFrei.shadowRoot.querySelector(".mode-badge").textContent, /—/)
+  );
+
+  /* ---- A16: leere Cards ---- */
+  const leer = await mount(Dashboard, { hero: { enabled: false }, slots: [] }, makeHass());
+  check("It22 A16: voll, Becken aus, keine Kästen -> Hinweis statt 0 px", () =>
+    assert.match(leer.shadowRoot.querySelector(".leer-hinweis").textContent, /Kasten hinzufügen/)
+  );
+  const leerMini = await mount(Dashboard, { view: "mini", hero: { enabled: false }, slots: [] }, makeHass());
+  check("It22 A16: mini, Becken aus, keine Kästen -> Hinweis", () =>
+    assert.ok(leerMini.shadowRoot.querySelector(".m-leer"))
+  );
+
+  /* ---- A17: stille Rückfälle ---- */
+  check("It22 A17: 'nierenform' ist die Niere, 'dreieck' bekommt einen Hinweis", () => {
+    assert.equal(pkg.shapeKey("nierenform"), "niere");
+    assert.equal(pkg.shapeKey("Kreis"), "rund");
+    const h = pkg.configHinweise({ hero: { shape: "dreieck" }, view: "quatsch", frame: { fill: "lila" }, slots: [{ type: "gibtsnicht" }] });
+    assert.equal(h.length, 4, h.join(" | "));
+    assert.match(h[0], /dreieck/);
+    assert.equal(pkg.configHinweise({ hero: { shape: "nierenform" } }).length, 0);
+  });
+  const psString = await mountSlotTyp(
+    { type: "pump", stage_entities: "switch.shelly_pumpe_n1", stage_from_power: false },
+    makeHass()
+  );
+  check("It22 A17: stage_entities als Text statt Liste -> eine Stufe N1", () => {
+    assert.equal(psString.shadowRoot.querySelectorAll(".stage-btn").length, 1);
+    assert.equal(psString.shadowRoot.querySelector(".slot-hint"), null);
+  });
+
+  /* ---- A18: Zahlenformat ---- */
+  check("It22 A18: Tausenderpunkt ab 5 Stellen, 4 Stellen wie bisher, Komma", () => {
+    assert.equal(pkg.fmt(123456789), "123.456.789");
+    assert.equal(pkg.fmt(12345.67, 1), "12.345,7");
+    assert.equal(pkg.fmt(2690), "2690");
+    assert.equal(pkg.fmt(-15000), "-15.000");
+    assert.equal(pkg.fmt(28.25, 1), "28,3");
+  });
+
+  /* ---- A20: Titel im Mini-Dialog nur einmal ---- */
+  const md = await mount(
+    Dashboard,
+    { view: "mini", hero: { enabled: false }, slots: [{ type: "uv", label: "UV-C-Lampe", switch_entity: "switch.uv_lampe" }] },
+    makeHass()
+  );
+  md._miniOeffnen(1);
+  await md.updateComplete;
+  const mdSlot = md.shadowRoot.querySelector("dialog tomtut-pool-slot-uv");
+  await mdSlot.updateComplete;
+  check("It22 A20: Mini-Dialog — Titel im Kopf, nicht noch einmal im Kasten", () => {
+    assert.match(md.shadowRoot.querySelector(".m-dialog-titel").textContent, /UV-C-Lampe/);
+    assert.equal(mdSlot.shadowRoot.querySelector(".slot-title"), null);
+  });
+
+  /* ---- A21: Klartext-Rückmeldung ---- */
+  check("It22 A21: active_entity 'Heizen' = läuft, 'Bypass' = läuft nicht", () => {
+    const h = (s) => ({ states: { "input_select.solar": st(s), "switch.solarventil": st("on") } });
+    const c = { active_entity: "input_select.solar", switch_entity: "switch.solarventil" };
+    assert.equal(pkg.solarAktiv(c, h("Heizen")), true);
+    assert.equal(pkg.solarAktiv(c, h("Bypass")), false);
+    assert.equal(pkg.solarZustand(c, h("Bypass")).bypass, true);
+    assert.equal(pkg.istAktivText("Heizen aus"), false);
+    assert.equal(pkg.istAktivText("unavailable"), false);
+  });
+
+  /* ---- D: Kontrast + Kiosk ---- */
+  const hpKiosk = await mount(Dashboard, { hero: { enabled: false }, kiosk: true, slots: [HP_CONFIG] }, makeHass());
+  const [hk] = await slotsVon(hpKiosk);
+  check("It22 D: im Kiosk keine ±-Knöpfe (statt tot angezeigt), Soll bleibt sichtbar", () => {
+    assert.equal(hk.shadowRoot.querySelectorAll(".step").length, 0);
+    assert.match(hk.shadowRoot.querySelector(".value-box.target").textContent, /28,0/);
+  });
+  check("It22 D: STOP folgt --tt-stop (hell auf dunkler Füllung), Powerbutton deckend, Laufrad dunkel", () => {
+    const p = cssOf("tomtut-pool-slot-pump").replace(/\s+/g, " ");
+    assert.match(p, /\.stage-btn\.stop \{[^}]*color: var\(--tt-stop/);
+    assert.match(p, /\.fill-schwarz \{[^}]*--tt-stop: #ff6b6b/);
+    assert.match(p, /\.power-badge \{[^}]*var\(--tt-box-bg\)/);
+    assert.match(p, /\.fan-overlay\.round \{[^}]*color: var\(--tt-fan-color, #1f2d38\)/);
+    assert.match(p, /\.stages\.disabled \.stage-btn \{[^}]*opacity: 0\.6/);
+  });
 }
 
 /* ------------------------------------------------------------------ */

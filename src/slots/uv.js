@@ -1,5 +1,5 @@
 import { html, css, nothing } from "lit";
-import { SlotBase } from "../shared/slot-base.js";
+import { SlotBase, slotLabel } from "../shared/slot-base.js";
 import { frameStyles, overlayStyles } from "../shared/styles.js";
 import { deviceRatio } from "../shared/assets.js";
 import { numText } from "../shared/util.js";
@@ -146,7 +146,7 @@ export class TomtutPoolSlotUv extends SlotBase {
     const showTemp = c.show_temp !== false && !!c.temp_entity;
 
     return this.renderSlot(html`
-      ${c.label ? html`<h3 class="slot-title">${c.label}</h3>` : nothing}
+      ${slotLabel(c) ? html`<h3 class="slot-title">${slotLabel(c)}</h3>` : nothing}
       <div class="img-wrap">
         ${this.renderGeraeteBild({
           kind: "uv",

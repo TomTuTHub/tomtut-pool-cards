@@ -1,5 +1,5 @@
 import { html, css, nothing } from "lit";
-import { SlotBase } from "./shared/slot-base.js";
+import { SlotBase, slotLabel } from "./shared/slot-base.js";
 import { frameStyles, overlayStyles } from "./shared/styles.js";
 import { shapeOf, shapeRatio, imagePath, HERO_SPRITES } from "./shared/assets.js";
 import { numText } from "./shared/util.js";
@@ -28,12 +28,17 @@ import { numText } from "./shared/util.js";
  * ein früheres `box_color` in einer alten Config wird ignoriert.
  */
 /*
- * Versatz des Einlauf-Kästchens gegenüber dem Düsen-Sprite (Prozentpunkte
- * des Bildes): rechts daneben und ein Stück tiefer, damit es weder die Düse
- * noch die hintere Beckenkante verdeckt. Wird die Düse verschoben, wandert
- * das Kästchen mit — es sei denn, es hat eigene Werte in der Config.
+ * Lage des Einlauf-Kästchens gegenüber dem Düsen-Sprite (Prozentpunkte des
+ * Bildes). Seit Iteration 22 (Bug A9) hängt es mit seiner OBERKANTE `top`
+ * Punkte unter der Unterkante der Düse, um `left` Punkte versetzt — so
+ * verdeckt es die Düse in keiner Breite, egal wie hoch das Kästchen gerade
+ * ist. Vorher (Mitte 8/11 neben der Mitte der Düse) lag es rechts unten AUF
+ * der Düse und bei Oval/Rechteck zum Teil auf dem Bodenablauf. Der
+ * Render-Test misst das für alle sechs Formen in drei Breiten.
+ * Wird die Düse verschoben, wandert das Kästchen mit. Eigene Werte
+ * (inlet_temp_top/-_left) gelten wie bisher als Mitte des Kästchens.
  */
-export const INLET_TEMP_VERSATZ = { top: 8, left: 11 };
+export const INLET_TEMP_VERSATZ = { top: 2, left: -2.5 };
 
 /*
  * Lage der Becken-Teile (Iteration 20) — EINE Rechnung für volle Ansicht
@@ -99,9 +104,9 @@ export const heroDefaultsFor = (shapeName) => {
     rx_top: s.rx.top,
     rx_left: s.rx.left,
     ...anker,
-    /* Startwerte der Regler im Editor; beim Rendern folgt das Kästchen der
-       tatsächlichen Düsenposition (siehe defaults-Getter unten). */
-    inlet_temp_top: (s.inlet?.top ?? 12) + INLET_TEMP_VERSATZ.top,
+    /* Startwerte der Regler im Editor (Mitte des Kästchens, ungefähr); beim
+       Rendern hängt es ohne eigene Werte unter der Düse (einlaufLage) */
+    inlet_temp_top: (s.inlet?.top ?? 12) + 17,
     inlet_temp_left: (s.inlet?.left ?? 66) + INLET_TEMP_VERSATZ.left,
     label_top: s.label_anker?.top ?? HERO_DEFAULTS.label_top,
     label_left: s.label_anker?.left ?? HERO_DEFAULTS.label_left,
@@ -110,12 +115,25 @@ export const heroDefaultsFor = (shapeName) => {
 
 export class TomtutPoolHero extends SlotBase {
   get defaults() {
+    return heroDefaultsFor(this.config?.shape);
+  }
+
+  /*
+   * Wo sitzt das Einlauf-Kästchen? Mit eigenen Werten wie bisher (Mitte);
+   * sonst unter der Düse, wie sie tatsächlich liegt (geklemmt, teilLage) —
+   * wer das Sprite verschiebt, nimmt das Kästchen mit.
+   */
+  _einlaufLage() {
+    const c = this.config || {};
+    const eigen = (k) => (c[k] === undefined || c[k] === null || c[k] === "" ? null : Number(c[k]));
+    const duese = teilLage(c, HERO_SPRITES.einlauf, "voll");
+    const halb = (duese.breite * shapeRatio(c.shape)) / (HERO_SPRITES.einlauf.ratio || 1) / 2;
+    const top = eigen("inlet_temp_top");
+    const left = eigen("inlet_temp_left");
     return {
-      ...heroDefaultsFor(this.config?.shape),
-      /* an der Düse festgemacht, nicht an der Form: wer das Sprite
-         verschiebt, nimmt das Kästchen mit */
-      inlet_temp_top: this._anchor("inlet", "top") + INLET_TEMP_VERSATZ.top,
-      inlet_temp_left: this._anchor("inlet", "left") + INLET_TEMP_VERSATZ.left,
+      unter: top === null,
+      top: top ?? Math.round((duese.top + halb + INLET_TEMP_VERSATZ.top) * 100) / 100,
+      left: left ?? Math.round((duese.left + INLET_TEMP_VERSATZ.left) * 100) / 100,
     };
   }
 
@@ -171,23 +189,16 @@ export class TomtutPoolHero extends SlotBase {
         ${showRx
           ? this._chemBox("RX", c.rx_entity, this._anchor("rx", "top"), this._anchor("rx", "left"))
           : nothing}
-        ${showInletTemp
-          ? this._chemBox(
-              "Zulauf",
-              c.inlet_temp_entity,
-              this._v("inlet_temp_top"),
-              this._v("inlet_temp_left"),
-              "inlet-temp"
-            )
-          : nothing}
-        ${c.label_text
+        ${showInletTemp ? this._einlaufBox() : nothing}
+        ${slotLabel(c)
           ? html`<div
               class="label-badge"
               style="top:${this._v("label_top")}%; left:${this._v(
                 "label_left"
-              )}%; transform:translateX(-50%) scale(${(this._v("label_scale") ?? 100) / 100});"
+              )}%; transform:translateX(-50%) scale(${(this._v("label_scale") ?? 100) / 100}); max-width:${this._labelMax()}%;"
+              title="${slotLabel(c)}"
             >
-              ${c.label_text}
+              ${slotLabel(c)}
             </div>`
           : nothing}
       </div>
@@ -196,6 +207,13 @@ export class TomtutPoolHero extends SlotBase {
     return framed
       ? this.renderSlot(body)
       : html`<div class="${this._frameClasses} bare">${body}</div>`;
+  }
+
+  /* Freitext nie breiter als das Becken (Iteration 22, Bug A4) */
+  _labelMax() {
+    const s = (Number(this._v("label_scale")) || 100) / 100;
+    const l = Math.min(100, Math.max(0, Number(this._v("label_left")) || 0));
+    return Math.max(10, Math.round(((Math.min(l, 100 - l) * 2 - 2) / s) * 10) / 10);
   }
 
   /*
@@ -217,6 +235,11 @@ export class TomtutPoolHero extends SlotBase {
         style="top:${l.top}%; left:${l.left}%; width:${l.breite}%;"
       />`;
     });
+  }
+
+  _einlaufBox() {
+    const l = this._einlaufLage();
+    return this._chemBox("Zulauf", this.config.inlet_temp_entity, l.top, l.left, `inlet-temp${l.unter ? " unter-duese" : ""}`);
   }
 
   _chemBox(key, entity, top, left, extra = "") {
@@ -241,6 +264,10 @@ export class TomtutPoolHero extends SlotBase {
       .slot.bare {
         border: none;
         padding: 0;
+      }
+      /* Oberkante an der Düse statt Mitte (Iteration 22, Bug A9) */
+      .chem-box.inlet-temp.unter-duese {
+        transform: translate(-50%, 0);
       }
     `,
   ];

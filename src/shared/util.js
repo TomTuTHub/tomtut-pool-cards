@@ -21,11 +21,19 @@ export const numOf = (raw) => {
   return isFinite(n) ? n : null;
 };
 
-/* Zahl mit deutschem Dezimalkomma */
+/*
+ * Zahl mit deutschem Dezimalkomma. Ab fünf Stellen vor dem Komma mit
+ * Tausenderpunkt (Iteration 22, Bug A18: "123.456.789 W" wie in HA) —
+ * vierstellige Werte bleiben ohne ("2690 W"), so wie bisher und wie es
+ * DIN 5008 erlaubt.
+ */
 export const fmt = (v, dec = 0) => {
   const n = Number(v);
   if (!isFinite(n)) return "—";
-  return n.toFixed(dec).replace(".", ",");
+  const [ganz, rest] = n.toFixed(dec).split(".");
+  const ziffern = ganz.replace("-", "");
+  const gruppiert = ziffern.length > 4 ? ziffern.replace(/\B(?=(\d{3})+(?!\d))/g, ".") : ziffern;
+  return (ganz.startsWith("-") ? "-" : "") + gruppiert + (rest ? "," + rest : "");
 };
 
 /* Leistungssensor -> Watt (kW wird umgerechnet) */
@@ -71,6 +79,26 @@ export const seitMinuten = (iso, now = Date.now()) => {
   }
   const d = Math.floor(min / (24 * 60));
   return d <= 1 ? "seit 1 Tag" : `seit ${d} Tagen`;
+};
+
+/* Zustand ohne brauchbaren Wert (Iteration 22): zählt nie als "an" oder "ausgelöst" */
+export const TOT_STATES = ["", "unknown", "unavailable", "none"];
+export const istTot = (state) => TOT_STATES.includes(String(state ?? "").trim().toLowerCase());
+
+/*
+ * "Läuft gerade?" aus einem beliebigen Zustand (Iteration 22, Bug A21):
+ * on/off wie immer, dazu Klartext-Zustände wie ein input_select
+ * "Heizen"/"Bypass". Ausschluss-Wörter gewinnen ("Heizen aus" = aus).
+ * Unbekannte Wörter bleiben aus — lieber grau als eine falsche Behauptung.
+ */
+const AUS_WOERTER = /\b(aus|off|bypass|zu|closed|geschlossen|inaktiv|inactive|stop|stopp|idle|standby|false)\b/;
+const AN_WOERTER = /\b(an|ein|heizen|heizt|heating|heat|aktiv|active|läuft|laeuft|running|run|offen|open|auf|solar|true)\b/;
+export const istAktivText = (state) => {
+  const s = String(state ?? "").trim().toLowerCase();
+  if (istTot(s)) return false;
+  if (isOn(s)) return true;
+  if (AUS_WOERTER.test(s)) return false;
+  return AN_WOERTER.test(s);
 };
 
 /* Domain einer Entity-ID ("switch.pumpe" -> "switch") */

@@ -94,8 +94,25 @@ export const SHAPES = {
 
 export const DEFAULT_SHAPE = "oval";
 
+/*
+ * Andere Schreibweisen derselben Form (Iteration 22, Bug A17: "nierenform"
+ * fiel still auf Oval zurück). Was hier nicht steht und kein Schlüssel ist,
+ * wird weiter zu Oval — der Editor zeigt dann aber einen Hinweis.
+ */
+export const SHAPE_ALIASE = {
+  nierenform: "niere",
+  kreis: "rund",
+  acht: "achtform",
+  rechteckig: "rechteck",
+  freiformbecken: "freiform",
+};
+export const shapeKey = (name) => {
+  const n = String(name || "").trim().toLowerCase();
+  return SHAPES[n] ? n : SHAPE_ALIASE[n] || null;
+};
+
 /* Unbekannte Form -> Fallback oval, nie ein Fehler */
-export const shapeOf = (name) => SHAPES[String(name || "").toLowerCase()] || SHAPES[DEFAULT_SHAPE];
+export const shapeOf = (name) => SHAPES[shapeKey(name)] || SHAPES[DEFAULT_SHAPE];
 
 /*
  * Seitenverhältnis (Breite/Höhe) der Becken-PNGs, nach Dateiname. Die

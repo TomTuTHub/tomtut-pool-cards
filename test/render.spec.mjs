@@ -28,7 +28,7 @@ import { createServer } from "node:http";
 import { readFile, mkdir, rm } from "node:fs/promises";
 import { dirname, join, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
-import { UV_LAGEN, UV_GROESSEN, miniConfig } from "./fixtures/demo.mjs";
+import { UV_LAGEN, UV_GROESSEN, miniConfig, allesConfig } from "./fixtures/demo.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const wurzel = join(here, "..");
@@ -366,13 +366,14 @@ await checkAsync("Becken: Einlauf-Kaestchen und Alt-Slot sind messbar", async ()
   assert.ok(becken.bild && becken.sprite && becken.kasten, "Becken unvollstaendig gerendert");
 });
 
-check("Becken: das Einlauf-Kaestchen liegt im Bild, neben der Duese", () => {
+check("Becken: das Einlauf-Kaestchen liegt im Bild, unter der Duese (seit It22)", () => {
   const { bild, sprite, kasten } = becken;
   assert.ok(kasten.links >= bild.links - 1 && kasten.rechts <= bild.rechts + 1, "ragt seitlich raus");
   assert.ok(kasten.oben >= bild.oben - 1 && kasten.unten <= bild.unten + 1, "ragt oben/unten raus");
-  assert.ok(kasten.links > sprite.links, "sitzt nicht rechts von der Duese");
-  const abstand = kasten.links - sprite.rechts;
-  assert.ok(abstand > -sprite.breit && abstand < bild.breit * 0.2, `Abstand ${Math.round(abstand)} px`);
+  assert.ok(kasten.oben >= sprite.unten - 1, "liegt auf der Duese statt darunter");
+  assert.ok(kasten.links < sprite.rechts && kasten.rechts > sprite.links, "nicht unter der Duese");
+  const abstand = kasten.oben - sprite.unten;
+  assert.ok(abstand < bild.hoch * 0.2, `Abstand ${Math.round(abstand)} px`);
   assert.match(becken.kastenText, /Zulauf/);
   assert.match(becken.kastenText, /26,9/);
 });
@@ -2069,6 +2070,201 @@ await checkAsync("It17: Beleg Mini neben Original (500 px, dpr 1)", async () => 
   assert.equal(letzte, "Liquid Glass");
   await page.locator("#beleg").screenshot({ path: join(ausgabe, "it17-beleg.png"), animations: "disabled" });
 });
+
+/* ================================================================== */
+/* Iteration 22 — Layout-Bugs aus dem Testbericht 26.09.2026           */
+/* ================================================================== */
+
+/*
+ * Baut eine Card mit `config` in `breite` px, wartet auf Bilder und misst
+ * alle Overlays je Kasten (relativ zum Viewport). Rückgabe je Kasten:
+ * { typ, kasten, teile: [{ name, r }] }.
+ */
+const it22Messen = (config, breite) =>
+  page.evaluate(
+    async ({ config, breite }) => {
+      document.body.innerHTML = "";
+      const buehne = document.createElement("div");
+      buehne.style.width = breite + "px";
+      document.body.appendChild(buehne);
+      const card = document.createElement("tomtut-pool-dashboard");
+      card.setConfig(config);
+      card.hass = window.demo.DEMO_HASS;
+      buehne.appendChild(card);
+      await card.updateComplete;
+      const kinder = [...card.shadowRoot.querySelector(".grid").children];
+      await Promise.all(kinder.map((el) => el.updateComplete));
+      const bilder = kinder.flatMap((el) => [...(el.shadowRoot?.querySelectorAll("img") || [])]);
+      await Promise.all(
+        bilder.map((img) =>
+          img.complete && img.naturalWidth > 0
+            ? null
+            : new Promise((f) => {
+                img.addEventListener("load", f, { once: true });
+                img.addEventListener("error", f, { once: true });
+              })
+        )
+      );
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const m = (el) => {
+        const r = el.getBoundingClientRect();
+        return { links: r.left, oben: r.top, rechts: r.right, unten: r.bottom, breit: r.width, hoch: r.height };
+      };
+      const TEILE =
+        ".value-box, .release-badge, .release-seit, .mode-badge, .label-badge, .power-badge, .thermo, .chem-box, img.hero-sprite";
+      return kinder.map((el) => {
+        const sr = el.shadowRoot;
+        const slot = sr.querySelector(".slot");
+        return {
+          typ: el.tagName.toLowerCase().replace("tomtut-pool-", ""),
+          kasten: slot ? m(slot) : m(el),
+          teile: [...sr.querySelectorAll(TEILE)]
+            .filter((t) => t.getBoundingClientRect().width > 0)
+            .map((t) => ({ name: t.className.baseVal ?? String(t.getAttribute("class") || "").split(" ").slice(0, 2).join("."), r: m(t) })),
+        };
+      });
+    },
+    { config, breite }
+  );
+
+/* Zwei Teile ueberlappen, wenn sie sich um mehr als 1 px schneiden */
+const it22Kollisionen = (kasten) => {
+  const t = kasten.teile.filter((x) => !/hero-sprite/.test(x.name));
+  const aus = [];
+  for (let i = 0; i < t.length; i++) {
+    for (let j = i + 1; j < t.length; j++) {
+      /* das "seit" haengt am Freigabe-Badge und gehoert dazu */
+      if (/release/.test(t[i].name) && /release/.test(t[j].name)) continue;
+      if (ueberlappt(t[i].r, t[j].r)) aus.push(`${t[i].name} × ${t[j].name}`);
+    }
+  }
+  return aus;
+};
+const it22Raus = (kasten) =>
+  kasten.teile
+    .filter((x) => {
+      const r = x.r;
+      const k = kasten.kasten;
+      return r.links < k.links - 1 || r.rechts > k.rechts + 1 || r.oben < k.oben - 1 || r.unten > k.unten + 1;
+    })
+    .map((x) => x.name);
+
+const demoAlles = allesConfig(0, false);
+
+/* A1: Card-Breiten 560–1150 px (Tablet 1340×800 Panel = 1084–1284) */
+const WP_VOLL = {
+  ...demoAlles.slots[0],
+  show_mode: true,
+  mode_entity: "input_select.wp_modus_heizen",
+  show_release_since: true,
+};
+const A1_CONFIG = { ...demoAlles, slots: [WP_VOLL, ...demoAlles.slots.slice(1)] };
+const A1_BREITEN = [560, 620, 700, 800, 980, 1084, 1150, 1284];
+const a1Befunde = {};
+for (const breite of A1_BREITEN) {
+  await checkAsync(`It22 A1: ${breite} px — WP/Pumpe/UV/Solar: keine Kästchen übereinander, nichts ragt raus`, async () => {
+    const kaesten = await it22Messen(A1_CONFIG, breite);
+    const fehler = [];
+    for (const k of kaesten) {
+      if (!/heatpump|pump|uv|solar/.test(k.typ)) continue;
+      for (const x of it22Kollisionen(k)) fehler.push(`${k.typ}: ${x}`);
+      for (const x of it22Raus(k)) fehler.push(`${k.typ}: ${x} ragt raus`);
+    }
+    const wp = kaesten.find((k) => k.typ === "slot-heatpump");
+    a1Befunde[breite] = `${Math.round(wp.kasten.breit)} px Kasten`;
+    assert.deepEqual(fehler, [], "\n       " + fehler.join("\n       "));
+  });
+  if (breite === 1284) {
+    await page.locator("#buehne, body > div").first().screenshot({ path: join(ausgabe, "it22-a1-1284.png") });
+  }
+  if (breite === 620) {
+    await page.locator("body > div").first().screenshot({ path: join(ausgabe, "it22-a1-620.png") });
+  }
+}
+results.push(`       A1 Kastenbreiten: ${Object.entries(a1Befunde).map(([b, t]) => `${b}→${t}`).join(" · ")}`);
+
+/* A4: sehr langes WP-Label bleibt im Kasten */
+await checkAsync("It22 A4: 70 Zeichen WP-Label bleiben im Kasten (620 und 300 px)", async () => {
+  for (const breite of [620, 300]) {
+    const k = await it22Messen(
+      { hero: { enabled: false }, slots: [{ ...WP_VOLL, label_text: "Wärmepumpe im Technikraum hinter der Garage links neben dem Sandfilter" }] },
+      breite
+    );
+    const raus = it22Raus(k[0]);
+    assert.deepEqual(raus, [], `${breite} px: ${raus.join(", ")}`);
+  }
+});
+
+/* A8 + A9: Becken — Einlauf-Kaestchen neben der Duese, Extremwerte geklemmt */
+const FORMEN = ["oval", "rechteck", "achtform", "rund", "niere", "freiform"];
+for (const breite of [360, 620, 1200]) {
+  await checkAsync(`It22 A9: ${breite} px — Zulauf-Kästchen verdeckt in keiner Form Düse, Bodenablauf oder Freitext`, async () => {
+    const fehler = [];
+    for (const form of FORMEN) {
+      const [becken] = await it22Messen(
+        {
+          hero: { shape: form, temp_entity: "sensor.pool_wassertemperatur", show_drain: true, label_text: "Pool", inlet_temp_entity: "sensor.einlauf_temperatur" },
+          slots: [],
+        },
+        breite
+      );
+      const box = becken.teile.find((x) => /inlet-temp/.test(x.name));
+      if (!box) {
+        fehler.push(`${form}: kein Kästchen`);
+        continue;
+      }
+      for (const t of becken.teile) {
+        if (t === box || !/sprite-inlet|sprite-drain|label-badge|thermo/.test(t.name)) continue;
+        if (ueberlappt(box.r, t.r)) fehler.push(`${form}: Zulauf × ${t.name}`);
+      }
+      for (const x of it22Raus(becken)) fehler.push(`${form}: ${x} ragt raus`);
+    }
+    assert.deepEqual(fehler, [], "\n       " + fehler.join("\n       "));
+  });
+}
+await checkAsync("It22 A8: Thermometer 200 % ganz rechts unten und Düse 40 % unten rechts bleiben im Becken", async () => {
+  const fehler = [];
+  for (const breite of [360, 900]) {
+    const [becken] = await it22Messen(
+      {
+        hero: {
+          shape: "oval",
+          temp_entity: "sensor.pool_wassertemperatur",
+          inlet_temp_entity: "sensor.einlauf_temperatur",
+          thermo_scale: 200,
+          thermo_top: 100,
+          thermo_left: 100,
+          inlet_size: 40,
+          inlet_top: 100,
+          inlet_left: 100,
+        },
+        slots: [],
+      },
+      breite
+    );
+    for (const x of it22Raus(becken)) fehler.push(`${breite} px: ${x}`);
+  }
+  assert.deepEqual(fehler, [], fehler.join(", "));
+});
+await page.evaluate(async () => {
+  document.body.innerHTML = "";
+  const b = document.createElement("div");
+  b.style.cssText = "display:grid;grid-template-columns:repeat(3,400px);gap:8px;padding:8px;background:#fff";
+  document.body.appendChild(b);
+  for (const shape of ["oval", "rechteck", "achtform", "rund", "niere", "freiform"]) {
+    const card = document.createElement("tomtut-pool-dashboard");
+    card.setConfig({
+      hero: { shape, temp_entity: "sensor.pool_wassertemperatur", ph_entity: "sensor.pool_ph", rx_entity: "sensor.pool_redox", show_drain: true, label_text: shape, inlet_temp_entity: "sensor.einlauf_temperatur" },
+      slots: [],
+    });
+    card.hass = window.demo.DEMO_HASS;
+    b.appendChild(card);
+    await card.updateComplete;
+  }
+  await new Promise((r) => setTimeout(r, 400));
+});
+await page.locator("body > div").first().screenshot({ path: join(ausgabe, "it22-a9-formen.png") });
 
 check("keine Fehler in der Browser-Konsole", () =>
   assert.deepEqual(konsolenfehler, [], konsolenfehler.join(" | "))

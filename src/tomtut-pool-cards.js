@@ -25,8 +25,8 @@ window.customCards.push({
 export { TomtutPoolDashboardCard, TomtutPoolDashboardEditor };
 
 /* Für den Smoke-Test (und alles, was gegen das Bundle prüfen will) */
-export { PUMP_DEFAULTS, fanDuration, stageFromWatt } from "./slots/pump.js";
-export { HEATPUMP_DEFAULTS, HP_MODES, MODE_FARBEN, MODE_WOERTER, modeFromState, modeAuto, modeWort, modeBadge, modusWahl, klimaAus, klimaEntity, optionZuordnung, modusName } from "./slots/heatpump.js";
+export { PUMP_DEFAULTS, fanDuration, stageFromWatt, stufenListe, TASTER_DOMAINS } from "./slots/pump.js";
+export { HEATPUMP_DEFAULTS, HP_MODES, MODE_FARBEN, MODE_WOERTER, modeFromState, modeAuto, modeWort, modeBadge, modusWahl, klimaAus, klimaEntity, optionZuordnung, modusName, FREIGABE_DOMAINS, MODUS_DOMAINS } from "./slots/heatpump.js";
 export { FAN_DESIGNS, FAN_DESIGN_DEFAULT } from "./shared/slot-base.js";
 export { UV_DEFAULTS, GLOW_PULSE_MAX, glowPulsWerte } from "./slots/uv.js";
 export {
@@ -57,9 +57,13 @@ export {
   ASSET_VERSION,
   imagePath,
 } from "./shared/assets.js";
-export { numText, numOf, toWatt, seit, seitMinuten } from "./shared/util.js";
+export { numText, numOf, toWatt, seit, seitMinuten, fmt, istAktivText, istTot } from "./shared/util.js";
+export { slotLabel } from "./shared/slot-base.js";
+export { configHinweise } from "./shared/pruefen.js";
+export { typWechsel } from "./editor/typwechsel.js";
+export { shapeKey, SHAPE_ALIASE } from "./shared/assets.js";
 export { applyPatch } from "./editor/dashboard-editor.js";
-export { kioskGilt, kioskSchluessel, KIOSK_BECKEN } from "./shared/kiosk.js";
+export { kioskGilt, kioskSchluessel, kioskMigrieren, kastenSchluessel, neueKastenId, KIOSK_BECKEN } from "./shared/kiosk.js";
 export {
   ANSICHTEN,
   ANSICHT_DEFAULT,

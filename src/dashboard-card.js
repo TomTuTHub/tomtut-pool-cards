@@ -10,6 +10,7 @@ import "./slots/placeholder.js";
 import { SLOT_TYPES, DEFAULT_SHAPE } from "./shared/assets.js";
 import { fillTokens } from "./shared/styles.js";
 import { renderMini, miniStyles, ansichtVon, MINI_TYPEN } from "./mini.js";
+import { configHinweise } from "./shared/pruefen.js";
 
 /*
  * custom:tomtut-pool-dashboard — die EINE Card der Sammlung.
@@ -77,6 +78,12 @@ export class TomtutPoolDashboardCard extends LitElement {
     };
     /* neue Config (Editor-Vorschau) = kein alter Dialog mehr */
     this._miniOffen = null;
+    /* Stille Rückfälle (Iteration 22, Bug A17) wenigstens in die Konsole —
+       sichtbar werden sie im Editor */
+    const hinweise = configHinweise(this._config);
+    const neu = hinweise.join(" | ");
+    if (neu && neu !== this._gemeldet) console.warn("tomtut-pool-cards:", neu);
+    this._gemeldet = neu;
   }
 
   static getConfigElement() {
@@ -169,9 +176,15 @@ export class TomtutPoolDashboardCard extends LitElement {
                 ></tomtut-pool-hero>`
               : nothing}
             ${this._slotsMitNummer.map(({ slot, nr }) =>
-              this._renderSlot(slot, kioskGilt(c, nr))
+              this._renderSlot(slot, kioskGilt(c, nr, slot))
             )}
           </div>
+          ${!heroOn && !this._slotsMitNummer.length
+            ? html`<p class="leer-hinweis">
+                TomTuT Pool Dashboard: noch nichts zu zeigen — im Editor das Becken einschalten oder
+                einen Kasten hinzufügen.
+              </p>`
+            : nothing}
         </div>
       </ha-card>
     `;
@@ -262,6 +275,16 @@ export class TomtutPoolDashboardCard extends LitElement {
     .wrap {
       container-type: inline-size;
       width: 100%;
+    }
+    /* leere Card (Iteration 22, Bug A16): statt 0 px ein Hinweis */
+    .leer-hinweis {
+      margin: 0;
+      padding: 16px;
+      border: 1.5px dashed var(--divider-color, rgba(127, 127, 127, 0.5));
+      border-radius: 12px;
+      color: var(--secondary-text-color, #777);
+      font-size: 14px;
+      text-align: center;
     }
     .grid {
       display: grid;
