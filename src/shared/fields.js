@@ -380,7 +380,8 @@ export const editorStyles = css`
     padding: 6px 0;
   }
   .teil-reset {
-    align-self: flex-start;
+    display: block;
+    margin: 4px 0 6px;
     padding: 6px 12px;
     border-radius: 8px;
     border: 1px solid var(--divider-color, #ccc);
