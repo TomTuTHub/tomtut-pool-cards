@@ -2,7 +2,7 @@ import { html, css, nothing, unsafeCSS } from "lit";
 import { TomtutPoolHero, teilLage } from "./hero.js";
 import { TomtutPoolSlotPump, pumpHasEntity, fanDuration } from "./slots/pump.js";
 import { TomtutPoolSlotHeatpump, MODE_FARBEN, heatpumpHasEntity } from "./slots/heatpump.js";
-import { solarAktiv } from "./slots/solar.js";
+import { solarZustand } from "./slots/solar.js";
 import { customEintraege, DOMAIN_ICONS, TOGGLE_DOMAINS } from "./slots/custom.js";
 import { thermoGrafik, fanDesignSvg, FAN_SVG } from "./shared/slot-base.js";
 import { kioskGilt, KIOSK_BECKEN } from "./shared/kiosk.js";
@@ -304,7 +304,7 @@ export const miniKachel = (slotRoh = {}, hass) => {
           top: Number(p._v("fan_top")),
           left: Number(p._v("fan_left")),
           /* im Mini deutlich größer als im vollen Kasten, sonst ein Punkt */
-          size: Math.max(Number(p._v("fan_size")) * 1.9, 34),
+          size: Math.max(Number(p._v("fan_size")) * 1.9, 38),
           ratio: 1,
           rund: true,
           dreht: laeuft,
@@ -362,7 +362,13 @@ export const miniKachel = (slotRoh = {}, hass) => {
         watt: () => z(watt(hass, slot.power_entity)),
         ist: () => z(tempText(w._current), { name: "Ist" }),
         soll: () => z(tempText(w._target), { name: "Soll" }),
-        freigabe: () => z(frei === null ? null : frei ? "Frei" : "Gesperrt", frei === false ? { warn: true } : {}),
+        /* selbsterklärend (It19c): im Raster steht "Freigabe" als Name darüber,
+           sonst gehört das Wort mit in den Wert */
+        freigabe: () => {
+          const w = frei === null ? null : frei ? "frei" : "gesperrt";
+          const text = w === null ? null : gewaehlt.length >= 3 ? w : `Freigabe ${w}`;
+          return z(text, { ...(frei === false ? { warn: true } : {}), umbruch: gewaehlt.length < 3 });
+        },
         status: () => z(statusText(), k.gesperrt ? { warn: true } : {}),
       };
       break;
@@ -382,8 +388,8 @@ export const miniKachel = (slotRoh = {}, hass) => {
 
     case "solar": {
       k.bild = geraeteBild("solar");
-      const aktiv = solarAktiv(slot, hass);
-      if (aktiv !== null) k.zustand = aktiv ? "an" : "aus";
+      const sz = solarZustand(slot, hass);
+      if (sz.aktiv !== null) k.zustand = sz.aktiv ? "an" : "aus";
       werte = {
         vorlauf: () => z(wert(hass, slot.temp_in_entity), { pfeil: "in" }),
         ruecklauf: () => z(wert(hass, slot.temp_out_entity), { pfeil: "out" }),
@@ -557,7 +563,7 @@ const zellBreit = (zeilen, i) => {
 };
 
 const renderZeile = (x, i, breit = false) => html`<span
-  class="k-zeile ${i ? "neben" : "haupt"} ${x.punkt ? `badge ${x.punkt}` : ""} ${x.warn ? "warn" : ""} ${breit ? "breit" : ""}"
+  class="k-zeile ${i ? "neben" : "haupt"} ${x.punkt ? `badge ${x.punkt}` : ""} ${x.warn ? "warn" : ""} ${breit ? "breit" : ""} ${x.umbruch ? "umbruch" : ""}"
   >${x.pfeil
     ? html`<img
         class="k-pfeil"
@@ -992,8 +998,10 @@ export const miniStyles = css`
   /* ab 3 Werten: 2 Spalten × n Zeilen unter dem Bild (Iteration 19) —
      Modus-Pille über die volle Breite, Name ("Ist") darf über den Wert
      umbrechen, abgeschnitten wird nie */
+  /* Raster (It19c): Bild kleiner, dafür Werte ≥ 12 px und Namen ≥ 9 px —
+     auf dem Tablet lesbar */
   .kachel.dichte-raster .k-bild {
-    --kb-h: 50px;
+    --kb-h: 40px;
   }
   .kachel.dichte-raster .k-innen {
     padding: 6px 4px 7px;
@@ -1017,9 +1025,9 @@ export const miniStyles = css`
     column-gap: 3px;
     row-gap: 0;
     min-width: 0;
-    font-size: 11.5px;
+    font-size: 12.5px;
     font-weight: 700;
-    letter-spacing: -0.15px;
+    letter-spacing: -0.2px;
     line-height: 1.1;
   }
   /* Name klein oben über die ganze Zelle, darunter (Pfeil +) Wert */
@@ -1027,10 +1035,10 @@ export const miniStyles = css`
     order: -1;
     flex: 0 0 100%;
     text-align: center;
-    font-size: 9.5px;
+    font-size: 10px;
     line-height: 1.05;
-    opacity: 0.7;
-    letter-spacing: 0.2px;
+    opacity: 0.75;
+    letter-spacing: 0.1px;
   }
   .kachel.dichte-raster .k-zeile .k-pfeil {
     width: 13px;
@@ -1050,9 +1058,17 @@ export const miniStyles = css`
   .kachel.dichte-raster .k-zeile.badge .k-text {
     white-space: normal;
   }
-  /* ab 5 Werten: Bild kleiner, damit die Kachel nicht davonwächst */
+  /* ab 5 Werten: Bild noch etwas kleiner */
   .kachel.dichte-raster.viele .k-bild {
-    --kb-h: 40px;
+    --kb-h: 36px;
+  }
+  /* "Freigabe gesperrt" darf zweizeilig werden statt abgeschnitten */
+  .k-zeile.umbruch {
+    white-space: normal;
+    text-align: center;
+  }
+  .k-zeile.umbruch .k-text {
+    white-space: normal;
   }
   .k-text {
     min-width: 0;
@@ -1148,7 +1164,7 @@ export const miniStyles = css`
       padding: 6px 8px 7px;
     }
     .kachel.dichte-raster .k-bild {
-      --kb-h: 50px;
+      --kb-h: 40px;
       flex: none;
       width: 100%;
     }

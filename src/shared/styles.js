@@ -306,6 +306,10 @@ export const overlayStyles = css`
     white-space: nowrap;
     pointer-events: none;
   }
+  .power-hinweis.mitte {
+    top: 50%;
+    transform: translateY(-50%);
+  }
   .power-hinweis b {
     color: inherit;
   }

@@ -4245,7 +4245,8 @@ check("It17 mini_show Pumpe: temp + status", () => {
 check("It17 mini_show WP: alle sechs Werte, Ist/Soll mit Vorsatz, Freigabe als Warnung", () => {
   const cfg = { ...MODUS_SEL, release_entity: FREI_ENT, mini_show: ["modus", "watt", "ist", "soll", "freigabe", "status"] };
   const k = pkg.miniKachel(cfg, selHass("Heizen Smart", { [FREI_ENT]: { state: "off", attributes: {}, last_changed: iso(60) } }));
-  assert.deepEqual(zeilen(k), ["Heizen Smart", "820 W", "26,4 °C", "28 °C", "Gesperrt", "Gesperrt"]);
+  /* It19c: im Raster steht "Freigabe" als Name darüber, der Wert klein "gesperrt" */
+  assert.deepEqual(zeilen(k), ["Heizen Smart", "820 W", "26,4 °C", "28 °C", "gesperrt", "Gesperrt"]);
   /* It19b: ab 3 Werten hat jede Zelle ihren Namen, nur die Modus-Pille nicht */
   assert.deepEqual(k.zeilen.map((z) => z.name || ""), ["", "Watt", "Ist", "Soll", "Freigabe", "Status"]);
   assert.equal(k.zeilen[4].warn, true);
@@ -4889,6 +4890,54 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
   });
   c.remove();
 }
+/* ---- It19c: Freigabe selbsterklärend, Solar-Bypass zentral ---- */
+{
+  const frei = (st) => ({ [FREI_ENT]: { state: st, attributes: {}, last_changed: iso(60) } });
+  check("It19c Freigabe: unter 3 Werten 'Freigabe frei' / 'Freigabe gesperrt' (darf umbrechen)", () => {
+    const cfg = { ...MODUS_SEL, release_entity: FREI_ENT, mini_show: ["status", "freigabe"] };
+    const a = pkg.miniKachel(cfg, selHass("Heizen Smart", frei("on")));
+    /* feste Reihenfolge der Liste: Freigabe vor Status */
+    assert.deepEqual(a.zeilen.map((z) => z.text), ["Freigabe frei", "An"]);
+    assert.equal(a.zeilen[0].umbruch, true);
+    const b = pkg.miniKachel(cfg, selHass("Heizen Smart", frei("off")));
+    assert.equal(b.zeilen[0].text, "Freigabe gesperrt");
+    assert.equal(b.zeilen[0].warn, true);
+  });
+  const S = { type: "solar", switch_entity: "switch.solarventil", active_entity: "binary_sensor.ventil_an", temp_in_entity: "sensor.solar_vorlauf", temp_out_entity: "sensor.solar_ruecklauf" };
+  const sh = (sw, an) => makeHass({ "switch.solarventil": { state: sw, attributes: {}, last_changed: iso(5) }, "binary_sensor.ventil_an": { state: an, attributes: {}, last_changed: iso(5) } });
+  check("It19c solarZustand: Steuerung an + Ventil aus = Bypass; Steuerung aus = kein Bypass; ohne active_entity nie", () => {
+    assert.deepEqual(pkg.solarZustand(S, sh("on", "off")), { aktiv: false, bypass: true });
+    assert.deepEqual(pkg.solarZustand(S, sh("off", "off")), { aktiv: false, bypass: false });
+    assert.deepEqual(pkg.solarZustand(S, sh("on", "on")), { aktiv: true, bypass: false });
+    assert.deepEqual(pkg.solarZustand({ ...S, active_entity: undefined }, sh("on", "off")), { aktiv: true, bypass: false });
+  });
+  const bp = await mountSlotTyp(S, sh("on", "off"));
+  check("It19c Voll-Kasten Solar im Bypass: Knopf bernstein 'Steuerung an / Bypass', Panels + Pfeile ruhen", () => {
+    const k = bp.shadowRoot.querySelector(".power-badge");
+    assert.ok(k.classList.contains("standby"));
+    assert.match(k.querySelector(".power-hinweis").textContent.replace(/\s+/g, " "), /Steuerung an\s*Bypass/);
+    assert.match(k.getAttribute("title"), /Bypass/);
+    assert.ok(bp.shadowRoot.querySelector(".img-wrap.ruht.bypass"));
+    assert.match(cssOf("tomtut-pool-slot-solar"), /\.img-wrap\.ruht > img\.flow-arrow\s*\{[^}]*opacity:\s*0\.22/);
+  });
+  check("It19c Mini und Voll sagen dasselbe (Solar Bypass = aus)", () => assert.equal(pkg.miniKachel(S, sh("on", "off")).zustand, "aus"));
+  const an = await mountSlotTyp(S, sh("on", "on"));
+  check("It19c Solar läuft: kein Bypass, volle Farben", () => {
+    assert.ok(!an.shadowRoot.querySelector(".power-badge").classList.contains("standby"));
+    assert.equal(an.shadowRoot.querySelector(".img-wrap.ruht"), null);
+  });
+  const aus = await mountSlotTyp(S, sh("off", "off"));
+  check("It19c Solar aus: Knopf rot (kein Bypass-Hinweis), Panels ruhen", () => {
+    assert.ok(aus.shadowRoot.querySelector(".power-badge").classList.contains("off"));
+    assert.equal(aus.shadowRoot.querySelector(".power-hinweis"), null);
+    assert.ok(aus.shadowRoot.querySelector(".img-wrap.ruht"));
+  });
+  const wp = await mountSlotTyp(MODUS_SEL, selHass("x", { "climate.waermepumpe": { state: "off", attributes: {}, last_changed: iso(5) } }));
+  check("It19c WP-Standby-Hinweis unverändert 'Strom an / WP aus'", () =>
+    assert.match(wp.shadowRoot.querySelector(".power-hinweis").textContent, /Strom an\s*WP aus/)
+  );
+}
+
 /* ------------------------------------------------------------------ */
 
 console.log(results.join("\n"));

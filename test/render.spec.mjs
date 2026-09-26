@@ -1858,6 +1858,79 @@ for (const breite of [536, 380]) {
   });
 }
 
+/* ------------------------------------------------------------------ */
+/* Iteration 19c: Thomas' Kombination lesbar, Solar-Bypass im Voll     */
+/* ------------------------------------------------------------------ */
+{
+  const THOMAS = miniConfig().slots.map((sl, i) =>
+    i === 0
+      ? { ...sl, mini_show: ["status", "freigabe"] }
+      : i === 1
+      ? { ...sl, mini_show: ["stufe", "watt", "temp", "status"] }
+      : sl
+  );
+  for (const breite of [500, 494]) {
+    await checkAsync(`It19c Thomas' Kombination bei ${breite} px: <= 282 px, Namen >= 9 px, Werte >= 12 px`, async () => {
+      const m = await i17Bauen(page, breite, I17_THEMES["Liquid Glass"], { slots: THOMAS });
+      assert.deepEqual(m.befunde, []);
+      assert.ok(m.hoehe <= I17_MAX_500, `${m.hoehe} px`);
+      const f = await page.evaluate(() => {
+        const sr = document.querySelector("tomtut-pool-dashboard").shadowRoot;
+        const px = (el) => parseFloat(getComputedStyle(el).fontSize);
+        return {
+          namen: [...sr.querySelectorAll(".k-name")].map(px),
+          werte: [...sr.querySelectorAll(".k-zeile:not(.badge) .k-text")].map(px),
+          freigabe: [...sr.querySelectorAll(".typ-heatpump .k-text")].map((t) => t.textContent),
+        };
+      });
+      assert.ok(f.namen.length >= 4 && Math.min(...f.namen) >= 9, `Namen ${f.namen}`);
+      assert.ok(Math.min(...f.werte) >= 12, `Werte ${f.werte}`);
+      assert.ok(f.freigabe.includes("Freigabe frei"), f.freigabe.join("|"));
+      results.push(`       Thomas' Kombination ${breite} px: Card ${m.breite}x${m.hoehe} px, Namen ${Math.min(...f.namen)} px, Werte ab ${Math.min(...f.werte)} px`);
+    });
+  }
+  await page.locator("#buehne").screenshot({ path: join(ausgabe, "it19c-thomas.png"), animations: "disabled" });
+
+  for (const breite of [536, 380]) {
+    await checkAsync(`It19c Solar-Bypass ${breite} px: Knopf bernstein + Hinweis im Bild, überlappt nichts`, async () => {
+      const r = await page.evaluate(async (breite) => {
+        document.body.innerHTML = `<div id="buehne" style="width:${breite}px"></div>`;
+        const card = document.createElement("tomtut-pool-dashboard");
+        const sol = window.demo.miniConfig().slots[3];
+        card.setConfig({ hero: { enabled: false }, slots: [{ ...sol, active_entity: "binary_sensor.ventil_an" }] });
+        card.hass = { ...window.demo.DEMO_HASS, states: { ...window.demo.DEMO_HASS.states, "binary_sensor.ventil_an": { state: "off", attributes: {} } } };
+        document.getElementById("buehne").appendChild(card);
+        await card.updateComplete;
+        const slot = card.shadowRoot.querySelector("tomtut-pool-slot-solar");
+        await slot.updateComplete;
+        await Promise.all([...slot.shadowRoot.querySelectorAll("img")].map((i) => (i.complete ? null : new Promise((f) => (i.onload = i.onerror = f)))));
+        await new Promise((f) => requestAnimationFrame(() => requestAnimationFrame(f)));
+        const sr = slot.shadowRoot;
+        const R = (e) => e.getBoundingClientRect();
+        const h = sr.querySelector(".power-hinweis");
+        const hr = R(h);
+        const bild = R(sr.querySelector(".img-wrap"));
+        const ueber = (a, b) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+        return {
+          drin: hr.left >= bild.left && hr.right <= bild.right && hr.top >= bild.top && hr.bottom <= bild.bottom,
+          kollision: [...sr.querySelectorAll(".value-box, .thermo, .flow-arrow, .slot-title")].filter((e) => ueber(hr, R(e))).map((e) => e.className),
+          text: h.textContent,
+          farbe: getComputedStyle(sr.querySelector(".power-badge")).color,
+          pfeil: getComputedStyle(sr.querySelector(".flow-arrow")).opacity,
+          panel: getComputedStyle(sr.querySelector(".bild-flaeche img")).filter,
+        };
+      }, breite);
+      assert.ok(r.drin, "Hinweis ragt aus dem Bild");
+      assert.deepEqual(r.kollision, []);
+      assert.match(r.text, /Steuerung an\s*Bypass/);
+      assert.equal(r.farbe, "rgb(255, 179, 0)");
+      assert.equal(r.pfeil, "0.22");
+      assert.match(r.panel, /grayscale/);
+    });
+    await page.locator("#buehne").screenshot({ path: join(ausgabe, `it19c-solar-bypass-${breite}.png`), animations: "disabled" });
+  }
+}
+
 check("It17 Mini: Pooltemperatur mit Wert", () => assert.equal(i17Masse["500-hell"]?.temp, "24,6 °C"));
 /* ab hier: 500 px in Liquid Glass (Studio-Tablet) */
 await i17Bauen(page, 500, I17_THEMES["Liquid Glass"]);

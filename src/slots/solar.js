@@ -81,6 +81,19 @@ export const solarAktiv = (c = {}, hass) => {
   return null;
 };
 
+/*
+ * Zustand der Solarheizung (Iteration 19c) — die EINE Regel für Mini und
+ * Voll: aktiv wie solarAktiv; bypass = Steuerung (switch_entity) an, aber
+ * das Wasser läuft laut active_entity nicht übers Feld. Dann: Powerbutton
+ * bernstein "Steuerung an / Bypass", Panels entsättigt, Pfeile blass.
+ */
+export const solarZustand = (c = {}, hass) => {
+  const aktiv = solarAktiv(c, hass);
+  const sw = hass?.states?.[c.switch_entity];
+  const steuerungAn = !!sw && isOn(String(sw.state).toLowerCase());
+  return { aktiv, bypass: !!c.active_entity && steuerungAn && aktiv === false };
+};
+
 export const solarHasEntity = (c = {}) =>
   !!(c.switch_entity || c.temp_in_entity || c.temp_out_entity || c.power_entity);
 
@@ -126,16 +139,27 @@ export class TomtutPoolSlotSolar extends SlotBase {
     const showOut = c.show_temp_out !== false && !!c.temp_out_entity;
     const showPower = c.show_power !== false && !!c.power_entity;
     const showArrows = c.show_arrows !== false;
+    const zustand = solarZustand(c, this.hass);
+    /* läuft nicht (aus oder Bypass): Panels dezent entsättigt, Pfeile blass */
+    const ruht = zustand.aktiv === false;
 
     return this.renderSlot(html`
       ${c.label ? html`<h3 class="slot-title">${c.label}</h3>` : nothing}
-      <div class="img-wrap">
+      <div class="img-wrap ${ruht ? "ruht" : ""} ${zustand.bypass ? "bypass" : ""}">
         ${this.renderGeraeteBild({ kind: "solar", alt: "Solarheizung" })}
         ${showArrows ? html`${this.renderPfeil("in")}${this.renderPfeil("out")}` : nothing}
 
         ${showPowerBtn
           ? this.renderPowerButton({
               on: this._isOn(c.switch_entity),
+              standby: zustand.bypass,
+              hinweis: {
+                oben: "Steuerung an",
+                unten: "Bypass",
+                /* mittig am Knopf: darunter sitzt das Vorlauf-Thermometer */
+                lage: "mitte",
+                titel: "Solarsteuerung an, Wasser läuft aber nicht übers Feld (Bypass) — Steuerung ausschalten (mit Rückfrage)",
+              },
               top: this._v("power_btn_top"),
               left: this._v("power_btn_left"),
               scale: this._v("power_btn_scale"),
@@ -194,6 +218,15 @@ export class TomtutPoolSlotSolar extends SlotBase {
         transform: translate(-50%, -50%);
         pointer-events: none;
         z-index: 2;
+      }
+      /* Iteration 19c: Solarheizung läuft nicht (aus/Bypass) */
+      .img-wrap.ruht .bild-flaeche img {
+        filter: grayscale(0.7);
+        opacity: 0.7;
+      }
+      .img-wrap.ruht > img.flow-arrow {
+        opacity: 0.22;
+        filter: grayscale(1);
       }
     `,
   ];

@@ -246,14 +246,20 @@ export class SlotBase extends LitElement {
     return ["", "unknown", "unavailable"].includes(s);
   }
 
-  renderPowerButton({ on, top, left, scale, standby = false }) {
+  renderPowerButton({ on, top, left, scale, standby = false, hinweis = null }) {
+    /* hinweis (It19c): { oben, unten, titel } — Standard ist die WP ("Strom an / WP aus") */
+    const h = hinweis || {
+      oben: "Strom an",
+      unten: "WP aus",
+      titel: "Steckdose an, Wärmepumpe aus (Standby) — Steckdose ausschalten (mit Rückfrage)",
+    };
     const unbekannt = !on && this._powerUnbekannt;
     return html`
       <div
         class="power-badge ${on ? "on" : unbekannt ? "unbekannt" : "off"} ${standby ? "standby" : ""}"
         style="top:${top}%; left:${left}%; transform:scale(${(scale ?? 100) / 100});"
         title="${standby
-          ? "Steckdose an, Wärmepumpe aus (Standby) — Steckdose ausschalten (mit Rückfrage)"
+          ? h.titel
           : unbekannt
           ? "Zustand unbekannt — Einschalten"
           : on
@@ -263,7 +269,7 @@ export class SlotBase extends LitElement {
       >
         <ha-icon icon="mdi:power"></ha-icon>
         ${standby
-          ? html`<span class="power-hinweis"><b>Strom an</b><span>WP aus</span></span>`
+          ? html`<span class="power-hinweis ${h.lage || ""}"><b>${h.oben}</b><span>${h.unten}</span></span>`
           : nothing}
       </div>
     `;
