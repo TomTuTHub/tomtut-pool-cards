@@ -554,7 +554,7 @@ const renderZeile = (x, i) => html`<span
 
 const renderKachel = (card, k, nr) => html`
   <div
-    class="kachel ${k.zustand} typ-${k.typ} dichte-${miniDichte(k.zeilen.length)}"
+    class="kachel ${k.zustand} typ-${k.typ} dichte-${miniDichte(k.zeilen.length)} ${k.zeilen.length >= 5 ? "viele" : ""}"
     role="button"
     tabindex="0"
     data-mini="${nr}"
@@ -1013,6 +1013,13 @@ export const miniStyles = css`
   .kachel.dichte-raster .k-text,
   .kachel.dichte-raster .k-name {
     white-space: nowrap;
+  }
+  .kachel.dichte-raster .k-name {
+    line-height: 1;
+  }
+  /* ab 5 Werten: Bild etwas kleiner, damit die Kachel nicht davonwächst */
+  .kachel.dichte-raster.viele .k-bild {
+    --kb-h: 44px;
   }
   .kachel.dichte-raster .k-zeile.badge .k-text {
     white-space: normal;

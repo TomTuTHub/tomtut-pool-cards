@@ -1653,6 +1653,12 @@ for (const breite of [536, 380]) {
     basis.map((sl, i) => (i === 0 ? { ...sl, mini_show: wp } : i === 1 ? { ...sl, mini_show: pumpe } : sl));
   const TYPISCH = mit(["modus", "watt", "ist", "soll"], ["stufe", "watt", "temp", "status"]);
   const VOLL6 = mit(["modus", "watt", "ist", "soll", "freigabe", "status"], ["stufe", "watt", "temp", "status"]);
+  await checkAsync("It19 typisch (Pumpe 4 + WP 4) bei 494 px wie im echten HA: <= 282 px", async () => {
+    const m = await i17Bauen(page, 494, I17_THEMES["Liquid Glass"], { slots: TYPISCH });
+    assert.deepEqual(m.befunde, []);
+    assert.ok(m.hoehe <= I17_MAX_500, `${m.hoehe} px`);
+    results.push(`       typisch bei 494 px: Card ${m.breite}x${m.hoehe} px`);
+  });
   for (const fill of ["schwarz", "weiss", "transparent"]) {
     for (const [themeName, theme] of Object.entries(I17_THEMES)) {
       await checkAsync(`It19 Kacheln ${fill}, ${themeName}, Pumpe 4 + WP 4 Werte: <= ${I17_MAX_500} px, nichts abgeschnitten`, async () => {
