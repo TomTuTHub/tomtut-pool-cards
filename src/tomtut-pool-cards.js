@@ -78,6 +78,7 @@ export {
   miniDichte,
   MINI_KACHEL_FILLS,
   miniKachelFill,
+  MINI_WERT_NAMEN,
 } from "./mini.js";
 export {
   CUSTOM_MAX_ENTRIES,

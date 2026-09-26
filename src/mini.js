@@ -143,6 +143,20 @@ export const MINI_WERTE = {
   ],
 };
 
+/* Kurzname je Wert — steht im Raster (ab 3 Werten) klein über dem Wert (It19b) */
+export const MINI_WERT_NAMEN = {
+  stufe: "Stufe",
+  watt: "Watt",
+  temp: "Temp",
+  status: "Status",
+  modus: "Modus",
+  ist: "Ist",
+  soll: "Soll",
+  freigabe: "Freigabe",
+  vorlauf: "Vorlauf",
+  ruecklauf: "Rücklauf",
+};
+
 /* Ab hier wird die Kachel eng: Schrift kleiner, Editor warnt */
 export const MINI_WERTE_EMPFOHLEN = 3;
 
@@ -428,7 +442,13 @@ export const miniKachel = (slotRoh = {}, hass) => {
       return k;
   }
 
-  for (const key of gewaehlt) if (werte[key]) k.zeilen.push(werte[key]());
+  for (const key of gewaehlt) {
+    if (!werte[key]) continue;
+    const zeile = werte[key]();
+    /* Raster: jede Zelle gleich gebaut — Name oben, Wert darunter (Pille ausgenommen) */
+    if (gewaehlt.length >= 3 && !zeile.punkt) zeile.name = MINI_WERT_NAMEN[key] || zeile.name;
+    k.zeilen.push(zeile);
+  }
   return k;
 };
 
@@ -530,8 +550,14 @@ const renderRad = (r) =>
       </div>`
     : nothing;
 
-const renderZeile = (x, i) => html`<span
-  class="k-zeile ${i ? "neben" : "haupt"} ${x.punkt ? `badge ${x.punkt}` : ""} ${x.warn ? "warn" : ""}"
+/* ungerade Zahl an Zellen (ohne Pille): die letzte spannt über beide Spalten */
+const zellBreit = (zeilen, i) => {
+  const zellen = zeilen.map((z, j) => (z.punkt ? -1 : j)).filter((j) => j >= 0);
+  return zeilen.length >= 3 && zellen.length % 2 === 1 && zellen[zellen.length - 1] === i;
+};
+
+const renderZeile = (x, i, breit = false) => html`<span
+  class="k-zeile ${i ? "neben" : "haupt"} ${x.punkt ? `badge ${x.punkt}` : ""} ${x.warn ? "warn" : ""} ${breit ? "breit" : ""}"
   >${x.pfeil
     ? html`<img
         class="k-pfeil"
@@ -564,7 +590,7 @@ const renderKachel = (card, k, nr) => html`
           : html`<ha-icon icon="${k.icon || "mdi:circle-medium"}"></ha-icon>`}
         ${k.gesperrt ? html`<span class="k-sperre">Gesperrt</span>` : nothing}
       </div>
-      ${k.zeilen.length ? html`<div class="k-werte">${k.zeilen.map(renderZeile)}</div>` : nothing}
+      ${k.zeilen.length ? html`<div class="k-werte">${k.zeilen.map((x, i) => renderZeile(x, i, zellBreit(k.zeilen, i)))}</div>` : nothing}
     </div>
   </div>
 `;
@@ -970,50 +996,63 @@ export const miniStyles = css`
     --kb-h: 50px;
   }
   .kachel.dichte-raster .k-innen {
-    padding: 6px 5px 7px;
+    padding: 6px 4px 7px;
   }
-  /* paarweise nebeneinander; ist ein Wert breiter als die halbe Kachel,
-     nimmt er die ganze Zeile — lieber eine Zeile mehr als abgeschnitten */
+  /* Raster (It19b): 2 Spalten, jede Zelle gleich — Name klein oben, Wert
+     darunter; Pille und eine übrige letzte Zelle über die volle Breite */
   .kachel.dichte-raster .k-werte {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 2px 4px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: auto;
+    gap: 2px 2px;
     width: 100%;
+    align-items: stretch;
   }
-  /* min-content: ein benannter Wert ("Ist 27,4 °C") stellt seinen Namen
-     notfalls über den Wert, statt die ganze Zeile zu belegen; Wert und
-     Name selbst brechen nie um */
   .kachel.dichte-raster .k-zeile,
   .kachel.dichte-raster .k-zeile.neben {
-    flex: 1 1 calc(50% - 2px);
-    min-width: min-content;
+    display: flex;
     flex-wrap: wrap;
-    row-gap: 0;
-    font-size: 12px;
-    font-weight: 700;
     justify-content: center;
+    align-items: center;
     column-gap: 3px;
-    line-height: 1.15;
+    row-gap: 0;
+    min-width: 0;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: -0.15px;
+    line-height: 1.1;
+  }
+  /* Name klein oben über die ganze Zelle, darunter (Pfeil +) Wert */
+  .kachel.dichte-raster .k-zeile .k-name {
+    order: -1;
+    flex: 0 0 100%;
+    text-align: center;
+    font-size: 9.5px;
+    line-height: 1.05;
+    opacity: 0.7;
+    letter-spacing: 0.2px;
+  }
+  .kachel.dichte-raster .k-zeile .k-pfeil {
+    width: 13px;
+  }
+  .kachel.dichte-raster .k-zeile.breit,
+  .kachel.dichte-raster .k-zeile.badge {
+    grid-column: 1 / -1;
   }
   .kachel.dichte-raster .k-zeile.badge {
-    flex-basis: 100%;
-    min-width: 0;
+    display: flex;
+    justify-content: center;
   }
   .kachel.dichte-raster .k-text,
   .kachel.dichte-raster .k-name {
     white-space: nowrap;
   }
-  .kachel.dichte-raster .k-name {
-    line-height: 1;
-  }
-  /* ab 5 Werten: Bild etwas kleiner, damit die Kachel nicht davonwächst */
-  .kachel.dichte-raster.viele .k-bild {
-    --kb-h: 44px;
-  }
   .kachel.dichte-raster .k-zeile.badge .k-text {
     white-space: normal;
+  }
+  /* ab 5 Werten: Bild kleiner, damit die Kachel nicht davonwächst */
+  .kachel.dichte-raster.viele .k-bild {
+    --kb-h: 40px;
   }
   .k-text {
     min-width: 0;

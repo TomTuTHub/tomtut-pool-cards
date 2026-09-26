@@ -4246,7 +4246,8 @@ check("It17 mini_show WP: alle sechs Werte, Ist/Soll mit Vorsatz, Freigabe als W
   const cfg = { ...MODUS_SEL, release_entity: FREI_ENT, mini_show: ["modus", "watt", "ist", "soll", "freigabe", "status"] };
   const k = pkg.miniKachel(cfg, selHass("Heizen Smart", { [FREI_ENT]: { state: "off", attributes: {}, last_changed: iso(60) } }));
   assert.deepEqual(zeilen(k), ["Heizen Smart", "820 W", "26,4 °C", "28 °C", "Gesperrt", "Gesperrt"]);
-  assert.deepEqual(k.zeilen.map((z) => z.name || ""), ["", "", "Ist", "Soll", "", ""]);
+  /* It19b: ab 3 Werten hat jede Zelle ihren Namen, nur die Modus-Pille nicht */
+  assert.deepEqual(k.zeilen.map((z) => z.name || ""), ["", "Watt", "Ist", "Soll", "Freigabe", "Status"]);
   assert.equal(k.zeilen[4].warn, true);
   assert.equal(pkg.miniDichte(k.zeilen.length), "raster");
   assert.deepEqual([1, 2, 3, 4].map(pkg.miniDichte), ["normal", "normal", "raster", "raster"]);
@@ -4305,7 +4306,8 @@ check("It17 mini_show Becken: nur temp + rx", () => {
   check("It17 mini_show im DOM: 4 Werte -> Raster (It19), Namen als k-name", () => {
     assert.ok(k[0].classList.contains("dichte-raster"));
     assert.equal(k[0].querySelectorAll(".k-zeile").length, 4);
-    assert.deepEqual([...k[0].querySelectorAll(".k-name")].map((x) => x.textContent), ["Ist", "Soll"]);
+    /* ohne Modus-Entity im hass ist "Modus" keine Pille, sondern eine Zelle */
+    assert.deepEqual([...k[0].querySelectorAll(".k-name")].map((x) => x.textContent), ["Modus", "Watt", "Ist", "Soll"]);
     assert.ok(k[1].classList.contains("dichte-normal"));
   });
   card.setConfig({ view: "mini", hero: { temp_entity: "sensor.pool_wassertemperatur", mini_hidden: true }, slots: [PUMP_CONFIG] });
@@ -4525,9 +4527,9 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
     assert.equal(k[1].querySelectorAll(".k-zeile").length, 6);
     assert.ok(k[1].querySelector(".k-zeile.badge"));
     const css = cssOf("tomtut-pool-dashboard");
-    /* paarweise: je Wert eine halbe Zeile, zu Breites bekommt die ganze */
-    assert.match(css, /\.kachel\.dichte-raster \.k-zeile\.neben\s*\{[^}]*flex:\s*1 1 calc\(50% - 2px\)[^}]*min-width:\s*min-content/);
-    assert.match(css, /\.kachel\.dichte-raster \.k-zeile\.badge\s*\{[^}]*flex-basis:\s*100%/);
+    /* It19b: echtes 2-Spalten-Raster, Pille und übrige letzte Zelle über beide Spalten */
+    assert.match(css, /\.kachel\.dichte-raster \.k-werte\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+    assert.match(css, /\.kachel\.dichte-raster \.k-zeile\.breit,\s*\.kachel\.dichte-raster \.k-zeile\.badge\s*\{[^}]*grid-column:\s*1 \/ -1/);
   });
   c6.remove();
 
@@ -4856,6 +4858,37 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
   ed2.remove();
 }
 
+
+/* ---- It19b: Zellen einheitlich (Name oben, Wert unten) ---- */
+{
+  check("It19b: unter 3 Werten ohne Namen, ab 3 jede Zelle mit Namen (Pille ausgenommen)", () => {
+    const zwei = pkg.miniKachel(PUMP_CONFIG, makeHass());
+    assert.deepEqual(zwei.zeilen.map((z) => z.name || ""), ["", ""]);
+    const vier = pkg.miniKachel({ ...PUMP_CONFIG, mini_show: ["stufe", "watt", "temp", "status"] }, makeHass());
+    assert.deepEqual(vier.zeilen.map((z) => z.name), ["Stufe", "Watt", "Temp", "Status"]);
+    const sol = pkg.miniKachel({ type: "solar", switch_entity: "switch.solarventil", temp_in_entity: "a", temp_out_entity: "b", mini_show: ["vorlauf", "ruecklauf", "status"] }, makeHass());
+    assert.deepEqual(sol.zeilen.map((z) => z.name), ["Vorlauf", "Rücklauf", "Status"]);
+  });
+  const c = await mount(
+    Dashboard,
+    { view: "mini", hero: { enabled: false }, slots: [
+      { ...PUMP_CONFIG, mini_show: ["stufe", "watt", "temp"] },
+      { ...MODUS_SEL, release_entity: FREI_ENT, mini_show: ["modus", "watt", "ist", "soll", "freigabe", "status"] },
+    ] },
+    selHass("Heizen Smart", { [FREI_ENT]: { state: "on", attributes: {}, last_changed: iso(60) } })
+  );
+  const k = [...c.shadowRoot.querySelectorAll(".kachel")];
+  check("It19b: ungerade Zellenzahl (ohne Pille) -> letzte Zelle .breit", () => {
+    const p = [...k[0].querySelectorAll(".k-zeile")];
+    assert.deepEqual(p.map((z) => z.classList.contains("breit")), [false, false, true]);
+    const w = [...k[1].querySelectorAll(".k-zeile")];
+    assert.ok(w[0].classList.contains("badge"));
+    /* Pille + 5 Zellen: die fünfte spannt über beide Spalten */
+    assert.deepEqual(w.map((z) => z.classList.contains("breit")), [false, false, false, false, false, true]);
+    assert.ok(w.slice(1).every((z) => z.querySelector(".k-name") && z.querySelector(".k-text")));
+  });
+  c.remove();
+}
 /* ------------------------------------------------------------------ */
 
 console.log(results.join("\n"));
