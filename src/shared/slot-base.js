@@ -190,6 +190,7 @@ export class SlotBase extends LitElement {
     if (!wrap?.getBoundingClientRect || !kasten?.getBoundingClientRect) return;
     const k = kasten.getBoundingClientRect();
     if (!k.width || !k.height || !wrap.getBoundingClientRect().height) return;
+    this._vorKlemmen(wrap);
     const cs = typeof getComputedStyle === "function" ? getComputedStyle(kasten) : null;
     const rand = (seite) => parseFloat(cs?.[`border${seite}Width`]) || 0;
     const w = {
@@ -216,6 +217,9 @@ export class SlotBase extends LitElement {
       }
     }
   }
+
+  /* Haken für Unterklassen: Layout-Korrekturen vor dem Klemmen */
+  _vorKlemmen() {}
 
   /* Bild geladen, Spalte breiter/schmaler: neu klemmen */
   _klemmBeobachter() {

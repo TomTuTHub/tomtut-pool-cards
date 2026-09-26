@@ -3,7 +3,7 @@ import { section, gruppe } from "../shared/fields.js";
 import { SHAPES } from "../shared/assets.js";
 import { TEIL_GROESSE_MIN, TEIL_GROESSE_MAX } from "../hero.js";
 import { FAN_SPEED_MIN, FAN_SPEED_MAX, stufenListe } from "../slots/pump.js";
-import { HP_MODES, modeFromState, optionZuordnung } from "../slots/heatpump.js";
+import { HP_MODES, modeFromState, optionZuordnung, modeWort, modeWortBekannt } from "../slots/heatpump.js";
 import { FAN_DESIGNS, slotLabel } from "../shared/slot-base.js";
 import { GROESSE_MIN, GROESSE_MAX } from "../shared/bild.js";
 import { domainOf, numOf } from "../shared/util.js";
@@ -37,7 +37,8 @@ import {
 const SCHALTER = ["switch", "input_boolean", "light"];
 const VERBRAUCH = ["sensor", "input_number"];
 const MESSWERT = ["sensor", "input_number", "number"];
-/* Soll: nur, was sich stellen lässt (Iteration 22, Bug A2) */
+/* Soll: nur, was sich stellen lässt (Iteration 22, Bug A2). Die climate-
+   Entity steht im Feld darüber; einzeln passt sie trotzdem. */
 const SOLL = ["climate", "number", "input_number"];
 const IST = ["climate", "sensor", "input_number", "number"];
 const MODUS = ["sensor", "select", "input_select", "climate"];
@@ -318,9 +319,13 @@ export const modusBefund = (hass, c = {}) => {
     : !attr && Array.isArray(a.hvac_modes)
     ? a.hvac_modes
     : [];
+  const modus = modeFromState(roh, c);
   return {
     roh: roh ?? "",
-    modus: modeFromState(roh, c),
+    modus,
+    /* Iteration 24: wie die Card — "heat" ist kein Tempo-Modus, aber als
+       "Heizen" erkannt; das ist kein Fehler (vorher rot "nicht zugeordnet") */
+    klartext: !modus && modeWortBekannt(roh) ? modeWort(roh) : "",
     optionen: optionen.map((o) => ({ wert: String(o), modus: modeFromState(o, c) })),
   };
 };
@@ -349,7 +354,13 @@ export const modusZeilen = (hass, c = {}) => {
     const auto = modeFromState(wert, ohneMap(c));
     const eigen = optionZuordnung(wert, c);
     const aktuell = eigen !== undefined ? eigen?.key || "" : auto?.key || "";
-    return { wert, auto: auto?.key || "", aktuell, name: String(c.mode_names?.[wert] ?? "") };
+    return {
+      wert,
+      auto: auto?.key || "",
+      aktuell,
+      name: String(c.mode_names?.[wert] ?? ""),
+      klartext: !aktuell && modeWortBekannt(wert) ? modeWort(wert) : "",
+    };
   });
 };
 
@@ -358,9 +369,13 @@ const modusZuordnungFelder = (f) => {
   const b = modusBefund(f.hass, c);
   const zeile = !b
     ? html`<div class="modus-befund">Erst die Modus-Entity wählen.</div>`
-    : html`<div class="modus-befund ${b.modus ? "ok" : "nein"}">
+    : html`<div class="modus-befund ${b.modus || b.klartext ? "ok" : "nein"}">
         Meldet gerade <b>${String(b.roh) || "—"}</b> →
-        ${b.modus ? html`<b>${b.modus.label}</b> ✓` : html`nicht zugeordnet ✗`}
+        ${b.modus
+          ? html`<b>${b.modus.label}</b> ✓`
+          : b.klartext
+          ? html`<b>${b.klartext}</b> ✓ <small>(ohne Stufe — Rad im normalen Tempo)</small>`
+          : html`nicht zugeordnet ✗`}
       </div>`;
   const zeilen = modusZeilen(f.hass, c);
   const setzeModus = (wert, auto, v) => {
@@ -381,7 +396,11 @@ const modusZuordnungFelder = (f) => {
   const auswahl = zeilen.length
     ? html`<div class="modus-zeilen">
         ${zeilen.map(
-          (z) => html`<div class="modus-zeile ${z.aktuell ? "ok" : "nein"}" data-modus-wert="${z.wert}">
+          (z) => html`<div
+            class="modus-zeile ${z.aktuell ? "ok" : z.klartext ? "klar" : "nein"}"
+            data-modus-wert="${z.wert}"
+            title="${z.klartext ? `Card zeigt „${z.klartext}“` : ""}"
+          >
             <span class="modus-wert">${z.wert}</span>
             <span class="modus-pfeil">→</span>
             <select
@@ -400,7 +419,7 @@ const modusZuordnungFelder = (f) => {
                   class="modus-name"
                   data-modus-name="${z.wert}"
                   .value="${z.name}"
-                  placeholder="Anzeigename (sonst „${z.wert}“)"
+                  placeholder="Anzeigename (sonst „${z.klartext || z.wert}“)"
                   @change="${(e) => setzeName(z.wert, e.target.value)}"
                 />`}
           </div>`
@@ -433,7 +452,7 @@ const modusZuordnungFelder = (f) => {
     "Modus-Zuordnung",
     html`${zeile} ${auswahl}`,
     /* zu — außer die aktuelle Meldung ist nicht zugeordnet */
-    !!b && !b.modus && String(b.roh) !== "" && !["unknown", "unavailable"].includes(String(b.roh))
+    !!b && !b.modus && !b.klartext && String(b.roh) !== "" && !["unknown", "unavailable"].includes(String(b.roh))
   );
 };
 
@@ -446,7 +465,6 @@ const klimaFeld = (f) => {
   const soll = String(f.raw("target_entity"));
   const ist = String(f.raw("current_entity"));
   const gleich = !!soll && soll === ist;
-  const getrennt = (soll || ist) && !gleich;
   return html`
     ${f._entityInput({
       label: "Klima-Entity (Soll + Ist)",
@@ -457,12 +475,11 @@ const klimaFeld = (f) => {
       listId: `${f.idPrefix}-klima`,
       onChange: (v) => f.update({ target_entity: v || undefined, current_entity: v || undefined }),
     })}
-    ${getrennt
-      ? html`<small class="getrennt" data-getrennt
-          >Getrennt gesetzt — Soll: <b>${soll || "—"}</b> · Ist: <b>${ist || "—"}</b> (ändern unter
-          Erweitert).</small
-        >`
-      : nothing}
+    <div class="oder-einzeln" data-oder-einzeln>
+      <div class="unter-titel">oder einzeln (ohne Klima-Entity)</div>
+      ${f.entity("Soll-Temperatur", "target_entity", "number.* oder input_number.* — mit +/−.", ...SOLL)}
+      ${f.entity("Ist-Temperatur", "current_entity", "sensor.*, input_number.* oder number.*.", ...IST)}
+    </div>
   `;
 };
 
@@ -552,19 +569,7 @@ export const heatpumpFields = (f) => {
       )}
     `,
     erweitert: [
-      gruppe(
-        "Soll und Ist getrennt",
-        html`
-          ${f.entity("Soll-Temperatur", "target_entity", "climate.*, number.* oder input_number.* — mit +/−.", ...SOLL)}
-          ${f.entity(
-            "Ist-Temperatur",
-            "current_entity",
-            "climate.* (current_temperature), sensor.* oder input_number.*.",
-            ...IST
-          )}
-          ${schrittWahl(f)}
-        `
-      ),
+      gruppe("Soll-Temperatur", schrittWahl(f)),
       gruppe(
         "Lüfter",
         html`

@@ -2185,15 +2185,27 @@ for (const breite of A1_BREITEN) {
 results.push(`       A1 Kastenbreiten: ${Object.entries(a1Befunde).map(([b, t]) => `${b}→${t}`).join(" · ")}`);
 
 /* A4: sehr langes WP-Label bleibt im Kasten */
-await checkAsync("It22 A4: 70 Zeichen WP-Label bleiben im Kasten (620 und 300 px)", async () => {
-  for (const breite of [620, 300]) {
+await checkAsync("It22/It24 A4: 70 Zeichen WP-Label bleiben im Kasten und liegen nicht unter dem Powerbutton", async () => {
+  const fehler = [];
+  for (const breite of [300, 390, 620, 1200]) {
     const k = await it22Messen(
       { hero: { enabled: false }, slots: [{ ...WP_VOLL, label_text: "Wärmepumpe im Technikraum hinter der Garage links neben dem Sandfilter" }] },
       breite
     );
-    const raus = it22Raus(k[0]);
-    assert.deepEqual(raus, [], `${breite} px: ${raus.join(", ")}`);
+    for (const x of it22Raus(k[0])) fehler.push(`${breite} px: ${x} ragt raus`);
+    const l = k[0].teile.find((t) => /label-badge/.test(t.name));
+    const p = k[0].teile.find((t) => /power-badge/.test(t.name));
+    if (l && p && ueberlappt(l.r, p.r)) fehler.push(`${breite} px: Label unter dem Powerbutton`);
+    if (!l || l.r.breit < 40) fehler.push(`${breite} px: Label weg/zu schmal`);
+    if (breite === 390) await page.locator("body > div").first().screenshot({ path: join(ausgabe, "it24-wp-langes-label-390.png") });
   }
+  assert.deepEqual(fehler, [], fehler.join(" | "));
+});
+await checkAsync("It24 A4: kurzes Label ('Wärmepumpe') bleibt unverändert breit", async () => {
+  const k = await it22Messen({ hero: { enabled: false }, slots: [{ ...WP_VOLL }] }, 390);
+  const l = k[0].teile.find((t) => /label-badge/.test(t.name));
+  const p = k[0].teile.find((t) => /power-badge/.test(t.name));
+  assert.ok(!ueberlappt(l.r, p.r));
 });
 
 /* A8 + A9: Becken — Einlauf-Kaestchen neben der Duese, Extremwerte geklemmt */

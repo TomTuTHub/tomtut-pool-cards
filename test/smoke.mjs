@@ -1098,8 +1098,8 @@ check("Editor (It23): kein 'Elemente anzeigen' mehr — Überschrift, dann Grund
   assert.ok(!/Elemente anzeigen/.test(ed2.shadowRoot.textContent));
   const cards = ed2.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)");
   for (const card of cards) {
-    const reihe = [...card.children].map((c) => c.dataset.abschnitt || (c.classList.contains("label-feld") ? "label" : c.tagName.toLowerCase()));
-    assert.deepEqual(reihe, ["label", "pflicht", "anaus", "anzeige", "optik", "erweitert"]);
+    const reihe = [...card.children].map((c) => c.dataset.abschnitt || (c.classList.contains("label-feld") ? "label" : c.dataset.typZeile !== undefined ? "typ" : c.tagName.toLowerCase()));
+    assert.deepEqual(reihe, ["typ", "label", "pflicht", "anaus", "anzeige", "optik", "erweitert"]);
     assert.equal(card.querySelector('[data-abschnitt="erweitert"]').open, false, "Erweitert ist offen");
   }
 });
@@ -2361,7 +2361,7 @@ check("Editor: die Groesse landet in der Slot-Config", () =>
 
 check("Editor: jeder Slot-Block traegt Nummer, Typ und Beschriftung", () => {
   const kopf = Array.from(ed7.shadowRoot.querySelectorAll(".kasten:not(.becken-block) .slot-ueberschrift")).map((el) =>
-    el.textContent.trim()
+    el.getAttribute("title")
   );
   assert.deepEqual(kopf, [
     "Kasten 1 · UV-C-Lampe · Entkeimung",
@@ -3347,7 +3347,7 @@ check("Modus-Badge: liegt in der z-index-Leiter (<= 10)", () => {
 check("seit (minutengenau): Format", () => {
   const jetzt = Date.parse("2026-09-22T12:00:00Z");
   const vor = (min) => new Date(jetzt - min * 60000).toISOString();
-  assert.equal(pkg.seitMinuten(vor(0.5), jetzt), "seit < 1 Min");
+  assert.equal(pkg.seitMinuten(vor(0.5), jetzt), "gerade eben");
   assert.equal(pkg.seitMinuten(vor(4), jetzt), "seit 4 Min");
   assert.equal(pkg.seitMinuten(vor(120), jetzt), "seit 2 Std");
   assert.equal(pkg.seitMinuten(vor(130), jetzt), "seit 2 Std 10 Min");
@@ -3426,7 +3426,8 @@ check("Editor: kurzer Live-Befund + je Option eine Zeile mit vorbelegtem Dropdow
   assert.equal(wert("Heizen Smart"), "heiz_smart");
   assert.equal(wert("Auto"), "");
   const auto = d.querySelector('.modus-zeile[data-modus-wert="Auto"]');
-  assert.ok(auto.classList.contains("nein"), "Auto nicht rot");
+  /* seit It24 wie die Card: "Auto" ist bekannter Klartext -> blau, nicht rot */
+  assert.ok(auto.classList.contains("klar"), "Auto nicht als Klartext markiert");
   assert.ok(auto.querySelector("[data-modus-name]"), "kein Anzeigename-Feld");
   assert.equal(d.querySelectorAll("[data-modus-name]").length, 1);
   assert.equal(d.querySelectorAll('input[data-key^="mode_map_"]').length, 0, "Freitextfelder trotz Optionen");
@@ -5131,7 +5132,7 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
   const hpLang = await mountSlotTyp({ ...HP_CONFIG, label_text: lang }, makeHass());
   check("It22 A4: langes WP-Label bekommt max-width + Ellipse, voller Text im Tooltip", () => {
     const l = hpLang.shadowRoot.querySelector(".label-badge");
-    assert.match(l.getAttribute("style"), /max-width:\s*[\d.]+%/);
+    assert.match(l.getAttribute("style"), /max-width:\s*min\([\d.]+%, var\(--label-frei, 100%\)\)/);
     assert.equal(l.getAttribute("title"), lang);
     const css = cssOf("tomtut-pool-slot-heatpump").replace(/\s+/g, " ");
     assert.match(css, /\.label-badge \{[^}]*text-overflow: ellipsis/);
@@ -5464,7 +5465,9 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
     assert.deepEqual(offen(e1), []);
     const k = e1.$('[data-kasten="1"]');
     assert.equal(k.getAttribute("style"), `--slot-farbe:${pkg.slotFarbe("pump")};`);
-    assert.equal(k.querySelector(".kasten-auf").textContent.replace(/\s+/g, " ").trim(), "▶ Kasten 2 · Poolpumpe · Filter");
+    assert.equal(k.querySelector(".slot-ueberschrift").getAttribute("title"), "Kasten 2 · Poolpumpe · Filter");
+    assert.equal(k.querySelector(".kasten-name").textContent, "Filter");
+    assert.equal(k.querySelector(".kasten-typ").textContent, "Poolpumpe");
   });
   check("It23 Akkordeon: ↑ am ersten und ↓ am letzten Kasten sind gesperrt", () => {
     assert.ok(e1.$('[data-kasten="0"] [data-aktion="hoch"]').disabled);
@@ -5528,7 +5531,9 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
     ],
   });
   const reihe = (karte) =>
-    [...karte.children].map((c) => c.dataset.abschnitt || (c.classList.contains("label-feld") ? "label" : c.className));
+    [...karte.children]
+      .map((c) => c.dataset.abschnitt || (c.classList.contains("label-feld") ? "label" : c.className))
+      .filter((x) => !String(x).includes("typ-zeile"));
   check("It23 Reihenfolge: jeder Kasten Überschrift → Grunddaten → Ein/Aus → Anzeige → Aussehen → Erweitert", () => {
     const k = e2.$$(".slot-card:not(.becken-card)");
     assert.deepEqual(reihe(k[0]), ["label", "pflicht", "anaus", "anzeige", "optik", "erweitert"], "WP");
@@ -5610,11 +5615,11 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
     assert.equal(e3.$('[data-key="klima"]').value, "climate.waermepumpe");
   });
   await setze(e3.ed, e3.$('[data-key="current_entity"]'), "sensor.pool_wassertemperatur");
-  check("It23 WP: Ist einzeln unter Erweitert geändert -> Hinweis 'getrennt', Klima-Feld leer", () => {
+  check("It24 WP: Ist einzeln direkt unter dem Klima-Feld geändert -> Klima-Feld leer, Soll bleibt", () => {
     assert.equal(e3.box.fired.slots[0].target_entity, "climate.waermepumpe");
-    assert.ok(e3.$("[data-getrennt]"));
     assert.equal(e3.$('[data-key="klima"]').value, "");
-    assert.equal(e3.$('[data-key="current_entity"]').closest("[data-abschnitt]").dataset.abschnitt, "erweitert");
+    assert.equal(e3.$('[data-key="current_entity"]').closest("[data-abschnitt]").dataset.abschnitt, "pflicht");
+    assert.ok(e3.$('[data-key="current_entity"]').closest("[data-oder-einzeln]"));
   });
   check("It23 WP: Schrittweite 'Automatisch (aus der Entity: 0,5)', Override nur unter Erweitert", () => {
     const sel = e3.$('select[data-key="target_step"]');
@@ -5728,6 +5733,166 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
       assert.equal(c.slots[1].current_entity, "climate.waermepumpe");
     });
     results.push(`       Neu-Anlage: ${klicks} Klicks (HA 5 + Editor ${klicks - 5})`);
+  }
+}
+
+/* ================================================================== */
+/* Iteration 24 — Restbefunde aus dem Retest (Testbericht F4)          */
+/* ================================================================== */
+{
+  const neuerEd = async (config, hass = makeHass()) => {
+    const ed = new Editor();
+    ed.setConfig(config);
+    ed.hass = hass;
+    document.body.appendChild(ed);
+    await ed.updateComplete;
+    const box = { fired: null };
+    ed.addEventListener("config-changed", (e) => {
+      box.fired = e.detail.config;
+      ed.setConfig(e.detail.config);
+    });
+    return { ed, box, $: (s) => ed.shadowRoot.querySelector(s), $$: (s) => [...ed.shadowRoot.querySelectorAll(s)] };
+  };
+  const setze = async (ed, el, wert, ev = "input") => {
+    el.value = wert;
+    el.dispatchEvent(new dom.window.Event(ev));
+    await ed.updateComplete;
+  };
+
+  /* ---- F4-1: Soll/Ist ohne climate direkt sichtbar ---- */
+  const w = await neuerEd({ hero: { enabled: false }, slots: [{ type: "heatpump" }] });
+  check("It24 F4-1: unter der Klima-Entity sichtbar 'oder einzeln' mit Soll und Ist (nicht unter Erweitert)", () => {
+    const pflicht = w.$('[data-kasten="0"] [data-abschnitt="pflicht"]');
+    const felder = [...pflicht.querySelectorAll("[data-key]")].map((x) => x.dataset.key);
+    assert.deepEqual(felder, ["klima", "target_entity", "current_entity"]);
+    assert.match(pflicht.querySelector("[data-oder-einzeln]").textContent, /oder einzeln/);
+    assert.equal(w.$('[data-kasten="0"] [data-abschnitt="erweitert"] [data-key="target_entity"]'), null, "Soll doppelt");
+  });
+  await setze(w.ed, w.$('[data-key="target_entity"]'), "input_number.wp_soll");
+  await setze(w.ed, w.$('[data-key="current_entity"]'), "sensor.pool_wassertemperatur");
+  check("It24 F4-1: einzeln gewählt landet in target_entity / current_entity", () => {
+    assert.equal(w.box.fired.slots[0].target_entity, "input_number.wp_soll");
+    assert.equal(w.box.fired.slots[0].current_entity, "sensor.pool_wassertemperatur");
+  });
+
+  /* ---- F4-2: Kasten-Köpfe: Name vor Typ, nie doppelt ---- */
+  const k = await neuerEd({
+    hero: { enabled: false },
+    slots: [
+      { type: "heatpump", label_text: "Wärmepumpe" },
+      { type: "custom", title: "Poolschalter" },
+      { type: "custom", title: "Werte" },
+      { type: "pump" },
+    ],
+  });
+  const kopf = (i) => {
+    const u = k.$(`[data-kasten="${i}"] .slot-ueberschrift`);
+    return [u.querySelector(".kasten-nr").textContent, u.querySelector(".kasten-name").textContent, u.querySelector(".kasten-typ")?.textContent ?? null];
+  };
+  check("It24 F4-2: Kopf = Nummer · Name, Typ klein dahinter; Name gleich Typ nur einmal", () => {
+    assert.deepEqual(kopf(0), ["1", "Wärmepumpe", null]);
+    assert.deepEqual(kopf(1), ["2", "Poolschalter", "Freifeld"]);
+    assert.deepEqual(kopf(2), ["3", "Werte", "Freifeld"]);
+    assert.deepEqual(kopf(3), ["4", "Poolpumpe", null]);
+    assert.equal(k.$('[data-kasten="0"] .slot-ueberschrift').getAttribute("title"), "Kasten 1 · Wärmepumpe");
+  });
+  check("It24 F4-2: der Typ-Hinweis gibt am Handy zuerst nach (flex-shrink), der Name bleibt", () => {
+    const css = cssOf("tomtut-pool-dashboard-editor").replace(/\s+/g, " ");
+    assert.match(css, /\.kasten-typ \{[^}]*flex: 0 100 auto/);
+    assert.match(css, /\.kasten-name \{[^}]*flex: 0 1 auto/);
+  });
+
+  /* ---- F4-7: Typ ändern oben im Kasten ---- */
+  check("It24 F4-7: 'Typ' steht als erste Zeile im Kasten, nicht mehr unter Erweitert", () => {
+    const karte = k.$('[data-kasten="3"] .slot-card');
+    assert.ok(karte.firstElementChild.matches("[data-typ-zeile]"));
+    assert.equal(karte.querySelector('[data-abschnitt="erweitert"] select[data-key="type"]'), null);
+  });
+
+  /* ---- F4-4: Preset "none" ---- */
+  const klima = {
+    state: "heat",
+    attributes: { hvac_modes: ["off", "heat"], preset_modes: ["none", "eco", "comfort"], preset_mode: "none", temperature: 28, current_temperature: 27 },
+    last_changed: iso(60),
+  };
+  check("It24 F4-4: Preset 'none' heißt 'Kein Preset' und bekommt kein zweites ✓", () => {
+    const g = pkg.modusWahl(klima, { mode_entity: "climate.wp" });
+    const alle = g.flatMap((x) => x.optionen);
+    assert.equal(alle.filter((o) => o.aktiv).length, 1);
+    assert.equal(alle.find((o) => o.aktiv).wert, "heat");
+    assert.equal(g[1].optionen.find((o) => o.wert === "none").text, "Kein Preset");
+  });
+
+  /* ---- F4-5: Editor-Befund wie die Card ---- */
+  const m = await neuerEd(
+    { hero: { enabled: false }, slots: [{ type: "heatpump", mode_entity: "climate.wp" }] },
+    makeHass({ "climate.wp": klima })
+  );
+  check("It24 F4-5: climate 'heat' -> Editor sagt 'Heizen ✓' (wie die Card), nicht rot", () => {
+    const b = m.$(".modus-befund");
+    assert.ok(b.classList.contains("ok"), b.className);
+    assert.match(b.textContent, /Heizen/);
+    const zeile = m.$('.modus-zeile[data-modus-wert="heat"]');
+    assert.ok(zeile.classList.contains("klar"), zeile.className);
+    assert.equal(m.$(".modus-zeile.nein"), null, "rote Zeile");
+    assert.equal(pkg.modeBadge(klima, { mode_entity: "climate.wp" }).text, "Heizen");
+  });
+
+  /* ---- F4-8: "gerade eben" ---- */
+  check("It24 F4-8: unter einer Minute 'gerade eben' statt '0 Sek'", () => {
+    const jetzt = Date.now();
+    assert.equal(pkg.seit(new Date(jetzt - 3000).toISOString(), jetzt), "gerade eben");
+    assert.equal(pkg.seit(new Date(jetzt - 120000).toISOString(), jetzt), "seit 2 Min");
+    assert.equal(pkg.seitMinuten(new Date(jetzt - 10000).toISOString(), jetzt), "gerade eben");
+  });
+  const pg = await mountSlotTyp(
+    { type: "pump", stage_entities: ["switch.shelly_pumpe_n1"], stage_from_power: false },
+    makeHass({ "switch.shelly_pumpe_n1": { state: "off", attributes: {}, last_changed: iso(2) } })
+  );
+  check("It24 F4-8: Pumpe direkt nach dem Tippen: 'gerade eben'", () =>
+    assert.match(pg.shadowRoot.querySelector(".stage-btn.active").textContent, /gerade eben/)
+  );
+
+  /* ---- Neu-Anlage ohne climate (Testbühne): jetzt ohne Umweg über Erweitert ---- */
+  {
+    const e = await neuerEd(Dashboard.getStubConfig(), makeHass({ "switch.shelly_pumpe_n1": { state: "off", attributes: {}, last_changed: iso(600) } }));
+    let klicks = 5;
+    const pick = async (kasten, key, wert) => {
+      klicks += 2;
+      const el = e.$(`[data-kasten="${kasten}"] [data-key="${key}"]`);
+      assert.ok(el && !el.closest("[hidden]") && !el.closest("details:not([open])"), `${key} nicht sichtbar`);
+      await setze(e.ed, el, wert);
+    };
+    const tipp = async (sel) => {
+      klicks += 1;
+      const el = e.$(sel);
+      assert.ok(el && !el.closest("[hidden]"), `${sel} nicht sichtbar`);
+      el.click();
+      await e.ed.updateComplete;
+    };
+    let fehler = "";
+    try {
+      await pick("becken", "temp_entity", "sensor.pool_wassertemperatur");
+      await tipp('[data-aktion="neu"]');
+      await tipp('.typ-kachel[data-typ="pump"]');
+      await pick("0", "stage_entities.0", "switch.shelly_pumpe_n1");
+      await tipp('[data-kasten="0"] [data-vorschlag="stage_entities,stop_entity"]');
+      await pick("0", "main_entity", "input_boolean.poolpumpe_schalter");
+      await tipp('[data-kasten="0"] [data-vorschlag="power_entity"]');
+      await tipp('[data-aktion="neu"]');
+      await tipp('.typ-kachel[data-typ="heatpump"]');
+      await pick("1", "switch_entity", "switch.waermepumpe");
+      await tipp('[data-kasten="1"] [data-vorschlag="power_entity"]');
+      await pick("1", "target_entity", "input_number.wp_soll");
+      await pick("1", "current_entity", "sensor.pool_wassertemperatur");
+    } catch (err) {
+      fehler = err.message;
+    }
+    check(`It24 Neu-Anlage ohne climate (Soll/Ist einzeln): ${klicks} Klicks, Ziel ≤ 24 (It23: 25)`, () => {
+      assert.equal(fehler, "");
+      assert.ok(klicks <= 24, String(klicks));
+      assert.equal(e.box.fired.slots[1].current_entity, "sensor.pool_wassertemperatur");
+    });
   }
 }
 

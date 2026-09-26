@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from "lit";
-import { Fields, editorStyles, abschnitt, erweitert, gruppe } from "../shared/fields.js";
+import { Fields, editorStyles, abschnitt, erweitert } from "../shared/fields.js";
 import { loadHaElements } from "../shared/ha-elements.js";
 import {
   DEFAULT_SHAPE,
@@ -678,11 +678,12 @@ export class TomtutPoolDashboardEditor extends LitElement {
     return html`<option value="${type}" selected>${meta.label}</option>`;
   }
 
+  /* Seit Iteration 24 oben im Kasten (vorher nur unter Erweitert) */
   _typFeld(index) {
     const slot = this._slots()[index] || {};
     return html`
-      <div class="row">
-        <span class="row-label">Typ ändern</span>
+      <div class="row typ-zeile" data-typ-zeile>
+        <span class="row-label">Typ</span>
         <select data-key="type" @change="${(e) => this._setTyp(index, e.target.value)}">
           ${this._altTypOption(slot.type)}
           ${slotTypeOptions().map((o) =>
@@ -692,7 +693,6 @@ export class TomtutPoolDashboardEditor extends LitElement {
           )}
         </select>
       </div>
-      <small>Beim Wechsel fallen die Felder des alten Typs weg; zurückstellen holt sie wieder.</small>
     `;
   }
 
@@ -700,11 +700,28 @@ export class TomtutPoolDashboardEditor extends LitElement {
    * Überschrift eines Kastens: "Kasten 3 · Poolpumpe · Filterpumpe".
    * Fehlt die Beschriftung, bleibt der Teil weg.
    */
+  _typKurz(slot) {
+    return (SLOT_TYPES[slot?.type]?.label || SLOT_TYPES.frame.label).replace(" (benutzerdefiniert)", "");
+  }
+
+  /* Langform (Kiosk-Liste, Löschfrage, Tooltip); Name = Typ nur einmal */
   _slotKopf(slot, index) {
-    /* kurz, damit neben ↑ ↓ ⧉ ✕ auch der Name noch Platz hat */
-    const typ = (SLOT_TYPES[slot?.type]?.label || SLOT_TYPES.frame.label).replace(" (benutzerdefiniert)", "");
+    const typ = this._typKurz(slot);
     const name = slotLabel(slot);
-    return `Kasten ${index + 1} · ${typ}${name ? ` · ${name}` : ""}`;
+    return `Kasten ${index + 1} · ${typ}${name && name !== typ ? ` · ${name}` : ""}`;
+  }
+
+  /*
+   * Kopfzeile (Iteration 24, Handy): Nummer · Name vorn, der Typ klein in
+   * Kennfarbe dahinter — schneidet am Handy der Platz ab, geht der Typ
+   * zuerst, der Name bleibt lesbar.
+   */
+  _kopfInhalt(slot, index) {
+    const typ = this._typKurz(slot);
+    const name = slotLabel(slot);
+    return html`<span class="kasten-nr">${index + 1}</span
+      ><span class="kasten-name">${name || typ}</span
+      >${name && name !== typ ? html`<span class="kasten-typ">${typ}</span>` : nothing}`;
   }
 
   _teile(index) {
@@ -740,11 +757,11 @@ export class TomtutPoolDashboardEditor extends LitElement {
     const f = this._fieldsFor(index);
     const typ = String(slot.type || "frame");
     return html`
-      ${labelFeld(f, "Überschrift", LABEL_PLATZHALTER[typ] || "")}
+      ${this._typFeld(index)} ${labelFeld(f, "Überschrift", LABEL_PLATZHALTER[typ] || "")}
       ${abschnitt("pflicht", t.pflicht)} ${abschnitt("anaus", t.anaus)} ${abschnitt("anzeige", t.anzeige)}
       ${abschnitt("optik", t.optik)}
       ${this._renderMiniWahl(slot, slot.type, (patch) => this._updateSlot(index, patch))}
-      ${erweitert(...(t.erweitert || []), gruppe("Typ", this._typFeld(index)))}
+      ${erweitert(...(t.erweitert || []))}
     `;
   }
 
@@ -761,7 +778,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
             @click="${() => this._umschalten(i)}"
           >
             <span class="pfeil ${offen ? "auf" : ""}">▶</span>
-            <span class="slot-ueberschrift">${this._slotKopf(slot, i)}</span>
+            <span class="slot-ueberschrift" title="${this._slotKopf(slot, i)}">${this._kopfInhalt(slot, i)}</span>
           </button>
           <div class="kasten-knoepfe">
             <button type="button" class="icon-btn" data-aktion="hoch" title="nach oben" ?disabled="${i === 0}" @click="${() => this._moveSlot(i, -1)}">↑</button>

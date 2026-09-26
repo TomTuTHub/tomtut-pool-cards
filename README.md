@@ -367,6 +367,17 @@ Wechsel fallen die Felder des alten Typs weg (seit Iteration 22 — vorher blieb
 Leichen stehen); zurückstellen im selben Editor-Durchgang holt sie wieder. `hidden` blendet
 nur aus und behält alles.
 
+#### Optionen, die jeder Kasten hat
+
+| Option | Standard | Beschreibung |
+|---|---|---|
+| `type` | `frame` | Der Kasten-Typ (Tabelle oben) |
+| `label` | – | Beschriftung (seit Iteration 23 einheitlich; `label_text` und `title` gelten weiter) |
+| `id` | – | Feste Kasten-ID, z.B. `kx7p2a`. Schreibt der Editor, sobald der Kiosk-Modus einen Kasten auswählt (Iteration 22). **Nicht löschen** — `kiosk_slots` verweist darauf |
+| `mini_hidden` | `false` | `true` = in der Mini-Ansicht keine Kachel für diesen Kasten (Iteration 17) |
+| `mini_show` | je Typ 1–2 Werte | Welche Werte die Mini-Kachel zeigt, z.B. `[stufe, watt, temp, status]` (Pumpe), `[modus, watt, ist, soll, freigabe, status]` (WP), `[vorlauf, ruecklauf, watt, status]` (Solar), `[status, watt, temp]` (UV), beim Freifeld die Eintragsnummern `["1", "3"]`. Beim Becken (`hero.mini_show`): `[temp, ph, rx, zulauf]` |
+| `confirm_off` | `true` (Freifeld-Buttons: `false`) | Vor dem Ausschalten nachfragen |
+
 **Beschriftung:** Seit Iteration 23 heißt sie bei jedem Typ `label`. Die alten Schlüssel
 `label_text` (Wärmepumpe, Becken) und `title` (Freifeld, Rahmen) gelten weiter und sehen
 gleich aus; der Editor stellt sie beim ersten Ändern auf `label` um.
@@ -379,7 +390,8 @@ gleich aus; der Editor stellt sie beim ersten Ändern auf `label` um.
 | `confirm_off` | `true` | Vor dem Ausschalten nachfragen (Editor: „Vor dem Ausschalten nachfragen"). `false` = sofort aus |
 | `power_entity` | – | Leistungssensor in W oder kW |
 | `target_entity` | – | Soll-Temperatur: `climate.*`, `number.*` oder `input_number.*` (gestellt per `climate.set_temperature`, `number.set_value` bzw. `input_number.set_value`). Ein `sensor.*` wird nur angezeigt, ohne +/− |
-| `target_step` | aus der Entity | Schrittweite von +/−. Ohne Angabe: `target_temp_step` (climate) bzw. `step` (number/input_number), sonst 0,5 |
+| `target_step` | aus der Entity | Schrittweite von +/−. Ohne Angabe: `target_temp_step` (climate) bzw. `step` (number/input_number), sonst 0,5. Im Editor unter „Erweitert → Soll-Temperatur“ |
+| (Editor) | – | „Klima-Entity (Soll + Ist)“ füllt `target_entity` und `current_entity` zugleich; direkt darunter „oder einzeln“ für Soll (`number`/`input_number`) und Ist (`sensor`/`input_number`/`number`) ohne climate (Iteration 24) |
 | `current_entity` | – | Ist-Temperatur: `climate.*` (`current_temperature`) oder `sensor.*` |
 | `fan_entity` / `fan_source` | – / `auto` | Woher der Lüfter seinen Zustand nimmt: `auto`, `entity`, `power` |
 | `fan_power_threshold` | `100` | Ab wie viel Watt der Lüfter als laufend gilt |
@@ -397,7 +409,7 @@ gleich aus; der Editor stellt sie beim ersten Ändern auf `label` um.
 | `mode_names` | – | Eigener Anzeigename für nicht zugeordnete Werte, z.B. `{ Auto: Automatik }` (Badge und Auswahl) |
 | `show_mode_badge` | `true` | **Betriebsmodus-Badge** (Iteration 14): Klartext wie „Heizen Boost“, „Kühlen“, „Auto“, „Aus“, bei `climate.*` mit Preset („Heizen · Komfort“); Unbekanntes erscheint als Rohwert. Farbe wie das Rad (Heizen rot, Kühlen blau). Braucht `mode_entity`; `false` blendet nur das Badge aus, Tempo/Farbe bleiben |
 | `mode_top` / `mode_left` / `mode_scale` | `86` / `64` / `100` | Lage und Größe des Modus-Badges in % des Bildes |
-| (Modus wählen) | – | Seit Iteration 15 ist das Badge ein Knopf: Tippen öffnet die Auswahl aller Modi der Entity (deutsche Namen, aktueller mit ✓). Gesetzt wird per `select.select_option` / `input_select.select_option`, bei `climate.*` per `set_hvac_mode` bzw. `set_preset_mode` (Optionen aus `options` / `hvac_modes` / `preset_modes`). `sensor.*` bleibt reine Anzeige. Ein Fehler beim Umschalten steht sichtbar im Dialog |
+| (Modus wählen) | – | Seit Iteration 15 ist das Badge ein Knopf: Tippen öffnet die Auswahl aller Modi der Entity (deutsche Namen, aktueller mit ✓). Gesetzt wird per `select.select_option` / `input_select.select_option`, bei `climate.*` per `set_hvac_mode` bzw. `set_preset_mode` (Optionen aus `options` / `hvac_modes` / `preset_modes`). `sensor.*` bleibt reine Anzeige. Ein Fehler beim Umschalten steht sichtbar im Dialog. Der climate-Preset `none` heißt „Kein Preset“ und bekommt kein eigenes ✓ (Iteration 24) |
 | `release_entity` | – | **Freigabekontakt** (optional): `switch`, `input_boolean` oder `binary_sensor`. Offen = die Wärmepumpe darf nicht laufen, geschlossen = freigegeben |
 | `show_release` | `false` im Editor | Freigabekontakt anzeigen. In YAML reicht `release_entity`; `show_release: false` schaltet ab |
 | `release_top` / `release_left` / `release_scale` | `84` / `24` / `100` | Lage und Größe der Freigabe-Anzeige in % des Bildes |
@@ -545,7 +557,7 @@ Entities sind optional; es reicht eine.
 | `label` | – | Überschrift über dem Bild |
 | `switch_entity` | – | Solarventil oder Solarpumpe → Powerbutton (`switch`, `input_boolean`, `light`) |
 | `confirm_off` | `true` | Vor dem Ausschalten nachfragen. `false` = sofort aus |
-| `active_entity` | – | Läuft das Wasser gerade übers Feld? (z.B. `binary_sensor` Ventil „AN“). Bestimmt den Zustand in der Mini-Ansicht; ohne Angabe zählt `switch_entity` |
+| `active_entity` | – | Läuft das Wasser gerade übers Feld? (z.B. `binary_sensor` Ventil „AN“, seit Iteration 22 auch Klartext wie ein `input_select` „Heizen“/„Bypass“). Bestimmt den Zustand in der Mini-Ansicht und den Bypass-Look (Steuerung an, Wasser läuft nicht übers Feld: Panels blass, Powerbutton bernstein); ohne Angabe zählt `switch_entity` |
 | `temp_in_entity` | – | Vorlauf (Wasser zum Absorber) → Thermometer am Zulauf **links unten**, beim blauen Pfeil |
 | `temp_out_entity` | – | Rücklauf (Wasser zurück ins Becken) → Thermometer am Ablauf **rechts oben**, beim roten Pfeil |
 | `power_entity` | – | Leistung der Solarpumpe in W oder kW → Watt-Box |
@@ -759,6 +771,21 @@ der Düse am Becken.
 Eine Ausnahme von „sieht aus wie vorher" ist bewusst gewählt: seit Iteration 5 zeigt ein
 Becken ohne weitere Angabe **Skimmer und Einlaufdüse**. Wer das nicht will, setzt
 `show_skimmer: false` bzw. `show_inlet: false`.
+
+**Neue Schlüssel seit Iteration 19** (alle optional, ohne sie rendert jede Config wie vorher):
+
+| Iteration | Schlüssel | Wo |
+|---|---|---|
+| 19 | `mode_map`, `mode_names`, `mini_tile_fill` | Wärmepumpe, Card |
+| 19c | `active_entity` | Solar |
+| 20 | `mini_skimmer_*`, `mini_inlet_*`, `mini_drain_*` | Becken |
+| 21 | `mini_card_fill` | Card |
+| 22 | `id` (Kasten), `kiosk_slots` mit IDs | Kasten, Card |
+| 23 | `label` für alle Typen | Kasten, Becken |
+
+Geändert hat sich dabei nur, wie Werte gelesen werden, nie ihre Bedeutung: `stage_entities` darf
+seit Iteration 22 auch ein einzelner Text sein, `shape` kennt Aliase (`nierenform`), `kiosk_slots`
+nimmt neben Nummern auch IDs.
 
 Felder, die es nicht mehr gibt (`image_variant`, `image_url`, `box_color`, `fan_dur_*`,
 `fan_color`, `power_color` und die übrigen Farbwähler), werden **ignoriert, nie abgelehnt**.

@@ -45,13 +45,14 @@ export const toWatt = (entity) => {
   return unit === "kw" ? v * 1000 : v;
 };
 
-/* "seit 46 Min" aus einem last_changed-Zeitstempel */
+/* "seit 46 Min" aus einem last_changed-Zeitstempel; unter einer Minute
+   "gerade eben" (Iteration 24 — "seit 0 Sek" las sich wie ein Fehler) */
 export const seit = (iso, now = Date.now()) => {
   if (!iso) return "";
   const t = Date.parse(iso);
   if (isNaN(t)) return "";
   const s = Math.max(0, (now - t) / 1000);
-  if (s < 60) return `seit ${Math.floor(s)} Sek`;
+  if (s < 60) return "gerade eben";
   const m = s / 60;
   if (m < 60) return `seit ${Math.floor(m)} Min`;
   const h = m / 60;
@@ -63,14 +64,14 @@ export const seit = (iso, now = Date.now()) => {
 /*
  * Wie `seit`, aber minutengenau unter einem Tag (Iteration 14, Freigabe-
  * kontakt): "seit 4 Min", "seit 2 Std 10 Min", "seit 3 Tagen". Unter einer
- * Minute "seit < 1 Min" — der Text läuft nur minütlich mit.
+ * Minute "gerade eben" (seit Iteration 24) — der Text läuft nur minütlich mit.
  */
 export const seitMinuten = (iso, now = Date.now()) => {
   if (!iso) return "";
   const t = Date.parse(iso);
   if (isNaN(t)) return "";
   const min = Math.floor(Math.max(0, now - t) / 60000);
-  if (min < 1) return "seit < 1 Min";
+  if (min < 1) return "gerade eben";
   if (min < 60) return `seit ${min} Min`;
   if (min < 24 * 60) {
     const h = Math.floor(min / 60);

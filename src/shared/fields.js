@@ -537,6 +537,16 @@ export const editorStyles = css`
     border-left-color: var(--error-color, #c62828);
     background: rgba(198, 40, 40, 0.1);
   }
+  .modus-zeile.klar {
+    border-left-color: var(--info-color, #039be5);
+  }
+  .oder-einzeln {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-left: 10px;
+    border-left: 2px dashed var(--divider-color, #ccc);
+  }
   .modus-zeile.nein .modus-wert {
     color: var(--error-color, #c62828);
   }
@@ -821,6 +831,43 @@ export const editorStyles = css`
   .kasten-auf .eintrag-titel {
     font-size: 13px;
     font-weight: 600;
+  }
+  /* Kopf: Nummer · Name, Typ klein in Kennfarbe (Iteration 24) */
+  .kasten-auf .slot-ueberschrift {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+  }
+  .kasten-nr {
+    flex: none;
+    color: var(--secondary-text-color, #888);
+  }
+  .kasten-nr::after {
+    content: " ·";
+  }
+  .kasten-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .kasten-typ {
+    flex: 0 100 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 8px;
+    color: var(--slot-farbe, var(--secondary-text-color, #888));
+    border: 1px solid var(--slot-farbe, var(--divider-color, #ccc));
+  }
+  .typ-zeile select {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 4px 6px;
   }
   .pfeil {
     flex: none;

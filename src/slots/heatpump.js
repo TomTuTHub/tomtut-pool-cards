@@ -249,6 +249,9 @@ const MODE_ART = {
 
 const totWert = (s) => ["", "unknown", "unavailable", "none"].includes(normZustand(s));
 
+/* Kennt die Card diesen Wert als Klartext (heat -> Heizen …)? */
+export const modeWortBekannt = (s) => Object.prototype.hasOwnProperty.call(MODE_WOERTER, normZustand(s));
+
 export const modeWort = (s) => {
   const n = normZustand(s);
   return Object.prototype.hasOwnProperty.call(MODE_WOERTER, n)
@@ -330,7 +333,11 @@ export const modeBadge = (e, c = {}) => {
  * Attribut oder bei sensor.* ist nichts wählbar (nur Anzeige).
  * Anzeigenamen über dasselbe Mapping wie das Badge.
  */
-const optionText = (wert, c) => modeFromState(wert, c)?.label || modusName(wert, c) || modeWort(wert);
+/* "none" ist bei climate das Fehlen eines Presets (Iteration 24: erschien
+   roh und mit zweitem ✓ neben der Betriebsart) */
+const istKeinPreset = (w) => normZustand(w) === "none";
+const optionText = (wert, c) =>
+  istKeinPreset(wert) ? "Kein Preset" : modeFromState(wert, c)?.label || modusName(wert, c) || modeWort(wert);
 
 export const modusWahl = (e, c = {}) => {
   const id = c.mode_entity;
@@ -349,7 +356,7 @@ export const modusWahl = (e, c = {}) => {
             optionen: liste.map((w) => ({
               wert: String(w),
               text: optionText(w, c),
-              aktiv: normZustand(w) === normZustand(aktuell),
+              aktiv: !istKeinPreset(w) && normZustand(w) === normZustand(aktuell),
             })),
           },
         ]
@@ -826,6 +833,29 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
     this._stepTarget(-1);
   }
 
+  /*
+   * Freitext nicht unter dem Powerbutton (Iteration 24, Rest von A4): liegt
+   * ein langes Label auf gleicher Höhe wie der Knopf, wird es symmetrisch so
+   * weit gekürzt, dass es rechts vom Knopf beginnt. Kurze Labels bleiben,
+   * wie sie sind.
+   */
+  _vorKlemmen(wrap) {
+    const label = wrap.querySelector(".label-badge");
+    if (!label) return;
+    label.style.removeProperty("--label-frei");
+    const knopf = wrap.querySelector(".power-badge");
+    if (!knopf) return;
+    const l = label.getBoundingClientRect();
+    const b = knopf.getBoundingClientRect();
+    const w = wrap.getBoundingClientRect();
+    const hoch = l.top < b.bottom && b.top < l.bottom;
+    if (!hoch || l.left >= b.right + 2 || l.right <= b.left - 2) return;
+    const mitte = (l.left + l.right) / 2;
+    const frei = Math.min(mitte - b.right, w.right - mitte) - 4;
+    const s = (Number(this._v("label_scale")) || 100) / 100;
+    label.style.setProperty("--label-frei", `${Math.max(16, Math.floor((2 * frei) / s))}px`);
+  }
+
   /* Rendert immer — auch ohne hass und ohne eine einzige Entity. */
   render() {
     const c = this.config || {};
@@ -948,10 +978,10 @@ export class TomtutPoolSlotHeatpump extends SlotBase {
                 class="label-badge ${this._v("label_box") === false ? "no-bg" : ""}"
                 style="top:${this._v("label_top")}%; left:${this._v(
                   "label_left"
-                )}%; transform:translateX(-50%) scale(${(this._v("label_scale") ?? 100) / 100}); max-width:${Math.max(
+                )}%; transform:translateX(-50%) scale(${(this._v("label_scale") ?? 100) / 100}); max-width:min(${Math.max(
                   10,
                   labelMax
-                )}%;"
+                )}%, var(--label-frei, 100%));"
                 title="${labelText}"
               >
                 ${labelText}
