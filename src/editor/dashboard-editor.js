@@ -150,6 +150,18 @@ export class TomtutPoolDashboardEditor extends LitElement {
     if (this._offen === undefined) this._offen = new Set(istFrisch(this._config) ? ["becken"] : []);
   }
 
+  /*
+   * Neu angelegter Kasten bzw. geöffnete Typ-Wahl: ins Bild holen — im
+   * HA-Dialog lägen sie sonst unterhalb des sichtbaren Bereichs.
+   */
+  updated(changed) {
+    super.updated?.(changed);
+    if (!this._scrollZiel) return;
+    const el = this.renderRoot?.querySelector?.(this._scrollZiel);
+    this._scrollZiel = null;
+    if (typeof el?.scrollIntoView === "function") el.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+
   _emit(next) {
     this._config = next;
     this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: next } }));
@@ -478,6 +490,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
     const index = this._slots().length;
     this._typWahl = false;
     this._offen = new Set([String(index)]);
+    this._scrollZiel = `[data-kasten="${index}"]`;
     if (typ === "custom") this._eintragOffen = new Set([...this._eintragOffen, `${index}:0`]);
     this._emit({ ...this._config, slots: [...this._slots(), neu] });
   }
@@ -526,6 +539,7 @@ export class TomtutPoolDashboardEditor extends LitElement {
     slots.splice(index + 1, 0, kopie);
     this._offenUmrechnen((i) => (i > index ? i + 1 : i));
     this._offen = new Set([String(index + 1)]);
+    this._scrollZiel = `[data-kasten="${index + 1}"]`;
     this._emit({ ...this._config, slots });
   }
 
@@ -687,7 +701,8 @@ export class TomtutPoolDashboardEditor extends LitElement {
    * Fehlt die Beschriftung, bleibt der Teil weg.
    */
   _slotKopf(slot, index) {
-    const typ = SLOT_TYPES[slot?.type]?.label || SLOT_TYPES.frame.label;
+    /* kurz, damit neben ↑ ↓ ⧉ ✕ auch der Name noch Platz hat */
+    const typ = (SLOT_TYPES[slot?.type]?.label || SLOT_TYPES.frame.label).replace(" (benutzerdefiniert)", "");
     const name = slotLabel(slot);
     return `Kasten ${index + 1} · ${typ}${name ? ` · ${name}` : ""}`;
   }
@@ -807,7 +822,15 @@ export class TomtutPoolDashboardEditor extends LitElement {
   /* Neu-Anlage: erst den Typ wählen, als Kacheln mit Gerätebild */
   _renderNeu() {
     if (!this._typWahl) {
-      return html`<button type="button" class="add-btn" data-aktion="neu" @click="${() => (this._typWahl = true)}">
+      return html`<button
+        type="button"
+        class="add-btn"
+        data-aktion="neu"
+        @click="${() => {
+          this._typWahl = true;
+          this._scrollZiel = '[data-block="typ-wahl"]';
+        }}"
+      >
         + Kasten hinzufügen
       </button>`;
     }

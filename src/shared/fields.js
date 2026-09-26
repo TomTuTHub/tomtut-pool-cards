@@ -833,8 +833,14 @@ export const editorStyles = css`
   }
   .kasten-knoepfe {
     display: flex;
-    gap: 4px;
+    gap: 3px;
     flex: none;
+  }
+  .kasten-knoepfe .icon-btn {
+    min-width: 30px;
+    height: 30px;
+    font-size: 14px;
+    padding: 0;
   }
   .icon-btn[disabled] {
     opacity: 0.3;
