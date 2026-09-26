@@ -338,6 +338,14 @@ Iteration 22).
 | `enabled` | `true` | Rahmen um jeden Slot |
 | `fill` | `transparent` | `transparent` (Theme-Hintergrund von HA), `weiss`, `schwarz` |
 
+**Die Card selbst (seit Iteration 26)** sieht immer aus wie eine normale HA-Karte: Hintergrund,
+Rand, Radius und Schatten kommen vom Theme (`--ha-card-background`, `--ha-card-border-*`,
+`--ha-card-box-shadow`) — auch bei `frame.enabled: false`. `frame` steuert nur die Kästen darin.
+Besteht eine Card nur aus **einem Kasten ohne Becken**, entfällt dessen eigener Rahmen: die
+HA-Karte ist der Rahmen, Innenabstand 16 px wie bei HA-Karten (bei `fill: weiss|schwarz` trägt die
+Karte die Füllung). Mit Becken oder mehreren Kästen bleiben die Kasten-Rahmen wie bisher, die
+Karte hat 12 px Innenabstand. Die Mini-Ansicht ist davon unberührt (`mini_card_fill`).
+
 `fill` ist die **einzige** Farbeinstellung. Sie gilt für den kompletten Kasten: Hintergrund,
 Fläche hinter dem Bild, Wertekästchen, Badges, Buttons, Laufrad und Schriftfarbe. Es gibt
 bewusst keine Farbwahl pro Element und keine hellen/dunklen Bildvarianten mehr.

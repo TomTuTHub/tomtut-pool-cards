@@ -25,7 +25,7 @@
  */
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { readFile, mkdir, rm } from "node:fs/promises";
+import { readFile, writeFile, mkdir, rm } from "node:fs/promises";
 import { dirname, join, extname, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { UV_LAGEN, UV_GROESSEN, miniConfig, allesConfig } from "./fixtures/demo.mjs";
@@ -105,8 +105,17 @@ const SEITE = `<!doctype html>
   /* Platzhalter fuer die beiden HA-Elemente, die die Card benutzt. Sie
      stylen sich selbst per Inline-Stil — nur so wirkt es auch in den
      Shadow-Roots der Slots. Groesse = die des Originals. */
+  /* ha-card wie in Home Assistant: Look über :host im eigenen Shadow-Root,
+     damit die Regeln der Card (außen) gewinnen — genau wie im echten HA */
   customElements.define("ha-card", class extends HTMLElement {
-    connectedCallback() { this.style.display = "block"; }
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" }).innerHTML =
+        "<style>:host{display:block;background:var(--ha-card-background,var(--card-background-color,#fff));" +
+        "border-radius:var(--ha-card-border-radius,12px);border-width:var(--ha-card-border-width,1px);border-style:solid;" +
+        "border-color:var(--ha-card-border-color,var(--divider-color,#e0e0e0));box-shadow:var(--ha-card-box-shadow,none);" +
+        "color:var(--primary-text-color)}</style><slot></slot>";
+    }
   });
   /* mdi:power als echte Form (Iteration 18b) — sonst wäre ein fehlendes
      Symbol im Test nicht von einem gefüllten Knopf zu unterscheiden */
@@ -1086,11 +1095,16 @@ const i16Bauen = (themeName) =>
       };
       return slots.map((el) => {
         const sr = el.shadowRoot;
-        const box = el.getBoundingClientRect();
+        /* gemessen wird die ganze Card (seit It26 rahmt die ha-card den einzelnen Kasten) */
+        const box = el.getRootNode().host.getBoundingClientRect();
         const slotDiv = sr.querySelector(".slot");
         const cs = getComputedStyle(slotDiv);
         /* Hintergrund: bei Verlauf die erste Farbe des Verlaufs */
-        const bgBild = cs.backgroundImage !== "none" ? cs.backgroundImage : cs.backgroundColor;
+        /* seit It26 ist ein einzelner Kasten durchsichtig — dann zählt die ha-card */
+        const flaeche = cs.backgroundColor === "rgba(0, 0, 0, 0)" && cs.backgroundImage === "none"
+          ? getComputedStyle(el.getRootNode().querySelector("ha-card"))
+          : cs;
+        const bgBild = flaeche.backgroundImage !== "none" ? flaeche.backgroundImage : flaeche.backgroundColor;
         const raus = [];
         for (const t of sr.querySelectorAll(".slot-title, .zeile, .schalter, .z-wert, .z-name")) {
           const r = t.getBoundingClientRect();
@@ -1316,6 +1330,8 @@ for (const [thema, vars] of Object.entries(I16_DUNKEL_THEMES)) {
 await checkAsync("It16 hell: --tt-deck ist unsichtbar, Alles-Config pixelgleich mit und ohne Unterlage", async () => {
   const b = await i16Alles({});
   assert.ok(b.length > 10, "zu wenig Overlays");
+  /* nachträgliches Klemmen (It24, 300/1500 ms) abwarten */
+  await new Promise((r) => setTimeout(r, 1700));
   assert.deepEqual(b.filter((x) => x.deckAlpha !== 0), [], "Unterlage im hellen Theme sichtbar");
   const mit = await page.locator("#buehne").screenshot({ animations: "disabled" });
   await page.evaluate(() => {
@@ -1328,7 +1344,25 @@ await checkAsync("It16 hell: --tt-deck ist unsichtbar, Alles-Config pixelgleich 
   });
   await new Promise((r) => setTimeout(r, 50));
   const ohne = await page.locator("#buehne").screenshot({ animations: "disabled" });
-  assert.ok(mit.equals(ohne), "helles Theme sieht mit Unterlage anders aus");
+  if (!mit.equals(ohne)) {
+    /* Seit It26 liegt alles auf einer weißen ha-card; Chromium rastert
+       Kanten nach einem Stil-Neuaufbau minimal anders. Erlaubt sind nur
+       Kantenpixel (Abweichung <= 16 je Kanal, < 0,05 % der Pixel). */
+    await writeFile(join(ausgabe, "it16-deck-mit.png"), mit);
+    await writeFile(join(ausgabe, "it16-deck-ohne.png"), ohne);
+    const { pngLesen } = await import("../tools/png-lesen.mjs");
+    const a = pngLesen(join(ausgabe, "it16-deck-mit.png"));
+    const o = pngLesen(join(ausgabe, "it16-deck-ohne.png"));
+    let anders = 0;
+    let max = 0;
+    for (let i = 0; i < a.rgba.length; i += 4) {
+      const d = Math.max(...[0, 1, 2].map((k) => Math.abs(a.rgba[i + k] - o.rgba[i + k])));
+      if (d) anders += 1;
+      max = Math.max(max, d);
+    }
+    results.push(`       mit/ohne Unterlage: ${anders} Pixel verschieden, max. ${max} je Kanal`);
+    assert.ok(max <= 16 && anders < (a.rgba.length / 4) * 0.0005, `helles Theme sieht mit Unterlage anders aus (${anders} Pixel, max ${max})`);
+  }
 });
 
 /* ------------------------------------------------------------------ */

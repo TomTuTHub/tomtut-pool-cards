@@ -327,7 +327,8 @@ const framedCard = await mount(
   {
     hero: { enabled: false },
     frame: { enabled: true, fill: "schwarz" },
-    slots: [{ type: "frame", title: "Leer" }],
+    /* zwei Kästen: ein einzelner hat seit It26 keinen eigenen Rahmen */
+    slots: [{ type: "frame", title: "Leer" }, { type: "frame", title: "Zweiter" }],
   },
   makeHass()
 );
@@ -2433,7 +2434,7 @@ check("Stapel: jede Card und jeder Slot bildet einen eigenen Stacking-Context", 
 });
 check("Stapel: die ha-card der Dashboard-Card sperrt ebenfalls ein", () => {
   const css = cssOf("tomtut-pool-dashboard");
-  const i = css.indexOf("ha-card {");
+  const i = css.indexOf("ha-card.voll {");
   const block = css.slice(i, css.indexOf("}", i));
   assert.match(block, /isolation:\s*isolate/);
   assert.match(block, /position:\s*relative/);
@@ -5927,6 +5928,50 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
     assert.equal(ed.shadowRoot.querySelector('[data-abschnitt="pflicht"]'), null);
   });
   ed.remove();
+}
+
+/* ================================================================== */
+/* Iteration 26 — die äußere Card sieht aus wie eine HA-Karte           */
+/* ================================================================== */
+{
+  const haCard = (c) => c.shadowRoot.querySelector("ha-card");
+  const einer = await mount(Dashboard, { hero: { enabled: false }, frame: { enabled: true, fill: "transparent" }, slots: [PUMP_CONFIG] }, makeHass());
+  const [ep] = await slotsVon(einer);
+  check("It26: ein Kasten ohne Becken -> ha-card 'einzeln', der Kasten ohne eigenen Rahmen", () => {
+    assert.ok(haCard(einer).classList.contains("einzeln"));
+    const cls = ep.shadowRoot.querySelector(".slot").className;
+    assert.match(cls, /einzeln/);
+    assert.doesNotMatch(cls, /framed/);
+  });
+  const zwei = await mount(Dashboard, { hero: { enabled: false }, slots: [PUMP_CONFIG, { type: "uv" }] }, makeHass());
+  const [zp] = await slotsVon(zwei);
+  check("It26: mehrere Kästen -> Kasten-Rahmen wie bisher", () => {
+    assert.ok(haCard(zwei).classList.contains("mehrere"));
+    assert.match(zp.shadowRoot.querySelector(".slot").className, /framed/);
+  });
+  const mitBecken = await mount(Dashboard, { slots: [PUMP_CONFIG] }, makeHass());
+  check("It26: Becken + ein Kasten -> Kasten-Rahmen wie bisher", () =>
+    assert.ok(haCard(mitBecken).classList.contains("mehrere"))
+  );
+  check("It26 CSS: ha-card der vollen Ansicht überschreibt Hintergrund/Rand/Schatten des Themes nicht mehr", () => {
+    const css = cssOf("tomtut-pool-dashboard").replace(/\s+/g, " ");
+    const block = css.slice(css.indexOf("ha-card.voll {"), css.indexOf("}", css.indexOf("ha-card.voll {")));
+    assert.doesNotMatch(block, /background|border:|border-(width|color|style|radius)|box-shadow/);
+    assert.match(css, /ha-card\.voll\.einzeln \{[^}]*padding: 16px/);
+    assert.match(cssOf("tomtut-pool-slot-custom").replace(/\s+/g, " "), /\.slot\.einzeln\.layout-liste, \.slot\.einzeln\.layout-kacheln \{[^}]*box-shadow: none/);
+  });
+  const mini = await mount(Dashboard, { view: "mini", hero: { enabled: false }, slots: [PUMP_CONFIG] }, makeHass());
+  check("It26: Mini bleibt, wie sie war (eigene ha-card.mini-karte, kein 'voll')", () => {
+    assert.ok(haCard(mini).classList.contains("mini-karte"));
+    assert.ok(!haCard(mini).classList.contains("voll"));
+  });
+  mini._miniOeffnen(1);
+  await mini.updateComplete;
+  const dlg = mini.shadowRoot.querySelector("dialog tomtut-pool-slot-pump");
+  await dlg.updateComplete;
+  check("It26: im Mini-Dialog behält der Kasten seinen Rahmen", () =>
+    assert.match(dlg.shadowRoot.querySelector(".slot").className, /framed/)
+  );
 }
 
 /* ------------------------------------------------------------------ */

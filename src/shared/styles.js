@@ -125,6 +125,15 @@ export const frameStyles = css`
   .slot.framed {
     border-color: var(--tt-line);
   }
+  /* Einziger Kasten einer Card (Iteration 26): kein eigener Rahmen, keine
+     Fläche, kein Innenabstand — das alles liefert die ha-card */
+  .slot.einzeln {
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
   /*
    * Kiosk-Modus (Iteration 15): gleicher Look, aber tot für Zeiger — kein
    * Hand-Cursor, kein Hover-/Klick-Feedback. Die eigentliche Sperre sitzt

@@ -359,6 +359,15 @@ export class TomtutPoolSlotCustom extends SlotBase {
         --tt-bg: var(--ha-card-background, var(--card-background-color, #ffffff));
         box-shadow: var(--ha-card-box-shadow, none);
       }
+      /* einziger Kasten (Iteration 26): die ha-card trägt Fläche, Rand,
+         Schatten und Abstand */
+      .slot.einzeln.layout-liste,
+      .slot.einzeln.layout-kacheln {
+        background: none;
+        box-shadow: none;
+        padding: 0;
+        border-radius: 0;
+      }
       .slot.fill-weiss.layout-liste,
       .slot.fill-weiss.layout-kacheln {
         --tt-fg2: rgba(0, 0, 0, 0.6);

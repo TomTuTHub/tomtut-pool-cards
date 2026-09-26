@@ -10,6 +10,12 @@
  * Verglichen wird die Geometrie (1 px Toleranz), nicht die Farbe — Kontrast-
  * Korrekturen sind erlaubt, verrutschte Layouts nicht.
  *
+ * Bewusst neu geschrieben (Iteration 26): die drei Kiosk-Flur-Cards haben
+ * jetzt den HA-Kartenrand und 16 px Innenabstand (Listen-Titel 5 px tiefer,
+ * Pumpenbild 243 statt 255 px breit, Card 10 px höher) — im echten HA mit
+ * Liquid Glass verglichen: gleiche Optik bzw. die Pumpe jetzt im Glas-Look
+ * wie die Nachbarkarten. Studio-Mini unverändert (0 px).
+ *
  * Referenz neu schreiben (nur bewusst, z.B. mit dem Bundle eines alten
  * Stands):  SNAPSHOT_UPDATE=1 [SNAPSHOT_DIST=/pfad/zu/tomtut-pool-cards.js] node test/prod-snapshot.mjs
  */
@@ -61,8 +67,17 @@ const SEITE = `<!doctype html>
   @font-face { font-family: "Roboto"; font-weight: 700 900; src: url("/test/fixtures/fonts/Roboto-Bold.woff2") format("woff2"); }
 </style>
 <script>
+  /* ha-card wie in Home Assistant: Look über :host im eigenen Shadow-Root,
+     damit die Regeln der Card (außen) gewinnen — genau wie im echten HA */
   customElements.define("ha-card", class extends HTMLElement {
-    connectedCallback() { this.style.display = "block"; }
+    constructor() {
+      super();
+      this.attachShadow({ mode: "open" }).innerHTML =
+        "<style>:host{display:block;background:var(--ha-card-background,var(--card-background-color,#fff));" +
+        "border-radius:var(--ha-card-border-radius,12px);border-width:var(--ha-card-border-width,1px);border-style:solid;" +
+        "border-color:var(--ha-card-border-color,var(--divider-color,#e0e0e0));box-shadow:var(--ha-card-box-shadow,none);" +
+        "color:var(--primary-text-color)}</style><slot></slot>";
+    }
   });
   customElements.define("ha-icon", class extends HTMLElement {
     connectedCallback() {

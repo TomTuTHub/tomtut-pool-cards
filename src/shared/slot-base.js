@@ -295,6 +295,8 @@ export class SlotBase extends LitElement {
   get _frameClasses() {
     const f = this.frame || {};
     const fill = ["transparent", "weiss", "schwarz"].includes(f.fill) ? f.fill : "transparent";
+    /* einzeln (Iteration 26): einziger Kasten der Card — die ha-card rahmt */
+    if (f.einzeln) return `slot einzeln fill-${fill}${this.bedienbar ? "" : " kiosk"}`;
     return `slot ${f.enabled === false ? "" : "framed"} fill-${fill}${this.bedienbar ? "" : " kiosk"}`;
   }
 

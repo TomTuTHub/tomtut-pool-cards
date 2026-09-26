@@ -161,9 +161,14 @@ export class TomtutPoolDashboardCard extends LitElement {
     const c = this._config;
     if (ansichtVon(c) === "mini") return renderMini(this);
     const heroOn = c.hero?.enabled !== false;
+    const kaesten = this._slotsMitNummer;
+    /* Iteration 26: ein einzelner Kasten ohne Becken hat keinen eigenen
+       Rahmen — die ha-card ist dann der Rahmen (kein Doppelrahmen) */
+    const einzeln = !heroOn && kaesten.length === 1;
+    const fill = ["transparent", "weiss", "schwarz"].includes(c.frame?.fill) ? c.frame.fill : "transparent";
 
     return html`
-      <ha-card>
+      <ha-card class="voll ${einzeln ? `einzeln fill-${fill}` : "mehrere"}">
         <div class="wrap">
           <div class="grid">
             ${heroOn
@@ -175,9 +180,7 @@ export class TomtutPoolDashboardCard extends LitElement {
                   .kiosk="${kioskGilt(c, KIOSK_BECKEN)}"
                 ></tomtut-pool-hero>`
               : nothing}
-            ${this._slotsMitNummer.map(({ slot, nr }) =>
-              this._renderSlot(slot, kioskGilt(c, nr, slot))
-            )}
+            ${kaesten.map(({ slot, nr }) => this._renderSlot(slot, kioskGilt(c, nr, slot), einzeln))}
           </div>
           ${!heroOn && !this._slotsMitNummer.length
             ? html`<p class="leer-hinweis">
@@ -195,8 +198,8 @@ export class TomtutPoolDashboardCard extends LitElement {
    * damit Lit die Elemente über Renders hinweg wiederverwendet und der
    * Slot-Zustand (Bestätigungsdialog, optimistische Stufe) erhalten bleibt.
    */
-  _renderSlot(slot, kiosk = false) {
-    const frame = this._config.frame;
+  _renderSlot(slot, kiosk = false, einzeln = false) {
+    const frame = einzeln ? { ...this._config.frame, einzeln: true } : this._config.frame;
     const type = SLOT_TYPES[slot.type]?.ready ? slot.type : "frame";
     switch (type) {
       case "heatpump":
@@ -260,11 +263,27 @@ export class TomtutPoolDashboardCard extends LitElement {
       isolation: isolate;
       z-index: 0;
     }
-    ha-card {
+    /*
+     * Iteration 26: die äußere ha-card sieht IMMER wie eine HA-Karte aus —
+     * Hintergrund, Rand, Radius und Schatten kommen aus dem Theme (die
+     * ha-card bringt sie selbst mit, hier wird nichts mehr überschrieben).
+     * frame.* steuert nur noch die Kästen darin. Innenabstand: 16 px wie
+     * eine HA-Karte bei einem einzelnen Kasten, 12 px bei mehreren.
+     */
+    /* Mini-Ansicht: unverändert wie vor Iteration 26 (mini.js stylt selbst) */
+    ha-card:not(.voll) {
       background: transparent;
       border: none;
       box-shadow: none;
       padding: 0;
+      overflow: visible;
+      position: relative;
+      isolation: isolate;
+      z-index: 0;
+    }
+    ha-card.voll {
+      padding: 12px;
+      box-sizing: border-box;
       overflow: visible;
       position: relative;
       isolation: isolate;
@@ -275,6 +294,18 @@ export class TomtutPoolDashboardCard extends LitElement {
     .wrap {
       container-type: inline-size;
       width: 100%;
+    }
+    ha-card.voll.einzeln {
+      padding: 16px;
+      height: 100%;
+    }
+    ha-card.voll.einzeln.fill-weiss {
+      background: #ffffff;
+      color: #111111;
+    }
+    ha-card.voll.einzeln.fill-schwarz {
+      background: #1e1e1e;
+      color: #ffffff;
     }
     /* leere Card (Iteration 22, Bug A16): statt 0 px ein Hinweis */
     .leer-hinweis {

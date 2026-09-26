@@ -84,47 +84,47 @@
   "hoehe": [0,0,380,318]
  },
  "flur-heizsteuerung-400": {
-  "card/tomtut-pool-slot-custom>div.slot#1": [0,0,400,250],
-  "card/tomtut-pool-slot-custom>h3.slot-title#1": [16,12,368,34],
-  "card/tomtut-pool-slot-custom>button.entry#1": [16,46,368,48],
-  "card/tomtut-pool-slot-custom>button.entry#2": [16,94,368,48],
-  "card/tomtut-pool-slot-custom>button.entry#3": [16,142,368,48],
-  "card/tomtut-pool-slot-custom>div.entry#1": [16,190,368,48],
-  "hoehe": [0,0,400,250]
+  "card/tomtut-pool-slot-custom>div.slot#1": [17,17,366,226],
+  "card/tomtut-pool-slot-custom>h3.slot-title#1": [17,17,366,34],
+  "card/tomtut-pool-slot-custom>button.entry#1": [17,51,366,48],
+  "card/tomtut-pool-slot-custom>button.entry#2": [17,99,366,48],
+  "card/tomtut-pool-slot-custom>button.entry#3": [17,147,366,48],
+  "card/tomtut-pool-slot-custom>div.entry#1": [17,195,366,48],
+  "hoehe": [0,0,400,260]
  },
  "flur-poolschalter-400": {
-  "card/tomtut-pool-slot-custom>div.slot#1": [0,0,400,250],
-  "card/tomtut-pool-slot-custom>h3.slot-title#1": [16,12,368,34],
-  "card/tomtut-pool-slot-custom>button.entry#1": [16,46,368,48],
-  "card/tomtut-pool-slot-custom>button.entry#2": [16,94,368,48],
-  "card/tomtut-pool-slot-custom>button.entry#3": [16,142,368,48],
-  "card/tomtut-pool-slot-custom>button.entry#4": [16,190,368,48],
-  "hoehe": [0,0,400,250]
+  "card/tomtut-pool-slot-custom>div.slot#1": [17,17,366,226],
+  "card/tomtut-pool-slot-custom>h3.slot-title#1": [17,17,366,34],
+  "card/tomtut-pool-slot-custom>button.entry#1": [17,51,366,48],
+  "card/tomtut-pool-slot-custom>button.entry#2": [17,99,366,48],
+  "card/tomtut-pool-slot-custom>button.entry#3": [17,147,366,48],
+  "card/tomtut-pool-slot-custom>button.entry#4": [17,195,366,48],
+  "hoehe": [0,0,400,260]
  },
  "flur-pumpe-420": {
-  "card/tomtut-pool-slot-pump>div.slot#1": [0,0,420,218],
-  "card/tomtut-pool-slot-pump>div.bild-flaeche#1": [12,19,267,179],
-  "card/tomtut-pool-slot-pump>img#1": [12,19,267,179],
-  "card/tomtut-pool-slot-pump>div.fan-overlay#1": [126,89,77,77],
-  "card/tomtut-pool-slot-pump>div.value-box#1": [20,140,97,49],
-  "card/tomtut-pool-slot-pump>div.thermo#1": [68,10,91,58],
-  "card/tomtut-pool-slot-pump>button.stage-btn#1": [289,12,119,44],
-  "card/tomtut-pool-slot-pump>button.stage-btn#2": [289,62,119,44],
-  "card/tomtut-pool-slot-pump>button.stage-btn#3": [289,112,119,44],
-  "card/tomtut-pool-slot-pump>button.stage-btn#4": [289,162,119,44],
-  "hoehe": [0,0,420,218]
+  "card/tomtut-pool-slot-pump>div.slot#1": [17,17,386,194],
+  "card/tomtut-pool-slot-pump>div.bild-flaeche#1": [17,27,260,175],
+  "card/tomtut-pool-slot-pump>img#1": [17,27,260,175],
+  "card/tomtut-pool-slot-pump>div.fan-overlay#1": [128,95,75,75],
+  "card/tomtut-pool-slot-pump>div.value-box#1": [27,147,89,46],
+  "card/tomtut-pool-slot-pump>div.thermo#1": [74,19,84,53],
+  "card/tomtut-pool-slot-pump>button.stage-btn#1": [287,17,116,44],
+  "card/tomtut-pool-slot-pump>button.stage-btn#2": [287,67,116,44],
+  "card/tomtut-pool-slot-pump>button.stage-btn#3": [287,117,116,44],
+  "card/tomtut-pool-slot-pump>button.stage-btn#4": [287,167,116,44],
+  "hoehe": [0,0,420,228]
  },
  "flur-pumpe-360": {
-  "card/tomtut-pool-slot-pump>div.slot#1": [0,0,360,218],
-  "card/tomtut-pool-slot-pump>div.bild-flaeche#1": [12,33,225,151],
-  "card/tomtut-pool-slot-pump>img#1": [12,33,225,151],
-  "card/tomtut-pool-slot-pump>div.fan-overlay#1": [108,92,65,65],
-  "card/tomtut-pool-slot-pump>div.value-box#1": [18,134,83,43],
-  "card/tomtut-pool-slot-pump>div.thermo#1": [57,25,81,49],
-  "card/tomtut-pool-slot-pump>button.stage-btn#1": [247,12,101,44],
-  "card/tomtut-pool-slot-pump>button.stage-btn#2": [247,62,101,44],
-  "card/tomtut-pool-slot-pump>button.stage-btn#3": [247,112,101,44],
-  "card/tomtut-pool-slot-pump>button.stage-btn#4": [247,162,101,44],
-  "hoehe": [0,0,360,218]
+  "card/tomtut-pool-slot-pump>div.slot#1": [17,17,326,194],
+  "card/tomtut-pool-slot-pump>div.bild-flaeche#1": [17,41,218,147],
+  "card/tomtut-pool-slot-pump>img#1": [17,41,218,147],
+  "card/tomtut-pool-slot-pump>div.fan-overlay#1": [110,98,63,63],
+  "card/tomtut-pool-slot-pump>div.value-box#1": [25,140,76,39],
+  "card/tomtut-pool-slot-pump>div.thermo#1": [63,35,73,45],
+  "card/tomtut-pool-slot-pump>button.stage-btn#1": [245,17,98,44],
+  "card/tomtut-pool-slot-pump>button.stage-btn#2": [245,67,98,44],
+  "card/tomtut-pool-slot-pump>button.stage-btn#3": [245,117,98,44],
+  "card/tomtut-pool-slot-pump>button.stage-btn#4": [245,167,98,44],
+  "hoehe": [0,0,360,228]
  }
 }
