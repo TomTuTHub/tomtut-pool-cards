@@ -221,15 +221,20 @@ export class SlotBase extends LitElement {
   /* Haken für Unterklassen: Layout-Korrekturen vor dem Klemmen */
   _vorKlemmen() {}
 
-  /* Bild geladen, Spalte breiter/schmaler: neu klemmen */
+  /*
+   * Bild geladen, Spalte breiter/schmaler, Icon im Powerbutton erst später
+   * da (ha-icon lädt nach, Iteration 24): neu klemmen. Beobachtet werden der
+   * Bildbereich und die Overlays, deren Größe erst nach dem Rendern feststeht.
+   */
   _klemmBeobachter() {
     const wrap = this.renderRoot?.querySelector?.(".img-wrap");
     if (!wrap || typeof ResizeObserver === "undefined") return;
-    if (this._roZiel === wrap) return;
+    const ziele = [wrap, ...wrap.querySelectorAll(".power-badge, .label-badge")];
+    if (this._roZiele && ziele.length === this._roZiele.length && ziele.every((z, i) => z === this._roZiele[i])) return;
     this._ro?.disconnect();
     this._ro = new ResizeObserver(() => this._klemmen());
-    this._ro.observe(wrap);
-    this._roZiel = wrap;
+    for (const z of ziele) this._ro.observe(z);
+    this._roZiele = ziele;
   }
 
   /* Defaults des jeweiligen Slots — Unterklassen überschreiben das */
