@@ -1957,6 +1957,8 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
   .kachel.dichte-raster .k-zeile.neben {
     flex: 1 1 calc(50% - 2px);
     min-width: min-content;
+    flex-wrap: wrap;
+    row-gap: 0;
     font-size: 12px;
     font-weight: 700;
     justify-content: center;

@@ -1683,7 +1683,8 @@ for (const breite of [536, 380]) {
       results.push(`       transparent ${themeName}: Schrift ${r.farbe}, Rand ${r.rand}`);
     });
   }
-  for (const breite of [500, 380]) {
+  /* 494 px: so breit ist die Card im echten HA (Sections-Spalte, Kacheln ~112 px) */
+  for (const breite of [500, 494, 380]) {
     await checkAsync(`It19 Grenzfall WP 6 + Pumpe 4 Werte bei ${breite} px: gemessen, nichts abgeschnitten`, async () => {
       const m = await i17Bauen(page, breite, I17_THEMES["Liquid Glass"], { slots: VOLL6 });
       assert.deepEqual(m.befunde, []);
