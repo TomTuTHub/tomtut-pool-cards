@@ -726,23 +726,23 @@ editor.hass = makeHass();
 document.body.appendChild(editor);
 await editor.updateComplete;
 
-check("Editor hat drei Schritte", () => {
-  const heads = Array.from(editor.shadowRoot.querySelectorAll(".step-head")).map((e) =>
-    e.textContent.trim()
+check("Editor (It23): Darstellung, Becken, Kästen, + Kasten, Kiosk — in dieser Reihenfolge", () => {
+  const bloecke = [...editor.shadowRoot.querySelector(".editor").children].map(
+    (e) => e.dataset.block || (e.dataset.kasten !== undefined ? `kasten:${e.dataset.kasten}` : e.dataset.aktion || e.className)
   );
-  assert.equal(heads.length, 3);
-  assert.match(heads[0], /Becken/);
-  assert.match(heads[1], /Geräte/);
-  assert.match(heads[2], /Optik/);
+  assert.deepEqual(bloecke, ["darstellung", "kasten:becken", "kasten:0", "kasten:1", "kasten:2", "kasten:3", "kasten:4", "kasten:5", "neu", "kiosk"]);
 });
 check("Editor zeigt je Slot eine Karte", () =>
   assert.equal(editor.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)").length, 6)
+);
+check("Editor (It23): bestehende Config -> alle Kästen zu", () =>
+  assert.equal(editor.shadowRoot.querySelectorAll(".kasten-body:not([hidden])").length, 0)
 );
 check("Editor schlaegt Entities vor", () =>
   assert.ok(editor.shadowRoot.querySelectorAll("datalist option").length > 0)
 );
 check("Editor: Slot-Typen in der Reihenfolge mit Geraete-Trenner", () => {
-  const sel = editor.shadowRoot.querySelector('.slot-head select[data-key="type"]');
+  const sel = editor.shadowRoot.querySelector('[data-kasten="0"] select[data-key="type"]');
   const opts = Array.from(sel.querySelectorAll("option"));
   assert.deepEqual(
     opts.map((o) => o.textContent.trim()),
@@ -790,16 +790,28 @@ check("Editor bietet die Beckenformen an", () => {
 
 let fired = null;
 editor.addEventListener("config-changed", (e) => (fired = e.detail.config));
-editor.shadowRoot.querySelector(".add-btn").click();
+editor.shadowRoot.querySelector('.add-btn[data-aktion="neu"]').click();
+await editor.updateComplete;
+check("Editor (It23): + Kasten zeigt erst die Typ-Kacheln (mit Gerätebild), ändert noch nichts", () => {
+  assert.equal(fired, null);
+  const kacheln = [...editor.shadowRoot.querySelectorAll(".typ-kachel")];
+  assert.deepEqual(kacheln.map((k) => k.dataset.typ), ["heatpump", "pump", "uv", "solar", "custom", "frame"]);
+  assert.ok(kacheln[1].querySelector("img").getAttribute("src").includes("poolpumpe_transparent.png"));
+});
+editor.shadowRoot.querySelector('.typ-kachel[data-typ="frame"]').click();
 await editor.updateComplete;
 check("Editor: Slot hinzufuegen aendert die Config", () => {
   assert.ok(fired);
   assert.equal(fired.slots.length, 7);
   assert.equal(fired.slots[6].type, "frame");
 });
+check("Editor (It23): der neue Kasten ist offen, alle anderen zu", () => {
+  const offen = [...editor.shadowRoot.querySelectorAll(".kasten-body:not([hidden])")].map((b) => b.closest("[data-kasten]").dataset.kasten);
+  assert.deepEqual(offen, ["6"]);
+});
 
 fired = null;
-const typeSelect = editor.shadowRoot.querySelectorAll('.slot-head select[data-key="type"]')[6];
+const typeSelect = editor.shadowRoot.querySelector('[data-kasten="6"] select[data-key="type"]');
 typeSelect.value = "pump";
 typeSelect.dispatchEvent(new dom.window.Event("change"));
 await editor.updateComplete;
@@ -822,7 +834,13 @@ await editor.updateComplete;
 check("Editor: Fuellung umstellen", () => assert.equal(fired.frame.fill, "schwarz"));
 
 fired = null;
-editor.shadowRoot.querySelectorAll(".icon-btn.danger")[0].click();
+editor.shadowRoot.querySelector('[data-kasten="0"] [data-aktion="loeschen"]').click();
+await editor.updateComplete;
+check("Editor (It23): Löschen fragt erst nach, löscht noch nichts", () => {
+  assert.equal(fired, null);
+  assert.match(editor.shadowRoot.querySelector('[data-kasten="0"] .loesch-frage').textContent, /löschen\?/);
+});
+editor.shadowRoot.querySelector('[data-kasten="0"] [data-aktion="loeschen-ja"]').click();
 await editor.updateComplete;
 check("Editor: Slot entfernen", () => assert.equal(fired.slots.length, 6));
 
@@ -1076,11 +1094,13 @@ await ed2.updateComplete;
 let ed2Fired = null;
 ed2.addEventListener("config-changed", (e) => (ed2Fired = e.detail.config));
 
-check("Editor: 'Elemente anzeigen' steht in jedem Slot ganz oben", () => {
+check("Editor (It23): kein 'Elemente anzeigen' mehr — Überschrift, dann Grunddaten … Erweitert", () => {
+  assert.ok(!/Elemente anzeigen/.test(ed2.shadowRoot.textContent));
   const cards = ed2.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)");
   for (const card of cards) {
-    const first = card.querySelector(".section");
-    assert.ok(first.classList.contains("elements"), "erste Gruppe ist nicht 'Elemente anzeigen'");
+    const reihe = [...card.children].map((c) => c.dataset.abschnitt || (c.classList.contains("label-feld") ? "label" : c.tagName.toLowerCase()));
+    assert.deepEqual(reihe, ["label", "pflicht", "anaus", "anzeige", "optik", "erweitert"]);
+    assert.equal(card.querySelector('[data-abschnitt="erweitert"]').open, false, "Erweitert ist offen");
   }
 });
 check("Editor: Regler starten auf dem effektiven Wert", () => {
@@ -1142,7 +1162,7 @@ check("Editor: Freitext-Regler des Beckens starten auf dem Anker der Form", () =
   assert.equal(heroReglerVon(editor, "label_top").value, String(freitextDefaults.label_top));
   assert.equal(heroReglerVon(editor, "label_left").value, String(freitextDefaults.label_left));
   assert.equal(freitextDefaults.label_top, pkg.SHAPES.freiform.label_anker.top);
-  assert.match(editor.shadowRoot.textContent, /Freitext — Darstellung/);
+  assert.ok(heroReglerVon(editor, "label_top").closest('[data-abschnitt="erweitert"]'), "Freitext-Regler nicht unter Erweitert");
 });
 check("Editor: ohne Freitext bleiben die Becken-Regler ausgeblendet", () => {
   assert.equal(heroReglerVon(ed2, "label_scale"), undefined);
@@ -1150,12 +1170,12 @@ check("Editor: ohne Freitext bleiben die Becken-Regler ausgeblendet", () => {
   assert.equal(heroReglerVon(ed2, "label_left"), undefined);
 });
 
-const heroText = ed2.shadowRoot.querySelector('input[data-key="label_text"]');
+const heroText = ed2.shadowRoot.querySelector('[data-kasten="becken"] input[data-key="label"]');
 heroText.value = "Schwimmbad";
 heroText.dispatchEvent(new dom.window.Event("input"));
 await ed2.updateComplete;
-check("Editor: Freitext eintragen blendet die Regler ein", () => {
-  assert.equal(ed2Fired.hero.label_text, "Schwimmbad");
+check("Editor: Freitext eintragen blendet die Regler ein (Schlüssel seit It23: label)", () => {
+  assert.equal(ed2Fired.hero.label, "Schwimmbad");
   assert.equal(heroReglerVon(ed2, "label_scale").value, String(pkg.HERO_DEFAULTS.label_scale));
   assert.equal(heroReglerVon(ed2, "label_top").value, String(freitextDefaults.label_top));
   assert.equal(heroReglerVon(ed2, "label_left").value, String(freitextDefaults.label_left));
@@ -1169,28 +1189,29 @@ check("Editor: Freitext-Groesse landet in der Hero-Config", () =>
   assert.equal(ed2Fired.hero.label_scale, 140)
 );
 
-const tempBox = ed2.shadowRoot.querySelector('input[data-key="show_temp"]');
+ed2.addEventListener("config-changed", (e) => ed2.setConfig(e.detail.config));
+const tempBox = ed2.shadowRoot.querySelector('[data-kasten="0"] input[data-key="show_temp"]');
+check("Editor (It23): 'Thermometer anzeigen' steht unter Erweitert, ab Werk an", () => {
+  assert.ok(tempBox.closest('[data-abschnitt="erweitert"]'));
+  assert.equal(tempBox.checked, true);
+});
 tempBox.checked = false;
 tempBox.dispatchEvent(new dom.window.Event("change"));
 await ed2.updateComplete;
-check("Editor: Element abwaehlen raeumt seine Schluessel aus der Config", () => {
+check("Editor (It23): ausblenden schreibt nur show_temp: false, Entity und Lage bleiben", () => {
   assert.equal(ed2Fired.slots[0].show_temp, false);
-  assert.ok(!("temp_entity" in ed2Fired.slots[0]), "temp_entity steht noch drin");
-  assert.ok(!("temp_top" in ed2Fired.slots[0]), "temp_top steht noch drin");
-  const erster = ed2.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")[0];
-  assert.equal(erster.querySelector('input[data-key="temp_entity"]'), null);
+  assert.equal(ed2Fired.slots[0].temp_entity, "sensor.poolpumpe_druckseite_temperature");
+  assert.equal(ed2Fired.slots[0].temp_top, 12);
 });
 
-const tempBox2 = ed2.shadowRoot.querySelector('input[data-key="show_temp"]');
+const tempBox2 = ed2.shadowRoot.querySelector('[data-kasten="0"] input[data-key="show_temp"]');
 tempBox2.checked = true;
 tempBox2.dispatchEvent(new dom.window.Event("change"));
 await ed2.updateComplete;
-check("Editor: wieder anwaehlen bringt die Felder zurueck", () => {
+check("Editor: wieder anhaken -> show_temp fällt weg, alles wie vorher", () => {
   assert.equal(ed2Fired.slots[0].temp_entity, "sensor.poolpumpe_druckseite_temperature");
   assert.equal(ed2Fired.slots[0].temp_top, 12);
   assert.ok(!("show_temp" in ed2Fired.slots[0]), "show_temp bleibt unnoetig in der Config");
-  const erster = ed2.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")[0];
-  assert.ok(erster.querySelector('input[data-key="temp_entity"]'));
 });
 check("Editor: Patch mit undefined entfernt den Schluessel", () =>
   assert.deepEqual(pkg.applyPatch({ a: 1, b: 2 }, { b: undefined, c: 3 }), { a: 1, c: 3 })
@@ -1454,7 +1475,7 @@ ed4.addEventListener("config-changed", (e) => (ed4Fired = e.detail.config));
 
 check("Editor: UV-Slot hat Elemente, Felder und Hilfetext", () => {
   const txt = ed4.shadowRoot.textContent;
-  assert.match(txt, /Glüheffekt/);
+  assert.match(txt, /Glühen/);
   assert.match(txt, /Zeitschaltuhr parallel zur Poolpumpe/);
   assert.ok(ed4.shadowRoot.querySelector('input[data-key="switch_entity"]'));
   assert.ok(ed4.shadowRoot.querySelector('input[data-key="power_entity"]'));
@@ -1488,16 +1509,14 @@ check("Editor: Drehen landet in der Slot-Config", () =>
 );
 
 const glowBox = ed4.shadowRoot.querySelector('input[data-key="show_glow"]');
+check("Editor (It23): 'Glühen' ist ein Haken unter Aussehen, die Geometrie unter Erweitert", () => {
+  assert.equal(glowBox.closest("[data-abschnitt]").dataset.abschnitt, "optik");
+  assert.equal(ed4.shadowRoot.querySelector('input[data-key="glow_top"]').closest("[data-abschnitt]").dataset.abschnitt, "erweitert");
+});
 glowBox.checked = false;
 glowBox.dispatchEvent(new dom.window.Event("change"));
 await ed4.updateComplete;
-check("Editor: Gluehen abwaehlen raeumt seine Schluessel aus der Config", () => {
-  assert.equal(ed4Fired.slots[0].show_glow, false);
-  for (const key of ["glow_top", "glow_left", "glow_size", "glow_angle"]) {
-    assert.ok(!(key in ed4Fired.slots[0]), `${key} steht noch drin`);
-  }
-  assert.equal(ed4.shadowRoot.querySelector('input[data-key="glow_top"]'), null);
-});
+check("Editor: Glühen abwählen schreibt show_glow: false", () => assert.equal(ed4Fired.slots[0].show_glow, false));
 
 /* ================================================================== */
 /* Iteration 4 — am Bild vermessene Becken-Anker                       */
@@ -2028,19 +2047,17 @@ check("Editor: Sprite-Regler starten auf dem Anker der Form", () => {
   assert.equal(groesse.value, String(pkg.HERO_SPRITES.skimmer.groesse));
 });
 
-ed5.shadowRoot.querySelector('.elements input[data-key="show_drain"]').click();
+ed5.addEventListener("config-changed", (e) => ed5.setConfig(e.detail.config));
+ed5.shadowRoot.querySelector('[data-kasten="becken"] [data-abschnitt="optik"] input[data-key="show_drain"]').click();
 await ed5.updateComplete;
 check("Editor: Bodenablauf anhaken bringt seine Regler", () => {
   assert.equal(ed5Fired.hero.show_drain, true);
   assert.ok(ed5.shadowRoot.querySelector('input[data-key="drain_size"]'));
 });
-ed5.shadowRoot.querySelector('.elements input[data-key="show_skimmer"]').click();
+ed5.shadowRoot.querySelector('[data-kasten="becken"] [data-abschnitt="optik"] input[data-key="show_skimmer"]').click();
 await ed5.updateComplete;
-check("Editor: Skimmer abwaehlen raeumt seine Schluessel aus der Config", () => {
+check("Editor: Skimmer abwählen -> show_skimmer: false, seine Regler verschwinden", () => {
   assert.equal(ed5Fired.hero.show_skimmer, false);
-  for (const key of ["skimmer_size", "skimmer_top", "skimmer_left"]) {
-    assert.ok(!(key in ed5Fired.hero), `${key} steht noch drin`);
-  }
   assert.equal(ed5.shadowRoot.querySelector('input[data-key="skimmer_size"]'), null);
 });
 
@@ -2315,11 +2332,11 @@ check("Editor: UV hat den Groessen-Regler nach Drehen und Spiegeln", () => {
   assert.equal(regler.value, "100");
   assert.equal(regler.getAttribute("min"), "30");
   assert.equal(regler.getAttribute("max"), "100");
-  /* Reihenfolge im Abschnitt: Drehen, Spiegeln, Groesse, Anschlussvariante */
-  const felder = Array.from(karte.querySelectorAll("[data-key]"))
+  /* Reihenfolge unter Aussehen (It23, Testbericht C): Größe, Drehen, Spiegeln, Anschlussvariante */
+  const felder = Array.from(karte.querySelectorAll('[data-abschnitt="optik"] [data-key]'))
     .map((el) => el.dataset.key)
     .filter((k) => ["rotate", "mirror", "uv_size", "anschluss"].includes(k));
-  assert.deepEqual(felder, ["rotate", "mirror", "uv_size", "anschluss"]);
+  assert.deepEqual(felder, ["uv_size", "rotate", "mirror", "anschluss"]);
 });
 check("Editor: die Anschlussvarianten heissen 1 und 2, die Werte bleiben", () => {
   const sel = ed7.shadowRoot.querySelector('select[data-key="anschluss"]');
@@ -2343,7 +2360,7 @@ check("Editor: die Groesse landet in der Slot-Config", () =>
 /* ---- Editor: Orientierung ueber Ueberschrift und Kennfarbe ---- */
 
 check("Editor: jeder Slot-Block traegt Nummer, Typ und Beschriftung", () => {
-  const kopf = Array.from(ed7.shadowRoot.querySelectorAll(".slot-block:not(.becken-block) .slot-ueberschrift")).map((el) =>
+  const kopf = Array.from(ed7.shadowRoot.querySelectorAll(".kasten:not(.becken-block) .slot-ueberschrift")).map((el) =>
     el.textContent.trim()
   );
   assert.deepEqual(kopf, [
@@ -2354,7 +2371,7 @@ check("Editor: jeder Slot-Block traegt Nummer, Typ und Beschriftung", () => {
   ]);
 });
 check("Editor: jeder Slot-Typ hat seine Kennfarbe", () => {
-  const farben = Array.from(ed7.shadowRoot.querySelectorAll(".slot-block:not(.becken-block)")).map((el) =>
+  const farben = Array.from(ed7.shadowRoot.querySelectorAll(".kasten:not(.becken-block)")).map((el) =>
     el.getAttribute("style")
   );
   assert.deepEqual(farben, [
@@ -2372,8 +2389,7 @@ check("Editor: jeder Slot-Typ hat seine Kennfarbe", () => {
 });
 check("Editor: die Kennfarbe wird als Balken und Toenung benutzt", () => {
   const css = cssOf("tomtut-pool-dashboard-editor");
-  assert.match(css, /\.slot-block[\s\S]*border-top:\s*2px solid var\(--slot-farbe/);
-  assert.match(css, /border-left:\s*5px solid var\(--slot-farbe/);
+  assert.match(css, /\.slot-block\.kasten[\s\S]*border-left:\s*5px solid var\(--slot-farbe/);
   assert.match(css, /color-mix\(in srgb, var\(--slot-farbe/);
 });
 
@@ -2385,12 +2401,12 @@ check("Editor: Becken-Block ist verpackt wie die Geraete (Iteration 10)", () => 
   assert.equal(pkg.slotFarbe("hero"), pkg.BLOCK_FARBEN.hero);
   const belegt = Object.keys(pkg.SLOT_TYPES).map(pkg.slotFarbe);
   assert.ok(!belegt.includes(pkg.slotFarbe("hero")), "Beckenfarbe kollidiert mit Slot-Farbe");
-  assert.equal(block.querySelector(".slot-ueberschrift").textContent.trim(), "Becken");
+  assert.equal(block.querySelector(".slot-ueberschrift").textContent.trim(), "Becken · Freiform · Pool");
   const karte = block.querySelector(".slot-card.becken-card");
   assert.ok(karte, "Becken-Karte fehlt");
   assert.ok(karte.querySelector('input[data-key="enabled"]'), "Toggle nicht in der Becken-Karte");
   assert.ok(karte.querySelector('input[data-key="label_scale"]'), "heroFields nicht in der Becken-Karte");
-  assert.equal(editor.shadowRoot.querySelector(".slot-block"), block, "Becken ist nicht der erste Block");
+  assert.equal(editor.shadowRoot.querySelector(".slot-block"), block, "Becken ist nicht der erste Kasten");
   assert.ok(!pkg.slotTypeOptions().some((o) => o.value === "hero"), "hero ist waehlbar");
 });
 check("Editor: Becken aus -> Kasten bleibt, nur mit Toggle", () => {
@@ -2848,7 +2864,7 @@ const ed9 = new Editor();
 ed9.setConfig({
   hero: { enabled: false },
   slots: [
-    { type: "heatpump", switch_entity: "switch.waermepumpe", show_mode: true },
+    { type: "heatpump", switch_entity: "switch.waermepumpe", show_mode: true, mode_entity: "select.wp_modus_gibtsnicht" },
     { type: "pump", main_entity: "input_boolean.poolpumpe_schalter", power_entity: "sensor.poolpumpe_power" },
     { type: "uv", switch_entity: "switch.uv_lampe", confirm_off: false },
     { type: "solar", switch_entity: "switch.solarventil" },
@@ -2910,10 +2926,9 @@ const modusBox = feld9(0, "show_mode");
 modusBox.checked = false;
 modusBox.dispatchEvent(new dom.window.Event("change"));
 await ed9.updateComplete;
-check("Editor: Betriebsmodus abwaehlen raeumt die Modus-Felder", () => {
+check("Editor (It23): Betriebsmodus ausblenden -> show_mode: false, mode_entity bleibt", () => {
   assert.equal(ed9Fired.slots[0].show_mode, false);
-  assert.equal(feld9(0, "mode_entity"), null);
-  assert.equal(feld9(0, "mode_speed_heiz_boost"), null);
+  assert.equal(ed9Fired.slots[0].mode_entity, "select.wp_modus_gibtsnicht");
 });
 
 /* ------------------------------------------------------------------ */
@@ -3063,17 +3078,20 @@ await ed12.updateComplete;
 const karten12 = () => [...ed12.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")];
 const feld12 = (i, key) => karten12()[i].querySelector(`[data-key="${key}"]`);
 
-check("Editor: Freigabekontakt ist ein eigenes Element mit Entity und drei Reglern", () => {
+check("Editor: Freigabekontakt hat Entity (Anzeige) und drei Regler (Erweitert)", () => {
   assert.equal(feld12(0, "show_release").checked, true);
+  assert.equal(feld12(0, "release_entity").closest("[data-abschnitt]").dataset.abschnitt, "anzeige");
+  assert.equal(feld12(0, "release_top").closest("[data-abschnitt]").dataset.abschnitt, "erweitert");
   assert.ok(feld12(0, "release_entity"), "Entity-Feld fehlt");
   for (const k of ["release_top", "release_left", "release_scale"]) {
     assert.ok(feld12(0, k), `${k} fehlt`);
   }
   assert.match(ed12.shadowRoot.textContent, /Freigabekontakt/);
 });
-check("Editor: Freigabekontakt ab Werk aus — ohne Haken keine Felder", () => {
-  assert.equal(feld12(1, "show_release").checked, false);
-  assert.equal(feld12(1, "release_entity"), null);
+check("Editor (It23): Freigabe-Feld steht immer da, leer; 'seit' erst mit Entity", () => {
+  assert.equal(feld12(1, "release_entity").value, "");
+  assert.equal(feld12(1, "show_release_since"), null);
+  assert.ok(feld12(0, "show_release_since"));
 });
 let ed12Fired = null;
 ed12.addEventListener("config-changed", (e) => (ed12Fired = e.detail.config));
@@ -3081,10 +3099,9 @@ const box12 = feld12(0, "show_release");
 box12.checked = false;
 box12.dispatchEvent(new dom.window.Event("change"));
 await ed12.updateComplete;
-check("Editor: Freigabe abwaehlen raeumt release_entity aus der Config", () => {
+check("Editor (It23): Freigabe ausblenden -> show_release: false, Entity bleibt", () => {
   assert.equal(ed12Fired.slots[0].show_release, false);
-  assert.equal(ed12Fired.slots[0].release_entity, undefined);
-  assert.equal(feld12(0, "release_entity"), null);
+  assert.equal(ed12Fired.slots[0].release_entity, FREI_ENT);
 });
 
 /* ---- 2a. Umlaute in allem, was man sieht ---- */
@@ -3168,7 +3185,7 @@ const edVoll = new Editor();
 edVoll.setConfig({
   hero: { enabled: true, shape: "oval", show_drain: true, label_text: "Pool", inlet_temp_entity: "sensor.x" },
   slots: [
-    { type: "heatpump", show_mode: true, label_text: "x", show_release: true, release_entity: FREI_ENT },
+    { type: "heatpump", show_mode: true, mode_entity: "select.x", label_text: "x", show_release: true, release_entity: FREI_ENT },
     { type: "pump", power_entity: "sensor.poolpumpe_power" },
     { type: "uv" },
     { type: "solar" },
@@ -3671,11 +3688,12 @@ await ed15.updateComplete;
 let ed15Fired = null;
 ed15.addEventListener("config-changed", (e) => (ed15Fired = e.detail.config));
 const kioskBox = () => ed15.shadowRoot.querySelector('.kiosk-block input[data-key="kiosk"]');
-check("Editor: Kiosk-Kasten steht ganz oben (Kopfzeile, seit It17 neben der Ansicht), Schalter aus, keine Liste", () => {
-  const kopf = ed15.shadowRoot.querySelector(".editor").firstElementChild;
-  const erstes = kopf.querySelector(".kiosk-block");
-  assert.ok(kopf.classList.contains("kopf-reihe") && erstes, "nicht ganz oben");
-  assert.match(erstes.textContent, /Kiosk-Modus \(nur anzeigen\)/);
+check("Editor (It23): Kiosk ist der letzte Block, zugeklappt, Schalter in der Kopfzeile, aus, keine Liste", () => {
+  const letztes = ed15.shadowRoot.querySelector(".editor").lastElementChild;
+  assert.ok(letztes.classList.contains("kiosk-block"), "Kiosk nicht unten");
+  assert.match(letztes.querySelector(".kasten-kopf").textContent, /Kiosk \(nur anzeigen\)/);
+  assert.ok(letztes.querySelector('.kasten-kopf input[data-key="kiosk"]'), "Schalter nicht in der Kopfzeile");
+  assert.ok(letztes.querySelector(".kasten-body").hidden, "Kiosk-Block ist offen");
   assert.equal(kioskBox().checked, false);
   assert.equal(ed15.shadowRoot.querySelectorAll("[data-kiosk-slot]").length, 0);
 });
@@ -3901,9 +3919,10 @@ check("It16: ohne Rahmenfüllung trägt liste den HA-Kartenhintergrund und die T
     assert.match(w.textContent, /höchstens 8/);
     assert.match(w.textContent, /9–10/);
   });
-  check("It16 Editor: bis zu 8 Eintrag-Blöcke + Darstellung wählbar", () => {
-    assert.match(txt, /Eintrag 8/);
-    assert.doesNotMatch(txt, /Eintrag 9/);
+  check("It16/It23 Editor: alle 10 Einträge stehen da (löschbar), kein '+ Eintrag' mehr; Darstellung wählbar", () => {
+    assert.match(txt, /Eintrag 10/);
+    assert.equal(ed16.shadowRoot.querySelector('[data-aktion="eintrag-neu"]'), null);
+    assert.equal(ed16.shadowRoot.querySelectorAll('[data-aktion="eintrag-weg"]').length, 10);
     const sel = ed16.shadowRoot.querySelector('select[data-key="layout"]');
     assert.ok(sel);
     assert.deepEqual([...sel.options].map((o) => o.value), ["klassisch", "liste", "kacheln"]);
@@ -3911,10 +3930,11 @@ check("It16: ohne Rahmenfüllung trägt liste den HA-Kartenhintergrund und die T
   });
   ed16.setConfig({ hero: { enabled: false }, slots: [{ type: "custom", entries: ACHT.slice(0, 4) }] });
   await ed16.updateComplete;
-  check("It16 Editor: 4 Einträge -> 5 Blöcke (einer frei), keine Warnung", () => {
+  check("It16/It23 Editor: 4 Einträge -> 4 Blöcke + '+ Eintrag', keine Warnung", () => {
     assert.equal(ed16.shadowRoot.querySelector(".limit-warnung"), null);
-    assert.match(ed16.shadowRoot.textContent, /Eintrag 5/);
-    assert.doesNotMatch(ed16.shadowRoot.textContent, /Eintrag 6/);
+    assert.match(ed16.shadowRoot.textContent, /Eintrag 4/);
+    assert.doesNotMatch(ed16.shadowRoot.textContent, /Eintrag 5/);
+    assert.ok(ed16.shadowRoot.querySelector('[data-aktion="eintrag-neu"]'));
   });
   ed16.remove();
 }
@@ -4204,9 +4224,9 @@ check("It17 Card: getCardSize im Mini-Modus klein", () => {
   let fired = null;
   ed.addEventListener("config-changed", (e) => (fired = e.detail.config));
   const kopf = ed.shadowRoot.querySelector(".editor").firstElementChild;
-  check("It17 Editor: Kopfzeile ganz oben = Ansicht-Umschalter neben dem Kiosk-Kasten", () => {
-    assert.ok(kopf.classList.contains("kopf-reihe"));
-    assert.deepEqual([...kopf.children].map((x) => x.className.split(" ")[0]), ["ansicht-block", "kiosk-block"]);
+  check("It17/It23 Editor: ganz oben der Block 'Darstellung' mit dem Ansicht-Umschalter", () => {
+    assert.equal(kopf.dataset.block, "darstellung");
+    assert.match(kopf.textContent, /Darstellung/);
     assert.match(kopf.textContent, /Ansicht/);
     const k = [...kopf.querySelectorAll("[data-ansicht]")];
     assert.deepEqual(k.map((x) => [x.dataset.ansicht, x.textContent.trim(), x.classList.contains("aktiv")]), [
@@ -4698,17 +4718,18 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
   await edO.updateComplete;
   const karten = [...edO.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")];
   const pos = (karte, text) => karte.textContent.indexOf(text);
-  check("It19 confirm_off: Pumpe — direkt beim Hauptschalter, vor den Stufen", () => {
+  check("It19/It23 confirm_off: Pumpe — im Abschnitt Ein/Aus direkt beim Hauptschalter, nach den Stufen (Testbericht C)", () => {
     const k = karten[0];
-    assert.ok(pos(k, "Hauptschalter") < pos(k, "Vor dem Ausschalten nachfragen"));
-    assert.ok(pos(k, "Vor dem Ausschalten nachfragen") < pos(k, "Schaltmodell"));
-    assert.ok(pos(k, "Vor dem Ausschalten nachfragen") < pos(k, "Stufe 1 (N1)"));
+    const anaus = k.querySelector('[data-abschnitt="anaus"]');
+    assert.ok(pos(anaus, "Hauptschalter") >= 0 && pos(anaus, "Hauptschalter") < pos(anaus, "Vor dem Ausschalten nachfragen"));
+    assert.ok(pos(k, "Stufe N1") < pos(k, "Vor dem Ausschalten nachfragen"));
+    assert.equal(k.querySelector('[data-key="confirm_off"]').closest("[data-abschnitt]").dataset.abschnitt, "anaus");
   });
   check("It19 confirm_off: WP / UV / Solar — direkt nach der Schalter-Entity, vor allen anderen Feldern", () => {
     for (const [i, schalter, danach] of [
-      [1, "Powerbutton — Schalter", "Stromverbrauch"],
-      [2, "Powerbutton — Schalter", "Stromverbrauch"],
-      [3, "Powerbutton — Ventil oder Pumpe", "Läuft gerade?"],
+      [1, "Schalter (Powerbutton)", "Stromverbrauch"],
+      [2, "Schalter (Powerbutton)", "Stromverbrauch"],
+      [3, "Ventil oder Pumpe (Powerbutton)", "Läuft gerade?"],
     ]) {
       const k = karten[i];
       assert.ok(pos(k, schalter) >= 0 && pos(k, schalter) < pos(k, "Vor dem Ausschalten nachfragen"), `${i}`);
@@ -5393,6 +5414,321 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
     assert.match(p, /\.fan-overlay\.round \{[^}]*color: var\(--tt-fan-color, #1f2d38\)/);
     assert.match(p, /\.stages\.disabled \.stage-btn \{[^}]*opacity: 0\.6/);
   });
+}
+
+/* ================================================================== */
+/* Iteration 23 — Editor-Umbau (Testbericht 26.09.2026, Abschnitt C)   */
+/* ================================================================== */
+{
+  const neuerEditor = async (config, hass = makeHass()) => {
+    const ed = new Editor();
+    ed.setConfig(config);
+    ed.hass = hass;
+    document.body.appendChild(ed);
+    await ed.updateComplete;
+    const box = { fired: null, anzahl: 0 };
+    ed.addEventListener("config-changed", (e) => {
+      box.fired = e.detail.config;
+      box.anzahl += 1;
+      ed.setConfig(e.detail.config);
+    });
+    return { ed, box, $: (sel) => ed.shadowRoot.querySelector(sel), $$: (sel) => [...ed.shadowRoot.querySelectorAll(sel)] };
+  };
+  const tippe = async (ed, el) => {
+    el.click();
+    await ed.updateComplete;
+  };
+  const setze = async (ed, el, wert, ev = "input") => {
+    el.value = wert;
+    el.dispatchEvent(new dom.window.Event(ev));
+    await ed.updateComplete;
+  };
+  /* sichtbarer Text ohne <style> (jsdom hängt die CSS als <style> ein) */
+  const text = (ed) => {
+    let t = ed.shadowRoot.textContent;
+    for (const st of ed.shadowRoot.querySelectorAll("style")) t = t.replace(st.textContent, "");
+    return t;
+  };
+  const offen = (e) => e.$$(".kasten-body:not([hidden])").map((b) => b.closest("[data-kasten], [data-block]").dataset.kasten ?? b.closest("[data-block]").dataset.block);
+
+  /* ---- Akkordeon: auf/zu, ↑↓, Duplizieren, Löschen ---- */
+  const e1 = await neuerEditor({
+    hero: { enabled: true, shape: "oval", temp_entity: "sensor.pool_wassertemperatur" },
+    slots: [
+      { type: "heatpump", label_text: "WP", switch_entity: "switch.waermepumpe" },
+      { type: "pump", label: "Filter", id: "kpumpe1", main_entity: "input_boolean.poolpumpe_schalter" },
+      { type: "uv", switch_entity: "switch.uv_lampe" },
+    ],
+  });
+  check("It23 Akkordeon: bestehende Card -> alles zu, Kopf = Kennfarbe + Typ + Name", () => {
+    assert.deepEqual(offen(e1), []);
+    const k = e1.$('[data-kasten="1"]');
+    assert.equal(k.getAttribute("style"), `--slot-farbe:${pkg.slotFarbe("pump")};`);
+    assert.equal(k.querySelector(".kasten-auf").textContent.replace(/\s+/g, " ").trim(), "▶ Kasten 2 · Poolpumpe · Filter");
+  });
+  check("It23 Akkordeon: ↑ am ersten und ↓ am letzten Kasten sind gesperrt", () => {
+    assert.ok(e1.$('[data-kasten="0"] [data-aktion="hoch"]').disabled);
+    assert.ok(!e1.$('[data-kasten="0"] [data-aktion="runter"]').disabled);
+    assert.ok(e1.$('[data-kasten="2"] [data-aktion="runter"]').disabled);
+  });
+  await tippe(e1.ed, e1.$('[data-auf="1"]'));
+  check("It23 Akkordeon: Tipp auf den Kopf klappt genau diesen Kasten auf", () => assert.deepEqual(offen(e1), ["1"]));
+  await tippe(e1.ed, e1.$('[data-kasten="1"] [data-aktion="runter"]'));
+  check("It23 Akkordeon: verschobener Kasten bleibt offen (Befund B)", () => {
+    assert.equal(e1.box.fired.slots[2].type, "pump");
+    assert.deepEqual(offen(e1), ["2"]);
+  });
+  await tippe(e1.ed, e1.$('[data-kasten="2"] [data-aktion="duplizieren"]'));
+  check("It23 Duplizieren: Kopie direkt dahinter, ohne ID, '(Kopie)', offen", () => {
+    const s = e1.box.fired.slots;
+    assert.equal(s.length, 4);
+    assert.equal(s[3].type, "pump");
+    assert.equal(s[3].main_entity, "input_boolean.poolpumpe_schalter");
+    assert.equal(s[3].id, undefined);
+    assert.equal(s[3].label, "Filter (Kopie)");
+    assert.equal(s[2].id, "kpumpe1");
+    assert.deepEqual(offen(e1), ["3"]);
+  });
+  await tippe(e1.ed, e1.$('[data-kasten="3"] [data-aktion="loeschen"]'));
+  await tippe(e1.ed, e1.$('[data-kasten="3"] [data-aktion="loeschen-nein"]'));
+  check("It23 Löschen: Abbrechen lässt alles stehen", () => {
+    assert.equal(e1.box.fired.slots.length, 4);
+    assert.equal(e1.$(".loesch-frage"), null);
+  });
+
+  /* ---- Darstellung + Kiosk ---- */
+  check("It23 Darstellung: Ansicht, Rahmen und Füllung in EINEM Block ganz oben", () => {
+    const d = e1.$('[data-block="darstellung"]');
+    assert.equal(e1.$(".editor").firstElementChild, d);
+    assert.ok(d.querySelector("[data-ansicht]"));
+    assert.ok(d.querySelector('input[data-key="enabled"]'));
+    assert.ok(d.querySelector('select[data-key="fill"]'));
+    assert.ok(!/Schritt \d/.test(text(e1.ed)), "alte Schritt-Überschriften");
+  });
+  const kiosk = e1.$('[data-block="kiosk"] input[data-key="kiosk"]');
+  kiosk.checked = true;
+  kiosk.dispatchEvent(new dom.window.Event("change"));
+  await e1.ed.updateComplete;
+  check("It23 Kiosk: einschalten klappt den Block mit der Kasten-Liste auf", () => {
+    assert.equal(e1.box.fired.kiosk, true);
+    assert.ok(!e1.$('[data-block="kiosk"] .kasten-body').hidden);
+    assert.equal(e1.$$("[data-kiosk-slot]").length, 5);
+  });
+
+  /* ---- Feldreihenfolge je Typ + Label oben ---- */
+  const e2 = await neuerEditor({
+    hero: { enabled: true },
+    slots: [
+      { type: "heatpump" },
+      { type: "pump" },
+      { type: "uv" },
+      { type: "solar" },
+      { type: "custom", title: "Alt-Titel", entries: [{ kind: "button", entity: "switch.poolbeleuchtung" }] },
+      { type: "frame", title: "Platz" },
+    ],
+  });
+  const reihe = (karte) =>
+    [...karte.children].map((c) => c.dataset.abschnitt || (c.classList.contains("label-feld") ? "label" : c.className));
+  check("It23 Reihenfolge: jeder Kasten Überschrift → Grunddaten → Ein/Aus → Anzeige → Aussehen → Erweitert", () => {
+    const k = e2.$$(".slot-card:not(.becken-card)");
+    assert.deepEqual(reihe(k[0]), ["label", "pflicht", "anaus", "anzeige", "optik", "erweitert"], "WP");
+    assert.deepEqual(reihe(k[1]), ["label", "pflicht", "anaus", "anzeige", "optik", "erweitert"], "Pumpe");
+    assert.deepEqual(reihe(k[2]), ["label", "pflicht", "anzeige", "optik", "erweitert"], "UV ohne Schalter: keine Nachfrage");
+    assert.deepEqual(reihe(k[3]), ["label", "pflicht", "anaus", "anzeige", "optik", "erweitert"], "Solar");
+    assert.deepEqual(reihe(k[4]), ["label", "pflicht", "anzeige", "erweitert"], "Freifeld");
+    assert.deepEqual(reihe(k[5]), ["label", "pflicht", "erweitert"], "Rahmen");
+    const becken = e2.$(".becken-card");
+    assert.deepEqual(reihe(becken).filter((x) => x !== "row"), ["label", "pflicht", "anzeige", "optik", "erweitert"]);
+  });
+  check("It23 Reihenfolge: die erste Entity steht direkt unter der Überschrift (vorher 400–480 px tiefer)", () => {
+    for (const [i, key] of [
+      [0, "klima"],
+      [1, "stage_entities.0"],
+      [2, "switch_entity"],
+      [3, "temp_in_entity"],
+    ]) {
+      const erstes = e2.$$(".slot-card:not(.becken-card)")[i].querySelector('[data-abschnitt="pflicht"] [data-key]:not(select)');
+      assert.equal(erstes.dataset.key, key, `Kasten ${i + 1}`);
+    }
+  });
+  check("It23 Erweitert: je Kasten genau EIN zugeklapptes 'Erweitert', alle Regler darin", () => {
+    for (const k of e2.$$(".slot-card:not(.becken-card)")) {
+      const erw = k.querySelectorAll('[data-abschnitt="erweitert"]');
+      assert.equal(erw.length, 1);
+      assert.equal(erw[0].open, false);
+      const regler = [...k.querySelectorAll('input[type="range"]')];
+      const draussen = regler.filter((r) => !r.closest('[data-abschnitt="erweitert"]')).map((r) => r.dataset.key);
+      /* bewusst vorne: UV-Aussehen (Größe, Drehen, Wabern) */
+      assert.ok(draussen.every((x) => ["uv_size", "rotate", "glow_pulse"].includes(x)), draussen.join());
+    }
+  });
+  check("It23 Label: Freifeld liest 'title', WP-Feld liest 'label_text'", () => {
+    assert.equal(e2.$('[data-kasten="4"] input[data-key="label"]').value, "Alt-Titel");
+    assert.equal(e2.$('[data-kasten="5"] input[data-key="label"]').value, "Platz");
+  });
+  await setze(e2.ed, e2.$('[data-kasten="4"] input[data-key="label"]'), "Schalter");
+  check("It23 Label: Tippen schreibt 'label' und räumt 'title' ab — Card zeigt dasselbe", () => {
+    assert.equal(e2.box.fired.slots[4].label, "Schalter");
+    assert.equal("title" in e2.box.fired.slots[4], false);
+  });
+  check("It23 Label: Card liest label, label_text und title gleich", () => {
+    assert.equal(pkg.slotLabel({ label_text: "A" }), "A");
+    assert.equal(pkg.slotLabel({ title: "B" }), "B");
+    assert.equal(pkg.slotLabel({ label: "C", title: "B" }), "C");
+  });
+
+  /* ---- Freifeld: + Eintrag, Löschen, ↑↓, Icon für alle, mehr Domains ---- */
+  await tippe(e2.ed, e2.$('[data-kasten="4"] [data-aktion="eintrag-neu"]'));
+  check("It23 Freifeld: '+ Eintrag' hängt einen offenen Eintrag an", () => {
+    assert.equal(e2.box.fired.slots[4].entries.length, 2);
+    assert.ok(!e2.$('[data-kasten="4"] [data-eintrag="1"] .eintrag-body').hidden);
+  });
+  await tippe(e2.ed, e2.$('[data-kasten="4"] [data-eintrag="1"] [data-aktion="eintrag-hoch"]'));
+  check("It23 Freifeld: ↑ tauscht Einträge", () => {
+    assert.deepEqual(e2.box.fired.slots[4].entries[0], {});
+    assert.equal(e2.box.fired.slots[4].entries[1].entity, "switch.poolbeleuchtung");
+  });
+  await tippe(e2.ed, e2.$('[data-kasten="4"] [data-eintrag="0"] [data-aktion="eintrag-weg"]'));
+  check("It23 Freifeld: ✕ löscht den Eintrag (vorher nur leeren möglich)", () =>
+    assert.deepEqual(e2.box.fired.slots[4].entries, [{ kind: "button", entity: "switch.poolbeleuchtung" }])
+  );
+  check("It23 Freifeld: Icon-Feld auch bei 'Entity mit Wert', Picker kennt input_select", async () => {
+    const e = await neuerEditor(
+      { hero: { enabled: false }, slots: [{ type: "custom", entries: [{ kind: "entity", entity: "sensor.pool_ph" }] }] },
+      makeHass({ "input_select.solar_status": { state: "Heizen", attributes: {}, last_changed: iso(60) } })
+    );
+    assert.ok(e.$('[data-eintrag="0"] [data-key="icon"]'));
+    assert.ok([...e.ed.shadowRoot.querySelectorAll('[data-eintrag="0"] datalist option')].some((o) => o.value === "input_select.solar_status"));
+  });
+
+  /* ---- WP: Klima-Entity füllt Soll + Ist ---- */
+  const e3 = await neuerEditor({ hero: { enabled: false }, slots: [{ type: "heatpump" }] });
+  await setze(e3.ed, e3.$('[data-key="klima"]'), "climate.waermepumpe");
+  check("It23 WP: 'Klima-Entity' füllt Soll und Ist in einem", () => {
+    assert.equal(e3.box.fired.slots[0].target_entity, "climate.waermepumpe");
+    assert.equal(e3.box.fired.slots[0].current_entity, "climate.waermepumpe");
+    assert.equal(e3.$('[data-key="klima"]').value, "climate.waermepumpe");
+  });
+  await setze(e3.ed, e3.$('[data-key="current_entity"]'), "sensor.pool_wassertemperatur");
+  check("It23 WP: Ist einzeln unter Erweitert geändert -> Hinweis 'getrennt', Klima-Feld leer", () => {
+    assert.equal(e3.box.fired.slots[0].target_entity, "climate.waermepumpe");
+    assert.ok(e3.$("[data-getrennt]"));
+    assert.equal(e3.$('[data-key="klima"]').value, "");
+    assert.equal(e3.$('[data-key="current_entity"]').closest("[data-abschnitt]").dataset.abschnitt, "erweitert");
+  });
+  check("It23 WP: Schrittweite 'Automatisch (aus der Entity: 0,5)', Override nur unter Erweitert", () => {
+    const sel = e3.$('select[data-key="target_step"]');
+    assert.equal(sel.value, "auto");
+    assert.match(sel.options[0].textContent, /aus der Entity: 0,5/);
+    assert.equal(sel.closest("[data-abschnitt]").dataset.abschnitt, "erweitert");
+  });
+  await setze(e3.ed, e3.$('select[data-key="target_step"]'), "1", "change");
+  check("It23 WP: Override 1 -> target_step: 1; zurück auf Automatisch -> Schlüssel weg", async () => {
+    assert.equal(e3.box.fired.slots[0].target_step, 1);
+  });
+  await setze(e3.ed, e3.$('select[data-key="target_step"]'), "auto", "change");
+  check("It23 WP: Automatisch entfernt target_step", () => assert.equal("target_step" in e3.box.fired.slots[0], false));
+  check("It23 Tempo-Skala: WP-Tempo 0–10 wie überall (gespeichert weiter 0–100)", () => {
+    const r = e3.$('input[data-key="fan_speed"]');
+    assert.equal(r.getAttribute("max"), "10");
+    assert.equal(r.value, "6");
+  });
+  await setze(e3.ed, e3.$('input[data-key="fan_speed"]'), "8.5");
+  check("It23 Tempo-Skala: 8,5 im Regler -> fan_speed: 85", () => assert.equal(e3.box.fired.slots[0].fan_speed, 85));
+
+  /* ---- bestehende show_*: false wirken weiter ---- */
+  const e4 = await neuerEditor({ hero: { enabled: false }, slots: [{ type: "pump", power_entity: "sensor.poolpumpe_power", show_power: false }] });
+  check("It23: altes show_power: false -> Feld bleibt sichtbar, Haken 'Watt' unter Erweitert aus", () => {
+    assert.equal(e4.$('[data-key="power_entity"]').value, "sensor.poolpumpe_power");
+    assert.equal(e4.$('input[data-key="show_power"]').checked, false);
+  });
+  const altPumpe = await mountSlotTyp({ type: "pump", main_entity: "input_boolean.poolpumpe_schalter", power_entity: "sensor.poolpumpe_power", show_power: false });
+  check("It23: ... und die Card blendet die Watt-Box weiter aus", () => assert.equal(altPumpe.shadowRoot.querySelector(".value-box"), null));
+
+  /* ---- Hinweise, Begriffe, Typ "ausgeblendet" ---- */
+  const e5 = await neuerEditor({ hero: { shape: "dreieck" }, slots: [{ type: "hidden", label: "weg", main_entity: "switch.x" }] });
+  check("It23: stille Rückfälle stehen oben im Editor (Bug A17)", () => assert.match(e5.$(".hinweise").textContent, /dreieck/));
+  check("It23 Begriffe: überall 'Kasten', nirgends 'Slot'", () => {
+    for (const e of [e1, e2, e3, e5]) assert.ok(!/\bSlot/.test(text(e.ed)), "Slot im Editor");
+  });
+  await tippe(e5.ed, e5.$('[data-auf="0"]'));
+  await setze(e5.ed, e5.$('[data-kasten="0"] select[data-key="type"]'), "pump", "change");
+  check("It23: 'Ausgeblendet' zurück auf Poolpumpe behält alle Felder", () =>
+    assert.deepEqual(e5.box.fired.slots[0], { type: "pump", label: "weg", main_entity: "switch.x" })
+  );
+
+  /* ---- Regler: gedrosselt, letzter Wert kommt an ---- */
+  {
+    const e = await neuerEditor({ hero: { enabled: false }, slots: [{ type: "uv" }] });
+    const r = () => e.$('input[data-key="rotate"]');
+    await setze(e.ed, r(), "10");
+    const nach1 = e.box.anzahl;
+    await setze(e.ed, r(), "20");
+    await setze(e.ed, r(), "30");
+    const nach3 = e.box.anzahl;
+    await new Promise((f) => setTimeout(f, 120));
+    check("It23 Regler: schnelles Ziehen feuert nicht bei jedem Tick, der letzte Wert kommt an", () => {
+      assert.equal(nach1, 1);
+      assert.equal(nach3, 1, "jeder Tick hat gefeuert");
+      assert.equal(e.box.fired.slots[0].rotate, 30);
+    });
+  }
+
+  /* ---- Neu-Anlage Becken + Pumpe + WP: Klicks gezählt ---- */
+  {
+    const hass = makeHass({
+      "switch.shelly_pumpe_n1": { state: "off", attributes: {}, last_changed: iso(600) },
+    });
+    const e = await neuerEditor(Dashboard.getStubConfig(), hass);
+    /* Home Assistant: Karte hinzufügen, "Nach Karte", Suche-Treffer, (Dialog) = 4; Speichern = 1 */
+    let klicks = 4 + 1;
+    const picker = async (key, wert, kasten) => {
+      klicks += 2; /* Picker öffnen + Eintrag wählen (Tippen zählt nicht) */
+      const el = e.$(`${kasten ? `[data-kasten="${kasten}"] ` : ""}[data-key="${key}"]`);
+      assert.ok(el && !el.closest("[hidden]"), `${key} nicht sichtbar`);
+      await setze(e.ed, el, wert);
+    };
+    const knopf = async (sel) => {
+      klicks += 1;
+      const el = e.$(sel);
+      assert.ok(el && !el.closest("[hidden]"), `${sel} nicht sichtbar`);
+      await tippe(e.ed, el);
+    };
+    const ablauf = [];
+    try {
+      ablauf.push("Becken offen: " + offen(e).join());
+      await picker("temp_entity", "sensor.pool_wassertemperatur", "becken");
+      await knopf('[data-aktion="neu"]');
+      await knopf('.typ-kachel[data-typ="pump"]');
+      await picker("stage_entities.0", "switch.shelly_pumpe_n1", "0");
+      await knopf('[data-kasten="0"] [data-vorschlag="stage_entities,stop_entity"]');
+      await picker("main_entity", "input_boolean.poolpumpe_schalter", "0");
+      await knopf('[data-kasten="0"] [data-vorschlag="power_entity"]');
+      await knopf('[data-aktion="neu"]');
+      await knopf('.typ-kachel[data-typ="heatpump"]');
+      await picker("switch_entity", "switch.waermepumpe", "1");
+      await knopf('[data-kasten="1"] [data-vorschlag="power_entity"]');
+      await picker("klima", "climate.waermepumpe", "1");
+    } catch (err) {
+      ablauf.push("ABBRUCH: " + err.message);
+    }
+    const c = e.box.fired;
+    check(`It23 Neu-Anlage Becken + Pumpe + WP: ${klicks} Klicks (vorher 33 + 10 Suchen), Ziel ≤ 24`, () => {
+      assert.ok(!ablauf.some((x) => x.startsWith("ABBRUCH")), ablauf.join(" | "));
+      assert.equal(ablauf[0], "Becken offen: becken", "Becken nicht offen");
+      assert.ok(klicks <= 24, `${klicks} Klicks`);
+      assert.equal(c.hero.temp_entity, "sensor.pool_wassertemperatur");
+      assert.deepEqual(c.slots[0].stage_entities, ["switch.shelly_pumpe_n1", "switch.shelly_pumpe_n2", "switch.shelly_pumpe_n3"]);
+      assert.equal(c.slots[0].stop_entity, "switch.shelly_pumpe_stopp");
+      assert.equal(c.slots[0].main_entity, "input_boolean.poolpumpe_schalter");
+      assert.equal(c.slots[0].power_entity, "sensor.poolpumpe_power");
+      assert.equal(c.slots[1].type, "heatpump");
+      assert.equal(c.slots[1].power_entity, "sensor.waermepumpe_power");
+      assert.equal(c.slots[1].target_entity, "climate.waermepumpe");
+      assert.equal(c.slots[1].current_entity, "climate.waermepumpe");
+    });
+    results.push(`       Neu-Anlage: ${klicks} Klicks (HA 5 + Editor ${klicks - 5})`);
+  }
 }
 
 /* ------------------------------------------------------------------ */

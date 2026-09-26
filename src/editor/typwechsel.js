@@ -18,6 +18,9 @@ import { slotLabel } from "../shared/slot-base.js";
  */
 export const typWechsel = (alt = {}, typ, gemerkt = null) => {
   const a = alt || {};
+  /* "Ausgeblendet" ist kein eigenes Gerät, nur ein Verstecken: hin und
+     zurück bleibt der Kasten, wie er war */
+  if (typ === "hidden" || String(a.type || "") === "hidden") return { ...a, type: typ };
   const label = slotLabel(a);
   const basis = gemerkt ? { ...gemerkt } : {};
   delete basis.label_text;

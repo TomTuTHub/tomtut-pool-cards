@@ -73,10 +73,16 @@ eine Herstellerintegration in Home Assistant landen.
   Die Füllung steuert den ganzen Kasten: Hintergrund, Bild, Kästchen, Buttons und Schriftfarbe.
 - **Mobil zuerst** — das Raster stapelt auf schmalen Bildschirmen sauber untereinander,
   alle Touch-Ziele sind mindestens 44 px groß, nichts hängt an Hover.
-- **Visueller Editor** in drei Schritten (Becken / Geräte / Optik): erst ankreuzen, was das
-  Gerät hat, dann erscheinen dessen Felder. Jeder Kasten trägt eine große Überschrift
-  („Kasten 3 · Poolpumpe · Filterpumpe") und die Kennfarbe seines Typs, damit man bei sechs
-  Kästen nicht den Faden verliert. YAML ist möglich, aber nie nötig.
+- **Visueller Editor, „weniger ist mehr“** (seit Iteration 23): oben der Block **Darstellung**
+  (Voll/Mini, Rahmen, Füllung), darunter Becken und Kästen als **Akkordeon** — eine Zeile je
+  Kasten mit Kennfarbe, Typ und Name („Kasten 3 · Poolpumpe · Filterpumpe“) und den Knöpfen
+  ↑ ↓ **Duplizieren** und **Löschen** (mit Rückfrage). Ein neuer Kasten beginnt mit der Wahl
+  des Typs (Kacheln mit Gerätebild) und ist gleich offen. Innen überall dieselbe Reihenfolge:
+  Überschrift → Grunddaten → Ein/Aus → Anzeige → Aussehen → ein zugeklapptes **Erweitert** mit
+  allen Positionen und dem Feintuning. Ein Element erscheint, sobald seine Entity gesetzt ist;
+  Ausblenden steht unter Erweitert. Vorschläge sparen Klicks (N2/N3/STOP aus N1, Leistungssensor
+  aus dem Schalter). Becken + Pumpe + Wärmepumpe neu anlegen: 22 Klicks statt 33. Der Kiosk
+  hat einen eigenen Block unten. YAML ist möglich, aber nie nötig.
 - **Rückfrage pro Kasten** — die Warnung vor dem Ausschalten ist in jedem Kasten mit
   Schalter einzeln abwählbar („Vor dem Ausschalten nachfragen"); Freifeld-Buttons können sie
   auf Wunsch bekommen.
@@ -354,9 +360,16 @@ aus einer neueren Version) rendert als leerer Rahmen, statt die Card scheitern z
 und genau das macht auch ein bestehendes `type: inlet`, mit dem Hinweis „Einlaufdüse ist
 jetzt Teil des Beckens". Im Auswahlfeld des Editors taucht `inlet` nicht mehr auf.
 
-Im Editor stehen im Auswahlfeld zuerst die allgemeinen Slots (`custom`, `hidden`, `frame`),
-danach trennt eine nicht wählbare Zeile „— Geräte —“ die Gerätetypen ab. Die Schlüssel selbst
-sind davon unberührt — die Reihenfolge ist reine Anzeige.
+Einen neuen Kasten legt man im Editor über „+ Kasten hinzufügen“ an und wählt dann den Typ
+per Kachel. Umstellen geht unter „Erweitert → Typ ändern“: dort stehen zuerst die allgemeinen
+Typen (`custom`, `hidden`, `frame`), danach trennt „— Geräte —“ die Gerätetypen ab. Beim
+Wechsel fallen die Felder des alten Typs weg (seit Iteration 22 — vorher blieben sie als
+Leichen stehen); zurückstellen im selben Editor-Durchgang holt sie wieder. `hidden` blendet
+nur aus und behält alles.
+
+**Beschriftung:** Seit Iteration 23 heißt sie bei jedem Typ `label`. Die alten Schlüssel
+`label_text` (Wärmepumpe, Becken) und `title` (Freifeld, Rahmen) gelten weiter und sehen
+gleich aus; der Editor stellt sie beim ersten Ändern auf `label` um.
 
 ### Slot `heatpump`
 
@@ -370,7 +383,7 @@ sind davon unberührt — die Reihenfolge ist reine Anzeige.
 | `current_entity` | – | Ist-Temperatur: `climate.*` (`current_temperature`) oder `sensor.*` |
 | `fan_entity` / `fan_source` | – / `auto` | Woher der Lüfter seinen Zustand nimmt: `auto`, `entity`, `power` |
 | `fan_power_threshold` | `100` | Ab wie viel Watt der Lüfter als laufend gilt |
-| `fan_speed` | `60` | Drehgeschwindigkeit `0`–`100` |
+| `fan_speed` | `60` | Drehgeschwindigkeit `0`–`100` (im Editor als „Tempo“ 0–10 wie überall, gilt nur ohne erkannten Betriebsmodus) |
 | `fan_inactive` | `gray` | Im Stillstand: `gray` oder `hidden` |
 | `fan_top` / `fan_left` / `fan_size` / `fan_ratio` | `49.5` / `26` / `42` / `1.14` | Lage des Lüfterrads in % des Bildes |
 | `fan_design` | `klassisch` | Blatt-Design: `klassisch` (4 Blätter), `drei`, `fuenf`, `sichel` (Turbine), `propeller`, `batman` |
@@ -390,7 +403,7 @@ sind davon unberührt — die Reihenfolge ist reine Anzeige.
 | `release_top` / `release_left` / `release_scale` | `84` / `24` / `100` | Lage und Größe der Freigabe-Anzeige in % des Bildes |
 | `show_release_since` | `false` | Klein unter der Freigabe-Anzeige, wie lange der letzte Wechsel her ist („seit 4 Min“, „seit 2 Std 10 Min“, „seit 3 Tagen“, aus `last_changed`); läuft minütlich mit |
 | `label` | – | Freitext-Badge auf dem Bild (seit Iteration 23; `label_text` gilt weiter). Zu lang = mit „…“ gekürzt, nie breiter als der Kasten |
-| `show_power_button` / `show_power` / `show_current` / `show_target` / `show_fan` / `show_release` | `true` (`show_release`: nur mit Entity) | Einzelne Elemente abwählen — abgewählt heißt: keine Felder im Editor und keine Schlüssel in der Config |
+| `show_power_button` / `show_power` / `show_current` / `show_target` / `show_fan` / `show_release` / `show_mode` | `true` | Ein Element erscheint, sobald seine Entity gesetzt ist. `false` blendet es trotzdem aus (Editor: „Erweitert → Ausblenden“); die Entity bleibt dabei in der Config |
 | Positionsfelder | – | `power_*`, `current_*`, `target_*`, `label_*`, `power_btn_*`, `release_*`, `mode_*` — im Editor je Element per Schieberegler |
 
 Mindestens **eine** Entity sollte gesetzt sein; sonst zeigt der Kasten einen Hinweis.
@@ -577,7 +590,8 @@ slots:
     …
 ```
 
-Im Editor steht dafür ganz oben der Kasten „Kiosk-Modus (nur anzeigen)“ mit einer Liste aller Kästen.
+Im Editor steht dafür unter den Kästen der zugeklappte Block „Kiosk (nur anzeigen)“ — der
+Schalter sitzt in seiner Kopfzeile, die Liste aller Kästen darunter.
 
 ### Slot `custom` — Freifeld (benutzerdefiniert)
 
@@ -759,7 +773,7 @@ Alte Karten laufen also unverändert weiter, sie holen sich ihre Farben jetzt nu
 npm install
 npx playwright install chromium   # einmalig, für den Render-Test
 npm run build      # src/ -> dist/tomtut-pool-cards.js
-npm test           # beide Tests: jsdom-Smoke + Render im Browser
+npm test           # alle drei Tests: jsdom-Smoke, Render im Browser, Prod-Snapshot
 npm run test:jsdom # nur der Smoke-Test (schnell, ohne Browser)
 npm run test:render
 ```
@@ -775,6 +789,14 @@ in `test/render-out/` (nicht versioniert), ein Kontaktbogen zusätzlich unter de
 > Anlass war Iteration 6: die gedrehte UV-Lampe wurde riesig gerendert und legte sich über
 > die Nachbar-Cards — im jsdom-Test sah alles grün aus. Layout prüft man im Browser.
 
+Seit Iteration 22 misst der Render-Test außerdem Card-Breiten von 560–1284 px (2- und
+3-Spalten-Raster, Tablet 1340×800): kein Kästchen darf ein anderes überdecken. Dazu kommt ein
+dritter Test, `test/prod-snapshot.mjs`: er rendert echte Produktiv-Configs
+(`test/fixtures/prod-configs.json`) und vergleicht die Lage jedes Elements mit dem
+eingefrorenen Stand (`test/fixtures/prod-snapshot.json`, ±1 px) — bestehende Configs müssen
+gleich aussehen. Referenz bewusst neu schreiben: `SNAPSHOT_UPDATE=1 SNAPSHOT_DIST=<altes
+Bundle> node test/prod-snapshot.mjs`.
+
 Aufbau:
 
 ```
@@ -787,6 +809,7 @@ src/
   editor/                visueller Editor
 test/smoke.mjs           Logik/Markup in jsdom
 test/render.spec.mjs     Layout in Chromium (Playwright)
+test/prod-snapshot.mjs   echte Configs: Geometrie gegen den eingefrorenen Stand
 test/fixtures/demo.mjs   Beispiel-Anlage für den Render-Test (hass + Alles-Config)
 tools/prepare-assets.py  erzeugt die optimierten PNGs in dist/ (Becken, Geräte, Sprites)
 tools/becken-zonen.mjs   vermisst die Becken-Bilder (Anker + Zonen-Fixture)

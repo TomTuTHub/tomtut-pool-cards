@@ -22,13 +22,12 @@ export const zahlText = (v) => {
 };
 
 export class Fields {
-  constructor({ hass, config, defaults = {}, update, idPrefix = "f", stash = null }) {
+  constructor({ hass, config, defaults = {}, update, idPrefix = "f" }) {
     this.hass = hass;
     this.config = config || {};
     this.defaults = defaults;
     this.update = update;
     this.idPrefix = idPrefix;
-    this.stash = stash;
   }
 
   /* Effektiver Wert: eigener Eintrag, sonst Default des Slot-Typs */
@@ -49,47 +48,25 @@ export class Fields {
   }
 
   /*
-   * Element-Schalter der Gruppe "Elemente anzeigen".
-   *
-   * Abwählen versteckt nicht nur die Felder, es räumt auch die zugehörigen
-   * Schlüssel aus der Config (owned). Damit die Auswahl beim Wiedereinschalten
-   * nicht verloren ist, merkt sich der Editor sie so lange im Stash.
+   * "X anzeigen" (Iteration 23, steht unter Erweitert). Seit es den Block
+   * "Elemente anzeigen" nicht mehr gibt, erscheint ein Element, sobald seine
+   * Entity gesetzt ist; dieser Haken blendet es trotzdem aus. Abhaken
+   * schreibt nur `show_*: false` — die Entity bleibt stehen, Wiederanhaken
+   * bringt alles zurück. Ein bestehendes `show_*: false` wirkt weiter.
    */
-  element(label, key, owned = [], def = true) {
-    const on = this.shown(key, def);
+  zeigen(label, key, def = true) {
+    const an = this.shown(key, def);
     return html`
-      <div class="row">
-        <span class="row-label">${label}</span>
+      <label class="haken">
         <input
           type="checkbox"
           data-key="${key}"
-          ?checked="${on}"
-          @change="${(e) => this._toggleElement(key, owned, def, e.target.checked)}"
+          .checked="${an}"
+          @change="${(e) => this.update({ [key]: e.target.checked === def ? undefined : e.target.checked })}"
         />
-      </div>
+        <span>${label}</span>
+      </label>
     `;
-  }
-
-  _toggleElement(key, owned, def, checked) {
-    const patch = {};
-    const box = this.stash;
-    if (checked) {
-      patch[key] = def === true ? undefined : true;
-      const saved = box?.[`${this.idPrefix}:${key}`];
-      if (saved) {
-        Object.assign(patch, saved);
-        delete box[`${this.idPrefix}:${key}`];
-      }
-    } else {
-      patch[key] = false;
-      const saved = {};
-      for (const k of owned) {
-        if (this.config?.[k] !== undefined) saved[k] = this.config[k];
-        patch[k] = undefined;
-      }
-      if (box && Object.keys(saved).length) box[`${this.idPrefix}:${key}`] = saved;
-    }
-    this.update(patch);
   }
 
   text(label, key, hint = "", placeholder = "") {
@@ -101,7 +78,7 @@ export class Fields {
           data-key="${key}"
           .value="${String(this.raw(key))}"
           placeholder="${placeholder}"
-          @input="${(e) => this.update({ [key]: e.target.value })}"
+          @input="${(e) => this.update({ [key]: e.target.value || undefined })}"
         />
         ${hint ? html`<small>${hint}</small>` : nothing}
       </label>
@@ -135,7 +112,8 @@ export class Fields {
 
   /* Entity an Position `index` einer Liste (z.B. stage_entities) */
   entityAt(label, key, index, hint = "", ...domains) {
-    const list = Array.isArray(this.config?.[key]) ? this.config[key] : [];
+    const roh = this.config?.[key];
+    const list = Array.isArray(roh) ? roh : typeof roh === "string" && roh ? [roh] : [];
     return this._entityInput({
       label,
       hint,
@@ -186,11 +164,29 @@ export class Fields {
   }
 
   _updateList(key, index, value) {
-    const list = Array.isArray(this.config?.[key]) ? [...this.config[key]] : [];
+    const roh = this.config?.[key];
+    const list = Array.isArray(roh) ? [...roh] : typeof roh === "string" && roh ? [roh] : [];
     while (list.length <= index) list.push("");
     list[index] = value;
     while (list.length && !list[list.length - 1]) list.pop();
     this.update({ [key]: list.length ? list : undefined });
+  }
+
+  /*
+   * Vorschlag unter einem Entity-Feld (Iteration 23): ein Tipp übernimmt,
+   * was der Editor aus einem Nachbarfeld ableitet — z.B. N2/N3/STOP aus N1
+   * oder den Leistungssensor aus dem Schalter. patch = { key: entity, … }.
+   */
+  vorschlag(text, patch) {
+    if (!patch || !Object.keys(patch).length) return nothing;
+    return html`<button
+      type="button"
+      class="vorschlag"
+      data-vorschlag="${Object.keys(patch).join(",")}"
+      @click="${() => this.update(patch)}"
+    >
+      ↳ ${text}
+    </button>`;
   }
 
   /* Icon-Feld: echter ha-icon-picker mit Vorschau, sonst Textfeld */
@@ -221,7 +217,7 @@ export class Fields {
         <select data-key="${key}" @change="${(e) => this.update({ [key]: e.target.value })}">
           ${options.map(
             ([value, text]) =>
-              html`<option value="${value}" ?selected="${cur === value}">${text}</option>`
+              html`<option value="${value}" ?selected="${String(cur) === String(value)}">${text}</option>`
           )}
         </select>
       </div>
@@ -229,13 +225,19 @@ export class Fields {
   }
 
   /*
-   * Schieberegler. Wichtig: er startet immer auf dem effektiven Wert
-   * (Config, sonst Default des Slot-Typs) — sonst stehen alle Regler links,
-   * obwohl das Overlay längst richtig sitzt.
+   * Schieberegler. Er startet immer auf dem effektiven Wert (Config, sonst
+   * Default des Slot-Typs) — sonst stehen alle Regler links, obwohl das
+   * Overlay längst richtig sitzt.
+   *
+   * Ziehen feuert höchstens alle 80 ms ein config-changed (Iteration 23,
+   * Befund B: vorher bei jedem Tick); der letzte Wert kommt immer an.
+   * `anzeige` rechnet den gespeicherten Wert für Regler und Anzeige um
+   * (WP-Tempo: 0–100 gespeichert, 0–10 gezeigt), `zurueck` wieder hin.
    */
-  slider(label, key, min, max, unit = "%", step = 1) {
+  slider(label, key, min, max, unit = "%", step = 1, { anzeige = (x) => x, zurueck = (x) => x } = {}) {
     const raw = this.val(key);
-    const v = raw === undefined || raw === null || raw === "" ? min : raw;
+    const gespeichert = raw === undefined || raw === null || raw === "" ? zurueck(min) : raw;
+    const v = anzeige(Number(gespeichert));
     return html`
       <div class="row">
         <span class="row-label">${label}</span>
@@ -246,11 +248,28 @@ export class Fields {
           step="${step}"
           data-key="${key}"
           .value="${String(v)}"
-          @input="${(e) => this.update({ [key]: parseFloat(e.target.value) })}"
+          @input="${(e) => this._gedrosselt(key, zurueck(parseFloat(e.target.value)))}"
+          @change="${(e) => this._gedrosselt(key, zurueck(parseFloat(e.target.value)), true)}"
         />
         <span class="row-val">${zahlText(v)}${unit}</span>
       </div>
     `;
+  }
+
+  _gedrosselt(key, wert, sofort = false) {
+    const box = (Fields._drossel ||= {});
+    const id = `${this.idPrefix}:${key}`;
+    const d = (box[id] ||= { zuletzt: 0, timer: null, wert: null });
+    d.wert = wert;
+    const jetzt = Date.now();
+    const senden = () => {
+      d.zuletzt = Date.now();
+      d.timer = null;
+      this.update({ [key]: d.wert });
+    };
+    clearTimeout(d.timer);
+    if (sofort || jetzt - d.zuletzt >= 80) senden();
+    else d.timer = setTimeout(senden, 80 - (jetzt - d.zuletzt));
   }
 
   toggle(label, key, def) {
@@ -262,6 +281,7 @@ export class Fields {
           type="checkbox"
           data-key="${key}"
           ?checked="${v}"
+          .checked="${!!v}"
           @change="${(e) => this.update({ [key]: e.target.checked })}"
         />
       </div>
@@ -276,16 +296,37 @@ export const section = (title, content, open = false) => html`
   </details>
 `;
 
-/* Die Gruppe "Elemente anzeigen" steht in jedem Slot ganz oben und offen. */
-export const elementsGroup = (content) => html`
-  <details class="section elements" open>
-    <summary>Elemente anzeigen</summary>
-    <div class="section-body">
-      ${content}
-      <small>Nur angehakte Elemente haben Felder — und landen in der Konfiguration.</small>
-    </div>
+/*
+ * Aufbau jedes Kastens (Iteration 23, Testbericht Abschnitt C):
+ *   pflicht → anaus → anzeige → optik → EIN zugeklapptes "Erweitert".
+ * `abschnitt` gibt jedem Teil eine kleine Überschrift und ein data-Attribut
+ * (Tests prüfen die Reihenfolge daran). Leerer Inhalt = kein Abschnitt.
+ */
+export const ABSCHNITTE = {
+  pflicht: "Grunddaten",
+  anaus: "Ein / Aus",
+  anzeige: "Anzeige",
+  optik: "Aussehen",
+};
+export const abschnitt = (art, inhalt) =>
+  inhalt === nothing || inhalt === null || inhalt === undefined
+    ? nothing
+    : html`<div class="abschnitt" data-abschnitt="${art}">
+        <div class="abschnitt-titel">${ABSCHNITTE[art] || art}</div>
+        ${inhalt}
+      </div>`;
+
+/* Das EINE zugeklappte "Erweitert" je Kasten, innen in Gruppen */
+export const erweitert = (...gruppen) => html`
+  <details class="section advanced" data-abschnitt="erweitert">
+    <summary>Erweitert</summary>
+    <div class="section-body">${gruppen}</div>
   </details>
 `;
+export const gruppe = (titel, inhalt) =>
+  inhalt === nothing
+    ? nothing
+    : html`<div class="gruppe"><div class="gruppe-titel">${titel}</div>${inhalt}</div>`;
 
 export const editorStyles = css`
   .editor {
@@ -700,5 +741,311 @@ export const editorStyles = css`
   }
   .add-btn:hover {
     background: rgba(3, 169, 244, 0.1);
+  }
+  .add-btn.klein {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  /* ---------------- Iteration 23: Akkordeon-Editor ---------------- */
+
+  .editor {
+    gap: 8px;
+  }
+  .block-titel {
+    font-size: 15px;
+    font-weight: 800;
+  }
+  /* Darstellung: der globale Block ganz oben */
+  .darstellung {
+    text-align: left;
+    border: 2px solid var(--divider-color, #ccc);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .darstellung.mini {
+    border-color: var(--primary-color, #03a9f4);
+  }
+  .darstellung .ansicht-block {
+    border: none;
+    padding: 0;
+    gap: 6px;
+  }
+  /* Ein Kasten = eine Zeile, bis man ihn aufklappt */
+  .slot-block.kasten,
+  .kiosk-block.slot-block {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    border: 1px solid var(--divider-color, #ccc);
+    border-left: 5px solid var(--slot-farbe, var(--divider-color, #ccc));
+    border-radius: 10px;
+    background: rgba(127, 127, 127, 0.04);
+    background: color-mix(in srgb, var(--slot-farbe, transparent) 7%, transparent);
+    gap: 0;
+  }
+  .kasten-kopf {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 0 6px 0 0;
+  }
+  .kasten-auf {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    color: var(--primary-text-color, #111);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .kasten-auf .slot-ueberschrift,
+  .kasten-auf .eintrag-titel {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .kasten-auf .eintrag-titel {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .pfeil {
+    flex: none;
+    font-size: 10px;
+    color: var(--slot-farbe, var(--secondary-text-color, #888));
+    transition: transform 0.15s;
+  }
+  .pfeil.auf {
+    transform: rotate(90deg);
+  }
+  .kasten-knoepfe {
+    display: flex;
+    gap: 4px;
+    flex: none;
+  }
+  .icon-btn[disabled] {
+    opacity: 0.3;
+    cursor: default;
+  }
+  .kasten-body {
+    padding: 4px 12px 12px;
+  }
+  .slot-block.kasten .slot-card {
+    border: none;
+    border-radius: 0;
+    background: none;
+    padding: 4px 12px 12px;
+  }
+  .loesch-frage {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 0 10px 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1.5px solid var(--error-color, #d32f2f);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .loesch-frage span {
+    flex: 1 1 100%;
+  }
+  .knopf-gefahr,
+  .knopf-leise {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .knopf-gefahr {
+    border: 1px solid var(--error-color, #d32f2f);
+    background: var(--error-color, #d32f2f);
+    color: #fff;
+  }
+  .knopf-leise {
+    border: 1px solid var(--divider-color, #ccc);
+    background: transparent;
+    color: var(--primary-text-color, #111);
+  }
+  /* Abschnitte im Kasten: Grunddaten -> Ein/Aus -> Anzeige -> Aussehen */
+  .abschnitt {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .abschnitt-titel,
+  .gruppe-titel {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--secondary-text-color, #888);
+    margin-top: 4px;
+  }
+  .gruppe {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed var(--divider-color, #ccc);
+  }
+  .gruppe:last-child {
+    border-bottom: none;
+  }
+  .unter-gruppe {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .unter-titel {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .haken-reihe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+  }
+  label.haken {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    font-weight: 400;
+    cursor: pointer;
+  }
+  .vorschlag {
+    align-self: flex-start;
+    margin-top: -4px;
+    padding: 4px 10px;
+    border-radius: 14px;
+    border: 1px dashed var(--primary-color, #03a9f4);
+    background: transparent;
+    color: var(--primary-color, #03a9f4);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+  .getrennt {
+    margin-top: -4px;
+  }
+  .stufen-namen input {
+    width: 3.6em;
+    flex: none;
+  }
+  /* Neu-Anlage: Typ-Kacheln mit Gerätebild */
+  .typ-wahl {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 2px dashed var(--primary-color, #03a9f4);
+    border-radius: 12px;
+  }
+  .typ-kacheln {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+    gap: 8px;
+  }
+  .typ-kachel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 92px;
+    padding: 8px 6px;
+    border-radius: 10px;
+    border: 1px solid var(--divider-color, #ccc);
+    border-bottom: 4px solid var(--slot-farbe, var(--divider-color, #ccc));
+    background: transparent;
+    color: var(--primary-text-color, #111);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .typ-kachel:hover {
+    background: rgba(127, 127, 127, 0.1);
+  }
+  .typ-kachel img {
+    height: 48px;
+    max-width: 100%;
+    object-fit: contain;
+  }
+  .typ-kachel ha-icon {
+    --mdc-icon-size: 40px;
+    color: var(--slot-farbe);
+  }
+  /* Freifeld-Einträge */
+  .eintraege {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .eintrag {
+    border: 1px solid var(--divider-color, #ccc);
+    border-radius: 8px;
+  }
+  .eintrag-kopf {
+    min-height: 36px;
+  }
+  .eintrag-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 10px 10px;
+  }
+  .kiosk-block.slot-block {
+    padding: 0;
+  }
+  .kiosk-block.slot-block.an {
+    border-color: var(--warning-color, #ff9800);
+  }
+  .kiosk-kopf,
+  .kiosk-block .kasten-kopf {
+    gap: 8px;
+  }
+  .kiosk-block .kiosk-schalter {
+    font-size: 14px;
+    gap: 6px;
+  }
+  .kiosk-block .kiosk-schalter input {
+    width: 22px;
+    height: 22px;
+  }
+  .kiosk-block .kasten-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .kiosk-block .kasten-body[hidden],
+  .kasten-body[hidden],
+  .eintrag-body[hidden] {
+    display: none;
+  }
+  .hinweise {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-weight: 500;
   }
 `;

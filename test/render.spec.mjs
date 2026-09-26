@@ -2266,6 +2266,69 @@ await page.evaluate(async () => {
 });
 await page.locator("body > div").first().screenshot({ path: join(ausgabe, "it22-a9-formen.png") });
 
+/* ================================================================== */
+/* Iteration 23 — Editor-Maße (Testbericht B: 8 Kästen = 10.877 px)    */
+/* ================================================================== */
+
+const ACHT_KAESTEN = {
+  hero: { enabled: true, shape: "oval", temp_entity: "sensor.pool_wassertemperatur", ph_entity: "sensor.pool_ph" },
+  slots: [
+    { type: "heatpump", label_text: "Wärmepumpe", switch_entity: "switch.waermepumpe", power_entity: "sensor.waermepumpe_power", target_entity: "climate.waermepumpe", current_entity: "climate.waermepumpe", release_entity: "input_boolean.wp_freigabe", mode_entity: "input_select.wp_modus_heizen" },
+    { type: "pump", label: "Poolpumpe", stage_entities: ["switch.shelly_pumpe_n1", "switch.shelly_pumpe_n2", "switch.shelly_pumpe_n3"], stop_entity: "switch.shelly_pumpe_stopp", main_entity: "input_boolean.poolpumpe_schalter", power_entity: "sensor.poolpumpe_power" },
+    { type: "uv", label: "UV-C", switch_entity: "switch.uv_lampe", power_entity: "sensor.uv_lampe_power" },
+    { type: "solar", label: "Solar", switch_entity: "switch.solarventil", temp_in_entity: "sensor.solar_vorlauf", temp_out_entity: "sensor.solar_ruecklauf" },
+    { type: "custom", title: "Schalter", layout: "liste", entries: [{ kind: "button", entity: "switch.poolbeleuchtung" }, { kind: "entity", entity: "sensor.pool_lufttemperatur" }, { kind: "text", text: "Sommer" }, { kind: "button", entity: "switch.uv_lampe" }] },
+    { type: "custom", title: "Werte", layout: "kacheln", entries: [{ kind: "entity", entity: "sensor.pool_ph" }] },
+    { type: "frame", title: "Platz" },
+    { type: "hidden" },
+  ],
+};
+let editorMasse = null;
+await checkAsync("It23 Editor: 8 zugeklappte Kästen <= 1.600 px (vorher 10.877 px)", async () => {
+  editorMasse = await page.evaluate(async (config) => {
+    /* Theme-Variablen früherer Messungen (Liquid Glass) weg — heller Editor */
+    document.documentElement.removeAttribute("style");
+    document.body.removeAttribute("style");
+    document.body.innerHTML = "";
+    const b = document.createElement("div");
+    b.style.cssText = "width:560px;background:#fff;font-family:Roboto,system-ui";
+    document.body.appendChild(b);
+    const ed = document.createElement("tomtut-pool-dashboard-editor");
+    ed.setConfig(config);
+    ed.hass = window.demo.DEMO_HASS;
+    b.appendChild(ed);
+    await ed.updateComplete;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const h = () => Math.round(ed.getBoundingClientRect().height);
+    const zu = h();
+    const kioskUnten = Math.round(ed.shadowRoot.querySelector('[data-block="kiosk"] input[data-key="kiosk"]').getBoundingClientRect().bottom - ed.getBoundingClientRect().top);
+    /* je Typ: nur dieser Kasten offen (Erweitert zu) */
+    const offen = {};
+    for (const [i, typ] of [[0, "heatpump"], [1, "pump"], [2, "uv"], [3, "solar"], [4, "custom-liste"], [5, "custom-kacheln"], [6, "frame"]]) {
+      ed._offen = new Set([String(i)]);
+      await ed.updateComplete;
+      offen[typ] = h() - zu;
+    }
+    ed._offen = new Set(["becken"]);
+    await ed.updateComplete;
+    offen.becken = h() - zu;
+    ed._offen = new Set();
+    await ed.updateComplete;
+    return { zu, kioskUnten, offen };
+  }, ACHT_KAESTEN);
+  assert.ok(editorMasse.zu <= 1600, `${editorMasse.zu} px`);
+});
+check("It23 Editor: Kiosk-Schalter ohne Scrollen erreichbar (alles zu, Dialog-Sichtfenster 871 px)", () =>
+  assert.ok(editorMasse.kioskUnten <= 871, `${editorMasse.kioskUnten} px`)
+);
+if (editorMasse) {
+  results.push(
+    `       Editor 560 px breit: alles zu ${editorMasse.zu} px, Kiosk-Schalter bei ${editorMasse.kioskUnten} px; ` +
+      `je Typ offen (+px): ${Object.entries(editorMasse.offen).map(([k, v]) => `${k} ${v}`).join(", ")}`
+  );
+}
+await page.locator("body > div").first().screenshot({ path: join(ausgabe, "it23-editor-zu.png") });
+
 check("keine Fehler in der Browser-Konsole", () =>
   assert.deepEqual(konsolenfehler, [], konsolenfehler.join(" | "))
 );
@@ -2423,12 +2486,7 @@ const kontaktbogen = async () => {
     editor.style.cssText = "display:block;background:#fff;border-radius:12px";
     b.appendChild(editor);
     await editor.updateComplete;
-    /* nur die Koepfe zeigen — die Feldlisten wuerden den Bogen sprengen */
-    for (const karte of editor.shadowRoot.querySelectorAll(".slot-card:not(.becken-card)")) {
-      for (const kind of [...karte.children]) {
-        if (!kind.classList.contains("slot-head")) kind.remove();
-      }
-    }
+    /* seit Iteration 23 sind alle Kästen zu — der Bogen zeigt die Köpfe */
   });
 
   const bilder = [...document.querySelectorAll("tomtut-pool-dashboard")]
