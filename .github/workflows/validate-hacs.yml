@@ -1,9 +1,26 @@
 name: Validate HACS
 
+# BIS ZUM ERSTEN RELEASE bewusst KEIN push/pull_request/schedule.
+# Solange das GitHub-Repo privat ist und weder Topics noch Release hat,
+# scheitern drei HACS-Checks zwangslaeufig (Stand 26.09.2026, jeder Push rot):
+#   - topics:   "The repository has no valid topics"
+#   - images:   "The repository does not have images in the Readme file"
+#   - hacsjson: "The repository has an invalid 'hacs.json' file"
+# images + hacsjson sind KEINE echten Fehler: hacs/action laedt README.md und
+# hacs.json unauthentifiziert von raw.githubusercontent.com — bei einem
+# privaten Repo kommt 404 zurueck. README enthaelt ein Bild, hacs.json ist gueltig.
+#
+# TODO nach dem Release (Repo public + Topics gesetzt): push und pull_request
+# hier wieder aktivieren:
+#   push:
+#   pull_request:
 on:
-  push:
-  pull_request:
   workflow_dispatch:
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
 
 # Leserecht auf den Inhalt ist Pflicht, solange das Repo privat ist: mit
 # `permissions: {}` darf der GITHUB_TOKEN ein privates Repo nicht einmal
