@@ -5798,8 +5798,8 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
   });
   check("It24 F4-2: der Typ-Hinweis gibt am Handy zuerst nach (flex-shrink), der Name bleibt", () => {
     const css = cssOf("tomtut-pool-dashboard-editor").replace(/\s+/g, " ");
-    assert.match(css, /\.kasten-typ \{[^}]*flex: 0 100 auto/);
-    assert.match(css, /\.kasten-name \{[^}]*flex: 0 1 auto/);
+    assert.match(css, /\.kasten-typ \{[^}]*flex: 0 1 auto/);
+    assert.match(css, /\.kasten-name \{[^}]*flex: 0 0 auto/);
   });
 
   /* ---- F4-7: Typ ändern oben im Kasten ---- */

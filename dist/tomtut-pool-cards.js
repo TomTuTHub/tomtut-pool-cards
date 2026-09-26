@@ -3005,13 +3005,14 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
     content: " ·";
   }
   .kasten-name {
-    flex: 0 1 auto;
+    flex: 0 0 auto;
+    max-width: 100%;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .kasten-typ {
-    flex: 0 100 auto;
+    flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
