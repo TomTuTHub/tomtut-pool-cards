@@ -610,7 +610,9 @@ const renderKachel = (card, k, nr) => html`
               <img src="${k.bild.src}" alt="${k.name}" />${renderRad(k.rad)}
             </div>`
           : html`<ha-icon icon="${k.icon || "mdi:circle-medium"}"></ha-icon>`}
-        ${k.gesperrt ? html`<span class="k-sperre">Gesperrt</span>` : nothing}
+        ${k.gesperrt && !k.zeilen.some((z) => z.warn)
+          ? html`<span class="k-sperre">Gesperrt</span>`
+          : nothing /* Iteration 25: steht die Sperre schon rot in den Werten, nicht doppelt aufs Bild */}
       </div>
       ${k.zeilen.length ? html`<div class="k-werte">${k.zeilen.map((x, i) => renderZeile(x, i, zellBreit(k.zeilen, i)))}</div>` : nothing}
     </div>

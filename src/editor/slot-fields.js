@@ -812,11 +812,12 @@ export const pumpFields = (f) => {
 export const uvFields = (f) => {
   const c = f.config || {};
   return {
-    pflicht: html`
+    /* Iteration 25 (Retest F5): Schalter und Nachfrage gemeinsam unter Ein/Aus */
+    anaus: html`
       ${f.entity("Schalter (Powerbutton)", "switch_entity", "Steckdose/Relais der Lampe.", ...SCHALTER)}
+      ${c.switch_entity ? nachfragen(f) : nothing}
       <small>Die UV-Lampe läuft üblicherweise per Zeitschaltuhr parallel zur Poolpumpe.</small>
     `,
-    anaus: c.switch_entity ? nachfragen(f) : nothing,
     anzeige: html`
       ${leistungMitVorschlag(f, "switch_entity", "W oder kW.")}
       ${f.entity("Temperaturfühler", "temp_entity", "Zeigt das Thermometer.", ...MESSWERT)}

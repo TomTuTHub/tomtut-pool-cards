@@ -5538,7 +5538,7 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
     const k = e2.$$(".slot-card:not(.becken-card)");
     assert.deepEqual(reihe(k[0]), ["label", "pflicht", "anaus", "anzeige", "optik", "erweitert"], "WP");
     assert.deepEqual(reihe(k[1]), ["label", "pflicht", "anaus", "anzeige", "optik", "erweitert"], "Pumpe");
-    assert.deepEqual(reihe(k[2]), ["label", "pflicht", "anzeige", "optik", "erweitert"], "UV ohne Schalter: keine Nachfrage");
+    assert.deepEqual(reihe(k[2]), ["label", "anaus", "anzeige", "optik", "erweitert"], "UV: Schalter unter Ein/Aus (It25)");
     assert.deepEqual(reihe(k[3]), ["label", "pflicht", "anaus", "anzeige", "optik", "erweitert"], "Solar");
     assert.deepEqual(reihe(k[4]), ["label", "pflicht", "anzeige", "erweitert"], "Freifeld");
     assert.deepEqual(reihe(k[5]), ["label", "pflicht", "erweitert"], "Rahmen");
@@ -5552,7 +5552,7 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
       [2, "switch_entity"],
       [3, "temp_in_entity"],
     ]) {
-      const erstes = e2.$$(".slot-card:not(.becken-card)")[i].querySelector('[data-abschnitt="pflicht"] [data-key]:not(select)');
+      const erstes = e2.$$(".slot-card:not(.becken-card)")[i].querySelector('[data-abschnitt="pflicht"] [data-key]:not(select), [data-abschnitt="anaus"] [data-key]:not(select)');
       assert.equal(erstes.dataset.key, key, `Kasten ${i + 1}`);
     }
   });
@@ -5894,6 +5894,39 @@ check("It17 Kachel WP: Steckdose an, climate off (Standby) -> 'Aus', grau", () =
       assert.equal(e.box.fired.slots[1].current_entity, "sensor.pool_wassertemperatur");
     });
   }
+}
+
+/* ================================================================== */
+/* Iteration 25 — Mini-WP gesperrt nur einmal, UV-Schalter unter Ein/Aus */
+/* ================================================================== */
+{
+  const gesperrtHass = () => selHass("Kuehlen Smart", { [FREI_ENT]: { state: "off", attributes: {}, last_changed: iso(60) } });
+  const kachelVon = async (slot) => {
+    const c = await mount(Dashboard, { view: "mini", hero: { enabled: false }, slots: [slot] }, gesperrtHass());
+    return c.shadowRoot.querySelector(".kachel");
+  };
+  const mitZeile = await kachelVon({ ...MODUS_SEL, release_entity: FREI_ENT, mini_show: ["modus", "freigabe"] });
+  check("It25: Mini-WP gesperrt + Wert 'Freigabe gesperrt' -> kein zweites 'Gesperrt'-Badge auf dem Bild", () => {
+    assert.match(mitZeile.querySelector(".k-zeile.warn").textContent, /Freigabe gesperrt/);
+    assert.equal(mitZeile.querySelector(".k-sperre"), null);
+  });
+  const ohneZeile = await kachelVon({ ...MODUS_SEL, release_entity: FREI_ENT });
+  check("It25: ohne Freigabe-Wert bleibt das Badge (die Sperre steht genau einmal da)", () => {
+    assert.equal(ohneZeile.querySelector(".k-zeile.warn"), null);
+    assert.ok(ohneZeile.querySelector(".k-sperre"));
+  });
+  const ed = new Editor();
+  ed.setConfig({ hero: { enabled: false }, slots: [{ type: "uv", switch_entity: "switch.uv_lampe" }] });
+  ed.hass = makeHass();
+  document.body.appendChild(ed);
+  await ed.updateComplete;
+  check("It25: UV-Schalter und Nachfrage gemeinsam unter 'Ein / Aus', kein leeres 'Grunddaten'", () => {
+    const anaus = ed.shadowRoot.querySelector('[data-abschnitt="anaus"]');
+    assert.ok(anaus.querySelector('[data-key="switch_entity"]'));
+    assert.ok(anaus.querySelector('[data-key="confirm_off"]'));
+    assert.equal(ed.shadowRoot.querySelector('[data-abschnitt="pflicht"]'), null);
+  });
+  ed.remove();
 }
 
 /* ------------------------------------------------------------------ */

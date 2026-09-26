@@ -1587,7 +1587,7 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
         </svg>
       </div>`:G)(t.rad)}
             </div>`:H`<ha-icon icon="${t.icon||"mdi:circle-medium"}"></ha-icon>`}
-        ${t.gesperrt?H`<span class="k-sperre">Gesperrt</span>`:G}
+        ${t.gesperrt&&!t.zeilen.some(e=>e.warn)?H`<span class="k-sperre">Gesperrt</span>`:G}
       </div>
       ${t.zeilen.length?H`<div class="k-werte">${t.zeilen.map((e,i)=>((e,t,i=!1)=>H`<span
   class="k-zeile ${t?"neben":"haupt"} ${e.punkt?`badge ${e.punkt}`:""} ${e.warn?"warn":""} ${i?"breit":""} ${e.umbruch?"umbruch":""}"
@@ -3646,10 +3646,11 @@ const e=globalThis,t=e.ShadowRoot&&(void 0===e.ShadyCSS||e.ShadyCSS.nativeShadow
           ${e.zeigen("Ist","show_current")} ${e.zeigen("Soll","show_target")}
           ${e.zeigen("Freigabe","show_release")} ${e.zeigen("Betriebsmodus","show_mode")}
           ${e.zeigen("Lüfterrad","show_fan")}
-        </div>`)]}})(i);case"pump":return Zn(i);case"uv":return(e=>{const t=e.config||{};return{pflicht:H`
+        </div>`)]}})(i);case"pump":return Zn(i);case"uv":return(e=>{const t=e.config||{};return{anaus:H`
       ${e.entity("Schalter (Powerbutton)","switch_entity","Steckdose/Relais der Lampe.",...An)}
+      ${t.switch_entity?Wn(e):G}
       <small>Die UV-Lampe läuft üblicherweise per Zeitschaltuhr parallel zur Poolpumpe.</small>
-    `,anaus:t.switch_entity?Wn(e):G,anzeige:H`
+    `,anzeige:H`
       ${Nn(e,"switch_entity","W oder kW.")}
       ${e.entity("Temperaturfühler","temp_entity","Zeigt das Thermometer.",...En)}
     `,optik:H`
