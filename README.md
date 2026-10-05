@@ -5,10 +5,11 @@
 [![HA Version](https://img.shields.io/badge/Home%20Assistant-2026.3.0%2B-blue)](https://www.home-assistant.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-![Preview](https://raw.githubusercontent.com/TomTuTHub/tomtut-pool-cards/main/dist/poolbecken_freiform.png)
+![TomTuT Pool Cards — Becken, Wärmepumpe, Poolpumpe, UV-C-Lampe und Solarheizung in einer Card](https://raw.githubusercontent.com/TomTuTHub/tomtut-pool-cards/main/docs/images/screenshot-voll.png)
 
-> Vorläufiges Bild: das mitgelieferte Becken-Artwork (Freiform). Ein echter
-> Dashboard-Screenshot folgt.
+| Mini-Ansicht (`view: mini`) | Dunkles Theme | Visueller Editor |
+|---|---|---|
+| ![Mini-Ansicht](https://raw.githubusercontent.com/TomTuTHub/tomtut-pool-cards/main/docs/images/screenshot-mini.png) | ![Dunkles Theme](https://raw.githubusercontent.com/TomTuTHub/tomtut-pool-cards/main/docs/images/screenshot-dunkel.png) | ![Visueller Editor](https://raw.githubusercontent.com/TomTuTHub/tomtut-pool-cards/main/docs/images/screenshot-editor.png) |
 
 Eine Lovelace-Card für das **ganze Poolgelände**: oben das Becken mit Live-Werten,
 daneben Kästen für Wärmepumpe, Poolpumpe, UV-C-Lampe und eigene Werte. Du wählst in der Card ab,
@@ -106,11 +107,20 @@ eine Herstellerintegration in Home Assistant landen.
 
 ### Via HACS (empfohlen)
 
+**Aus dem HACS-Katalog** (sobald die Card dort gelistet ist):
+
 1. HACS in Home Assistant öffnen
-2. **Frontend** → Drei-Punkte-Menü → **Benutzerdefinierte Repositories**
-3. Repository hinzufügen: `https://github.com/TomTuTHub/tomtut-pool-cards` — Kategorie: **Dashboard**
-4. Nach **TomTuT Pool Cards** suchen und **Herunterladen**
-5. Browser neu laden
+2. Nach **TomTuT Pool Cards** suchen
+3. **Herunterladen** und den Browser neu laden
+
+**Als benutzerdefiniertes Repository** (bis zur Aufnahme in den Katalog):
+
+1. HACS öffnen → Drei-Punkte-Menü oben rechts → **Benutzerdefinierte Repositories**
+2. Repository: `https://github.com/TomTuTHub/tomtut-pool-cards` — Typ: **Dashboard**
+3. **Hinzufügen**, danach nach **TomTuT Pool Cards** suchen und **Herunterladen**
+4. Browser neu laden
+
+[![In HACS öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=TomTuTHub&repository=tomtut-pool-cards&category=plugin)
 
 HACS kopiert den Ordner `dist/` nach `config/www/community/tomtut-pool-cards/` — die Bilder
 liegen damit automatisch am richtigen Platz und müssen nicht separat kopiert werden.
